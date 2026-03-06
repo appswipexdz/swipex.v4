@@ -231,9 +231,6 @@
 
                     try {
                         const provider = new firebase.auth.GoogleAuthProvider();
-                        // إضافة صلاحيات Google Sheets و Drive
-                        provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-                        provider.addScope('https://www.googleapis.com/auth/drive.file');
                         provider.setCustomParameters({
                             prompt: 'select_account'
                         });
