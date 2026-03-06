@@ -95,8 +95,8 @@ createApp({
             if (this.settings.themeMode === 'auto') this.applyTheme();
         });
         
-        // تأخير تحميل البيانات قليلاً ليسمح بتفعيل المستمع الفوري أولاً
-        setTimeout(() => {
+        // انتظار تأكيد المصادقة قبل تحميل البيانات
+        const startLoad = () => {
             console.log('⏳ جاري تحميل البيانات...');
             this.loadData().then(() => {
                 console.log('✓ اكتمل تحميل البيانات');
@@ -105,7 +105,23 @@ createApp({
                 console.error('❌ فشل تحميل البيانات:', e);
                 this.syncStatus = 'error';
             });
-        }, 500);
+        };
+        
+        if (firebase.auth().currentUser) {
+            startLoad();
+        } else {
+            const unsubAuth = firebase.auth().onAuthStateChanged(user => {
+                unsubAuth();
+                startLoad();
+            });
+            // حماية: إذا لم يستجب خلال 3 ثوانٍ، حمّل البيانات المحلية
+            setTimeout(() => {
+                if (!firebase.auth().currentUser) {
+                    console.log('⚠ تجاوز مهلة المصادقة - تحميل محلي');
+                    startLoad();
+                }
+            }, 3000);
+        }
         
         setTimeout(() => this.initSortable(), 500);
         this.detectDuplicates();
