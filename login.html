@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#dc2626" />
+    <meta name="description" content="تطبيق إدارة توصيل الطرود - SwiPex" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <title>تسجيل الدخول - SwiPex</title>
+
+    <!-- Tailwind CSS -->
+    <script src="assets/libs/tailwindcss.js"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
+    <link href="assets/libs/cairo-font.css" rel="stylesheet" />
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <script>
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+        }
+        .dark body {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #1e293b 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+        .dark .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .google-btn {
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .dark .google-btn {
+            background: white;
+        }
+        .google-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+        .dark .google-btn:hover {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        .logo-glow {
+            filter: drop-shadow(0 0 20px rgba(220, 38, 38, 0.3));
+        }
+        .dark .logo-glow {
+            filter: drop-shadow(0 0 30px rgba(220, 38, 38, 0.5));
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .loading-spinner {
+            border: 3px solid rgba(0, 0, 0, 0.15);
+            border-top-color: #dc2626;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 0.8s linear infinite;
+        }
+        .dark .loading-spinner {
+            border-color: rgba(255, 255, 255, 0.3);
+            border-top-color: #dc2626;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-4">
+    <div id="app" class="w-full max-w-md">
+        <!-- Login Card -->
+        <div class="glass-card rounded-3xl p-8 shadow-2xl">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div class="animate-float inline-block">
+                    <img src="assets/icons/icon-512.png" alt="SwiPex" class="w-24 h-24 mx-auto rounded-2xl logo-glow mb-4" />
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">SwiPex</h1>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">نظام إدارة توصيل الطرود المتقدم</p>
+            </div>
+
+            <!-- Welcome Message -->
+            <div class="text-center mb-8">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-2">مرحباً بك!</h2>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">قم بتسجيل الدخول للمتابعة</p>
+            </div>
+
+            <!-- Error Message -->
+            <div v-if="error" class="mb-6 p-4 rounded-xl bg-red-100 dark:bg-red-500/20 border border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-300 text-sm text-center">
+                <i class="fas fa-exclamation-circle ml-2"></i>
+                {{ error }}
+            </div>
+
+            <!-- Google Sign In Button -->
+            <button 
+                @click="signInWithGoogle" 
+                :disabled="isLoading"
+                class="google-btn w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-bold text-gray-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <template v-if="isLoading">
+                    <div class="loading-spinner"></div>
+                    <span>جاري تسجيل الدخول...</span>
+                </template>
+                <template v-else>
+                    <svg class="w-6 h-6" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>تسجيل الدخول باستخدام Google</span>
+                </template>
+            </button>
+
+            <!-- Features -->
+            <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <p class="text-gray-400 dark:text-gray-500 text-xs text-center mb-4">مميزات تسجيل الدخول</p>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="p-2">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mx-auto mb-2">
+                            <i class="fas fa-cloud text-blue-500 dark:text-blue-400 text-sm"></i>
+                        </div>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">حفظ سحابي</p>
+                    </div>
+                    <div class="p-2">
+                        <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mx-auto mb-2">
+                            <i class="fas fa-sync text-green-500 dark:text-green-400 text-sm"></i>
+                        </div>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">مزامنة تلقائية</p>
+                    </div>
+                    <div class="p-2">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mx-auto mb-2">
+                            <i class="fas fa-mobile-alt text-purple-500 dark:text-purple-400 text-sm"></i>
+                        </div>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">عدة أجهزة</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-gray-400 dark:text-gray-600 text-xs mt-6">
+            SwiPex Pro v3.6 © 2026
+        </p>
+    </div>
+
+    <script src="assets/libs/vue.global.min.js"></script>
+    <script>
+        // Firebase Configuration - قم بتعديل هذه القيم بمعلومات مشروعك//
+        const firebaseConfig = {
+            apiKey: "AIzaSyBn3wsfwz0wtNSDrfgihoq-kKJ7gdi_MfM",
+            authDomain: "swipex-pro.firebaseapp.com",
+            projectId: "swipex-pro",
+            storageBucket: "swipex-pro.firebasestorage.app",
+            messagingSenderId: "554314872000",
+            appId: "1:554314872000:web:e7d85ca8a6ebf0e50ea925",
+            measurementId: "G-E65LM6N009"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // تعيين persistence للحفاظ على تسجيل الدخول
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    isLoading: false,
+                    error: null
+                };
+            },
+            mounted() {
+                const isSwitching = new URLSearchParams(window.location.search).has('switch');
+
+                if (isSwitching) {
+                    auth.signOut().then(() => {
+                        history.replaceState(null, '', 'login.html');
+                    });
+                } else {
+                    auth.onAuthStateChanged(user => {
+                        if (user) {
+                            this.saveUserData(user);
+                            window.location.replace('index.html');
+                        }
+                    });
+                }
+
+                auth.getRedirectResult().then(result => {
+                    if (result && result.user) {
+                        this.saveUserData(result.user, result.credential);
+                        window.location.replace('index.html');
+                    }
+                }).catch(error => {
+                    if (error.code) {
+                        this.error = `خطأ: ${error.code}`;
+                    }
+                });
+            },
+            methods: {
+                async signInWithGoogle() {
+                    this.isLoading = true;
+                    this.error = null;
+
+                    try {
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        // إضافة صلاحيات Google Sheets و Drive
+                        provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+                        provider.addScope('https://www.googleapis.com/auth/drive.file');
+                        provider.setCustomParameters({
+                            prompt: 'select_account'
+                        });
+
+                        // محاولة popup أولاً، وإذا فشل استخدم redirect
+                        try {
+                            const result = await auth.signInWithPopup(provider);
+                            if (result.user) {
+                                const credential = result.credential;
+                                this.saveUserData(result.user, credential);
+                                window.location.replace('index.html');
+                            }
+                        } catch (popupError) {
+                            if (popupError.code === 'auth/operation-not-supported-in-this-environment' ||
+                                popupError.code === 'auth/popup-blocked') {
+                                await auth.signInWithRedirect(provider);
+                            } else {
+                                throw popupError;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        
+                        switch (error.code) {
+                            case 'auth/popup-closed-by-user':
+                                this.error = 'تم إغلاق نافذة تسجيل الدخول';
+                                break;
+                            case 'auth/network-request-failed':
+                                this.error = 'خطأ في الاتصال بالإنترنت';
+                                break;
+                            case 'auth/popup-blocked':
+                                this.error = 'تم حظر النافذة المنبثقة. يرجى السماح بها';
+                                break;
+                            case 'auth/unauthorized-domain':
+                                this.error = 'النطاق غير مصرح به. أضف النطاق في Firebase Console';
+                                break;
+                            case 'auth/operation-not-allowed':
+                                this.error = 'تسجيل الدخول بـ Google غير مفعّل في Firebase';
+                                break;
+                            case 'auth/cancelled-popup-request':
+                                this.error = 'تم إلغاء طلب تسجيل الدخول';
+                                break;
+                            default:
+                                this.error = `خطأ: ${error.code || error.message}`;
+                        }
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                saveUserData(user, credential) {
+                    const userData = {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        photoURL: user.photoURL,
+                        lastLogin: new Date().toISOString(),
+                        accessToken: credential ? credential.accessToken : null
+                    };
+                    localStorage.setItem('swipex_user', JSON.stringify(userData));
+                    localStorage.removeItem('swipex_guest_mode');
+                },
+
+
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
