@@ -12,8 +12,8 @@ const appMethods = {
     } else {
       this.headerHidden = false;
     }
-    // Progress bar compact mode when scrolled past threshold
-    this.progressBarCompact = currentScrollY > 100;
+    // البيانات تظهر فقط عند الرجوع لأعلى الصفحة تماماً
+    this.progressBarCompact = currentScrollY > 50;
     this.lastScrollY = currentScrollY;
   },
 
@@ -66,7 +66,7 @@ const appMethods = {
   },
 
   saveData() {
-    // Immediate local save
+    // حفظ محلي فوري
     localStorage.setItem(
       "swipex_pro_v2",
       JSON.stringify({
@@ -78,21 +78,26 @@ const appMethods = {
       }),
     );
 
-    // Batched cloud save to reduce repeated writes
+    // حفظ في Firestore فوري (بدون تأخير)
     if (firestoreSync.isAvailable()) {
       this.syncStatus = "syncing";
-      firestoreSync.scheduleSave(
-        {
+      firestoreSync
+        .saveAll({
           parcels: this.parcels,
           settings: { ...this.settings, _sessionDate: this.sessionDate },
           archive: this.archive,
           tasks: this.tasks,
-        },
-        (ok) => {
+        })
+        .then((ok) => {
           this.syncStatus = ok ? "synced" : "error";
-          console.log(ok ? "Saved data to Firestore" : "Firestore save failed");
-        },
-      );
+          console.log(
+            ok ? "✓ تم حفظ البيانات في Firestore" : "❌ فشل حفظ البيانات",
+          );
+        })
+        .catch((e) => {
+          console.error("❌ خطأ في حفظ Firestore:", e);
+          this.syncStatus = "error";
+        });
     }
   },
 
@@ -314,6 +319,8 @@ const appMethods = {
         lastUpdate: new Date().toISOString(),
         municipality: p.municipality || "",
         receiver: p.receiver || "",
+        smsSent: p.smsSent || false,
+        senderSmsSent: p.senderSmsSent || false,
       };
     });
   },
@@ -375,6 +382,8 @@ const appMethods = {
           expanded: false,
           isUpdated: true,
           history: archivedData,
+          smsSent: archivedData.smsSent || false,
+          senderSmsSent: archivedData.senderSmsSent || false,
           insertedAt: this._nowTimestamp(),
           status: hasImportedStatus ? newParcel.status : "دون إجراء",
           notes: hasImportedNotes ? newParcel.notes : "",
@@ -599,6 +608,24 @@ const appMethods = {
     });
   },
 
+  moveParcelUp(parcel) {
+    const idx = this.parcels.findIndex(p => p.id === parcel.id);
+    if (idx > 0) {
+      const item = this.parcels.splice(idx, 1)[0];
+      this.parcels.splice(idx - 1, 0, item);
+      this.saveData();
+    }
+  },
+
+  moveParcelDown(parcel) {
+    const idx = this.parcels.findIndex(p => p.id === parcel.id);
+    if (idx !== -1 && idx < this.parcels.length - 1) {
+      const item = this.parcels.splice(idx, 1)[0];
+      this.parcels.splice(idx + 1, 0, item);
+      this.saveData();
+    }
+  },
+
   // ========== Status Methods ==========
   getStatusColor(status) {
     const s = this.allStatuses.find((x) => x.name === status);
@@ -615,11 +642,23 @@ const appMethods = {
   },
 
   changeStatus(parcel, newStatus) {
-    // الحالات التي تتطلب تأكيد SMS
-    const smsStatuses = ["مغلق", "لا يرد", "رقم خاطئ"];
+    // هل هذه الحالة مفعّلة لإرسال SMS؟
+    const statusSmsEnabled =
+      (newStatus === "مغلق" && this.settings.smsOnStatusClosed) ||
+      (newStatus === "لا يرد" && this.settings.smsOnStatusNoAnswer) ||
+      (newStatus === "رقم خاطئ" && this.settings.smsOnStatusWrongNumber);
 
-    // إذا كانت الميزة مفعلة والحالة من الحالات المحددة
-    if (this.settings.smsOnStatusChange && smsStatuses.includes(newStatus)) {
+    if (statusSmsEnabled) {
+      // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسلته
+      const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
+      if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
+        parcel.status = newStatus;
+        parcel.updatedAt = new Date().toISOString();
+        this.statusModalParcel = null;
+        this.saveData();
+        if (newStatus === "تم التسليم") this.triggerConfetti();
+        return;
+      }
       this.statusSmsConfirmParcel = parcel;
       this.statusSmsConfirmStatus = newStatus;
       this.showStatusSmsConfirm = true;
@@ -686,7 +725,11 @@ const appMethods = {
     const phone =
       newStatus === "رقم خاطئ" ? parcel.senderPhone || "" : parcel.phone || "";
 
-    parcel.smsSent = true;
+    if (newStatus === "رقم خاطئ") {
+      parcel.senderSmsSent = true;
+    } else {
+      parcel.smsSent = true;
+    }
     parcel.updatedAt = new Date().toISOString();
     this.saveData();
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
@@ -838,27 +881,24 @@ const appMethods = {
   },
 
   clearAllData() {
-    if (
-      confirm(
-        "هل أنت متأكد من مسح جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!",
-      )
-    ) {
-      if (confirm("تأكيد نهائي: سيتم حذف جميع الطرود والأرشيف!")) {
-        this.parcels = [];
-        this.archive = {};
-        this.sessionDate = null;
-        this.importStats = {
-          total: 0,
-          new: 0,
-          updated: 0,
-          duplicates: 0,
-          archived: 0,
-          favorites: 0,
-        };
-        this.saveData();
-        this.currentView = "main";
-      }
-    }
+    this.showClearDataConfirm = true;
+  },
+
+  confirmClearAllData() {
+    this.parcels = [];
+    this.archive = {};
+    this.sessionDate = null;
+    this.importStats = {
+      total: 0,
+      new: 0,
+      updated: 0,
+      duplicates: 0,
+      archived: 0,
+      favorites: 0,
+    };
+    this.saveData();
+    this.showClearDataConfirm = false;
+    this.currentView = "main";
   },
 
   resetSmsTemplate() {

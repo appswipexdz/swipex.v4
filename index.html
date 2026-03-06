@@ -174,7 +174,7 @@
             <div class="relative">
                 <div class="absolute inset-0 bg-gradient-to-r from-red-600 via-red-500 to-rose-600"></div>
                 <div class="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-                <div class="relative px-3 py-2 flex justify-between items-center text-white">
+                <div class="relative px-2 py-1 flex justify-between items-center text-white">
                     <!-- RIGHT side in RTL: Search + 3 dots -->
                     <div class="flex items-center gap-2">
                         <div class="relative top-menu-wrapper">
@@ -222,10 +222,9 @@
                             <i class="fas text-sm transition-transform duration-300" :class="showFilters ? 'fa-times rotate-90' : 'fa-search rotate-0'"></i>
                         </button>
                     </div>
-                    <!-- LEFT side in RTL: App icon + name -->
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-base font-bold tracking-wide">SwiPex</h1>
-                        <img src="assets/icons/icon-512.png" alt="SwiPex" class="w-7 h-7 rounded-lg shadow-inner">
+                    <!-- LEFT side in RTL: App icon -->
+                    <div class="flex items-center">
+                        <img src="assets/icons/logo.png" alt="SwiPex" class="h-7 rounded-lg">
                     </div>
                 </div>
             </div>
@@ -251,7 +250,7 @@
             <div class="mx-3 mt-1 px-2 py-2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm" style="overflow: visible;">
                 <div class="flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none;">
                     <button @click="hasActiveFilters ? clearFilters() : null" class="filter-clear-btn" :class="hasActiveFilters ? 'text-red-500 border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 glass-panel shadow-sm' : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 glass-panel'" :title="hasActiveFilters ? 'مسح الفلاتر' : 'لا يوجد فلتر مفعّل'">
-                        <i class="fas" :class="hasActiveFilters ? 'fa-times' : 'fa-sliders-h'"></i>
+                        <i class="fas text-xs" :class="hasActiveFilters ? 'fa-eraser' : 'fa-filter'"></i>
                     </button>
 
                     <button @click.stop="showMunicipalityDropdown = !showMunicipalityDropdown; showTagsDropdown = false" :class="[
@@ -326,7 +325,7 @@
         </div>
 
         <!-- Daily Summary Widget -->
-        <div v-if="parcels.length > 0" class="mx-3 mt-2 mb-1 progress-bar-sticky" :class="{'progress-bar-compact': progressBarCompact}" :style="{ top: headerHidden ? '64px' : '100px' }">
+        <div v-if="parcels.length > 0" class="mx-3 mt-2 mb-1 progress-bar-sticky" :class="{'progress-bar-compact': progressBarCompact}" :style="{ top: headerHidden ? '64px' : '112px' }">
             <div class="glass-panel rounded-2xl p-3 border border-green-200/50 dark:border-green-800/30">
                 <div class="progress-bar-text flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
@@ -377,8 +376,16 @@
 
                         <div class="card-content border-r-4" :class="[getStatusColor(parcel.status), {'snapping': !isDragging || activeSwipeId !== parcel.id}]" @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)" @touchend="touchEnd($event, parcel)" :style="getTransformStyle(parcel)">
                             <div class="p-3 cursor-pointer relative" @click="toggleExpand(parcel.id)">
-                                <div class="absolute right-3 top-1/2 -translate-y-1/2 handle w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move" @touchstart.stop>
-                                    <i class="fas fa-grip-vertical"></i>
+                                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0" @touchstart.stop>
+                                    <button @click.stop="moveParcelUp(parcel)" class="w-6 h-4 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
+                                        <i class="fas fa-chevron-up text-[9px]"></i>
+                                    </button>
+                                    <div class="handle w-7 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
+                                        <i class="fas fa-grip-lines text-[10px]"></i>
+                                    </div>
+                                    <button @click.stop="moveParcelDown(parcel)" class="w-6 h-4 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
+                                        <i class="fas fa-chevron-down text-[9px]"></i>
+                                    </button>
                                 </div>
 
                                 <div class="flex items-center justify-between mb-2 pr-1">
@@ -442,7 +449,12 @@
 
                                     <!-- أيقونة SMS في البطاقة المصغرة -->
                                     <div v-if="!parcel.expanded && parcel.smsSent" class="flex items-center gap-1 flex-shrink-0">
-                                        <span class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center" title="تم مراسلته عبر SMS">
+                                        <span class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center" title="تم مراسلة المستلم عبر SMS">
+                                            <i class="fas fa-paper-plane text-xs"></i>
+                                        </span>
+                                    </div>
+                                    <div v-if="!parcel.expanded && parcel.senderSmsSent" class="flex items-center gap-1 flex-shrink-0">
+                                        <span class="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center" title="تم إبلاغ المرسل بالرقم الخاطئ">
                                             <i class="fas fa-paper-plane text-xs"></i>
                                         </span>
                                     </div>
@@ -509,8 +521,15 @@
                                         </div>
                                         <div v-if="parcel.smsSent" class="mt-1 flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400">
                                             <i class="fas fa-paper-plane"></i>
-                                            <span>تم مراسلته عبر SMS</span>
+                                            <span>تم مراسلة المستلم عبر SMS</span>
                                             <button @click="parcel.smsSent = false; saveData()" class="text-red-400 hover:text-red-600">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <div v-if="parcel.senderSmsSent" class="mt-1 flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                                            <i class="fas fa-paper-plane"></i>
+                                            <span>تم إبلاغ المرسل بالرقم الخاطئ</span>
+                                            <button @click="parcel.senderSmsSent = false; saveData()" class="text-red-400 hover:text-red-600">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
@@ -601,7 +620,7 @@
                                                 <i class="fas fa-ellipsis-v text-lg"></i>
                                             </button>
                                             <div v-if="parcel._showMore" class="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-30 min-w-[140px]">
-                                                <button @click="openEditModal(parcel); parcel._showMore = false" class="w-full px-4 py-3 flex items-center gap-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition text-sm font-bold">
+                                                <button @click="openEditModal(parcel); parcel._showMore = false" class="w-full px-4 py-3 flex items-center gap-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition text-sm font-bold border-t border-gray-100 dark:border-gray-700">
                                                     <i class="fas fa-edit"></i>
                                                     تعديل
                                                 </button>
@@ -908,31 +927,88 @@
                             تعديل رسالة الاستلام
                         </button>
                         
-                        <div class="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                            <div class="flex items-center gap-3">
+                        <!-- إرسال SMS عند تغيير الحالة - تفعيل لكل حالة -->
+                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
+                            <div class="flex items-center gap-3 mb-1">
                                 <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
                                     <i class="fas fa-sms text-amber-600 dark:text-amber-400 text-sm"></i>
                                 </div>
                                 <div>
-                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">ميزة إرسال SMS</span>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">سؤال تأكيد قبل تغيير الحالة</p>
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">إرسال SMS عند تغيير الحالة</span>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">تفعيل لكل حالة على حدة</p>
+                                </div>
+                            </div>
+
+                            <!-- مغلق -->
+                            <div class="rounded-lg bg-white/60 dark:bg-gray-800/40 overflow-hidden">
+                                <div class="flex items-center justify-between px-3 py-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-phone-slash text-yellow-500 text-xs"></i>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">مغلق</span>
+                                    </div>
+                                    <label class="relative inline-block w-12 h-7" dir="ltr">
+                                        <input type="checkbox" v-model="settings.smsOnStatusClosed" @change="saveSettings" class="sr-only peer" />
+                                        <div class="w-12 h-7 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-[22px] after:w-[22px] after:transition-all after:shadow-md peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+                                <button v-show="settings.smsOnStatusClosed" @click="openSmsEditor('smsStatusTemplate')" class="w-full bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition border-t border-amber-200/50 dark:border-amber-800/50">
+                                    <i class="fas fa-edit text-[10px]"></i>
+                                    تعديل الرسالة
+                                </button>
+                            </div>
+
+                            <!-- لا يرد -->
+                            <div class="rounded-lg bg-white/60 dark:bg-gray-800/40 overflow-hidden">
+                                <div class="flex items-center justify-between px-3 py-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-phone-alt text-yellow-500 text-xs"></i>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">لا يرد</span>
+                                    </div>
+                                    <label class="relative inline-block w-12 h-7" dir="ltr">
+                                        <input type="checkbox" v-model="settings.smsOnStatusNoAnswer" @change="saveSettings" class="sr-only peer" />
+                                        <div class="w-12 h-7 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-[22px] after:w-[22px] after:transition-all after:shadow-md peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+                                <button v-show="settings.smsOnStatusNoAnswer" @click="openSmsEditor('smsStatusTemplate')" class="w-full bg-amber-100/60 dark:bg-amber-900/30 hover:bg-amber-200/60 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition border-t border-amber-200/50 dark:border-amber-800/50">
+                                    <i class="fas fa-edit text-[10px]"></i>
+                                    تعديل الرسالة
+                                </button>
+                            </div>
+
+                            <!-- رقم خاطئ -->
+                            <div class="rounded-lg bg-white/60 dark:bg-gray-800/40 overflow-hidden">
+                                <div class="flex items-center justify-between px-3 py-2.5">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-exclamation-triangle text-yellow-500 text-xs"></i>
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">رقم خاطئ</span>
+                                    </div>
+                                    <label class="relative inline-block w-12 h-7" dir="ltr">
+                                        <input type="checkbox" v-model="settings.smsOnStatusWrongNumber" @change="saveSettings" class="sr-only peer" />
+                                        <div class="w-12 h-7 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-[22px] after:w-[22px] after:transition-all after:shadow-md peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+                                <button v-show="settings.smsOnStatusWrongNumber" @click="openSmsEditor('smsWrongNumberTemplate')" class="w-full bg-red-100/60 dark:bg-red-900/30 hover:bg-red-200/60 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition border-t border-red-200/50 dark:border-red-800/50">
+                                    <i class="fas fa-edit text-[10px]"></i>
+                                    تعديل الرسالة
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- توفير الرسائل -->
+                        <div v-show="settings.smsOnStatusClosed || settings.smsOnStatusNoAnswer || settings.smsOnStatusWrongNumber" class="flex items-center justify-between p-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center">
+                                    <i class="fas fa-piggy-bank text-teal-600 dark:text-teal-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">توفير الرسائل</span>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">تخطي التأكيد للطرود المُعادة التي راسلتها سابقاً</p>
                                 </div>
                             </div>
                             <label class="relative inline-block w-14 h-8" dir="ltr">
-                                <input type="checkbox" v-model="settings.smsOnStatusChange" @change="saveSettings" class="sr-only peer" />
-                                <div class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-amber-500"></div>
+                                <input type="checkbox" v-model="settings.smsSaving" @change="saveSettings" class="sr-only peer" />
+                                <div class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-teal-500"></div>
                             </label>
-                        </div>
-
-                        <div v-show="settings.smsOnStatusChange" class="space-y-2">
-                            <button @click="openSmsEditor('smsStatusTemplate')" class="w-full bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition border border-amber-200 dark:border-amber-800">
-                                <i class="fas fa-phone-slash"></i>
-                                تعديل رسالة عدم الرد / مغلق
-                            </button>
-                            <button @click="openSmsEditor('smsWrongNumberTemplate')" class="w-full bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition border border-red-200 dark:border-red-800">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                تعديل رسالة رقم خاطئ
-                            </button>
                         </div>
 
                         <div class="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
@@ -949,18 +1025,6 @@
                                 <input type="checkbox" v-model="settings.bulkSmsEnabled" @change="saveSettings" class="sr-only peer" />
                                 <div class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-purple-600"></div>
                             </label>
-                        </div>
-
-                        <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-700/30">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-text-width text-gray-500 text-sm"></i>
-                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">عدد حروف المحتوى</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button @click="settings.smsContentLength = Math.max(1, (settings.smsContentLength || 10) - 5); saveSettings()" class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center font-bold hover:bg-gray-300 dark:hover:bg-gray-500 transition">−</button>
-                                <span class="w-10 text-center font-bold text-gray-800 dark:text-gray-200 text-sm">{{ settings.smsContentLength || 10 }}</span>
-                                <button @click="settings.smsContentLength = (settings.smsContentLength || 10) + 5; saveSettings()" class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center font-bold hover:bg-gray-300 dark:hover:bg-gray-500 transition">+</button>
-                            </div>
                         </div>
 
                         <button @click="resetSmsTemplate" class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition">
@@ -1169,8 +1233,7 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <p class="text-red-100 text-sm mt-2">اختر الحالة الجديدة للطرد</p>
-                </div>
+                 </div>
 
                 <div class="p-3 space-y-2">
                     <div v-for="status in allStatuses" :key="status.name" @click="changeStatus(statusModalParcel, status.name)" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'">
@@ -2168,7 +2231,7 @@
                         <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" :class="{ 'rotate-180': guideExpanded['import'] }"></i>
                     </div>
                     <div v-show="guideExpanded['import']" class="px-4 pb-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-red-500"><i class="fas fa-file-pdf ml-1"></i> ملف PDF:</span> افتح القائمة الجانبية ☰ ← "استيراد ملف PDF". يتم تحليل ملفات ياليدين تلقائياً واستخراج بيانات الطرود.</div>
+                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-red-500"><i class="fas fa-file-pdf ml-1"></i> ملف PDF:</span> افتح القائمة الجانبية ☰ ← "استيراد ملف PDF". يتم تحليل ملفات ياليدين تلقائياً واستخراج بيانات الطرود وترتيبها حسب البلدية.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-blue-500"><i class="fas fa-file-excel ml-1"></i> ملف Excel:</span> القائمة ← "استيراد ملف Excel". يدعم الأعمدة بالعربية والفرنسية (رقم التتبع، الاسم، الهاتف، البلدية، المبلغ...).</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-green-500"><i class="fas fa-plus-circle ml-1"></i> إضافة يدوية:</span> اضغط زر + الأحمر ← "إضافة طرد" واملأ البيانات.</div>
                         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-xl">
@@ -2192,7 +2255,7 @@
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold">اضغط على رقم التتبع</span> أو رمز PIN لنسخه مع صوت تأكيد.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-green-500">← سحب لليمين:</span> اتصال مباشر بالمستلم.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-blue-500">→ سحب لليسار:</span> فتح صفحة الطرد في ياليدين.</div>
-                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold">⋮ مقبض السحب:</span> اسحب من الأيقونة لإعادة ترتيب الطرود.</div>
+                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold">≡ مقبض السحب:</span> اسحب من الأيقونة لإعادة ترتيب الطرود، أو استخدم سهمي ▲ ▼ لنقل البطاقة للأعلى أو الأسفل.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold">شارة حمراء:</span> تنبيه بوجود أرقام هاتف مكررة. اضغط عليها لتصفية الطرود بنفس الرقم.</div>
                     </div>
                 </div>
@@ -2218,7 +2281,11 @@
                         </div>
                         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-xl">
                             <i class="fas fa-sms text-amber-500 ml-1"></i>
-                            <span class="font-bold">SMS ذكي:</span> عند تغيير الحالة لـ "لا يرد" أو "مغلق" أو "رقم خاطئ" (إذا كانت الميزة مفعّلة في الإعدادات) تظهر نافذة لإرسال SMS تلقائي.
+                            <span class="font-bold">SMS ذكي:</span> يمكنك تفعيل إرسال SMS لكل حالة على حدة (مغلق / لا يرد / رقم خاطئ) من الإعدادات. عند تغيير الحالة تظهر نافذة تأكيد. رسالة "رقم خاطئ" تُرسل للمرسل وتُعلّم بأيقونة حمراء منفصلة.
+                        </div>
+                        <div class="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 p-3 rounded-xl">
+                            <i class="fas fa-piggy-bank text-teal-500 ml-1"></i>
+                            <span class="font-bold">توفير الرسائل:</span> عند تفعيلها من الإعدادات، لا تظهر نافذة تأكيد SMS للطرود المُعادة من اليوم السابق التي تمت مراسلتها سابقاً.
                         </div>
                         <div class="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 p-3 rounded-xl">
                             <i class="fas fa-plus-circle text-cyan-500 ml-1"></i>
@@ -2277,7 +2344,7 @@
                     <div v-show="guideExpanded['comm']" class="px-4 pb-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-green-500"><i class="fas fa-phone ml-1"></i> اتصال:</span> سحب لليمين من البطاقة، أو من أزرار البطاقة الموسعة.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-emerald-500"><i class="fab fa-whatsapp ml-1"></i> واتساب:</span> يفتح محادثة واتساب مباشرة مع رقم المستلم.</div>
-                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-purple-500"><i class="fas fa-comment-dots ml-1"></i> رسالة SMS:</span> يفتح تطبيق الرسائل مع نص مُعدّ مسبقاً بالوسوم الديناميكية.</div>
+                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-purple-500"><i class="fas fa-comment-dots ml-1"></i> رسالة SMS:</span> يفتح تطبيق الرسائل مع نص مُعدّ مسبقاً بالوسوم الديناميكية. يمكنك تعديل عدد حروف المحتوى من داخل نافذة تعديل الرسالة.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold">رقمان؟</span> إذا كان للمستلم رقمان تظهر نافذة لاختيار الرقم المراد الاتصال به.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold text-purple-500"><i class="fas fa-paper-plane ml-1"></i> SMS جماعي:</span> فعّل الميزة من الإعدادات ← اضغط زر + ← "SMS جماعي". اختر المستلمين (الكل / حسب الحالة / التمييز / البلدية / المفضلة) ثم ابدأ الإرسال المتتابع. كل طرد تم إرساله يُعلّم بأيقونة بنفسجية.</div>
                     </div>
@@ -2380,7 +2447,7 @@
                     <div v-show="guideExpanded['settings']" class="px-4 pb-4 space-y-3 text-sm text-gray-600 dark:text-gray-300">
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-palette ml-1"></i> المظهر:</span> نهار / ليل / تلقائي (يتبع إعدادات الجهاز).</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-bell ml-1"></i> تنبيه المكررات:</span> تفعيل/تعطيل شارة الأرقام المكررة.</div>
-                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-comment-dots ml-1"></i> رسائل SMS:</span> تخصيص نص الرسالة مع وسوم ديناميكية ({اسم_المستلم}، {المبلغ}...).</div>
+                        <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-comment-dots ml-1"></i> رسائل SMS:</span> تفعيل SMS لكل حالة على حدة، تعديل نص الرسالة مع وسوم ديناميكية، وتفعيل "توفير الرسائل" لتخطي التأكيد للطرود المُعادة.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-list-check ml-1 text-cyan-500"></i> حالات مخصصة:</span> إضافة حالات إضافية باسم ولون وأيقونة من اختيارك. الحالات الأساسية الـ 8 لا يمكن حذفها.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-star ml-1 text-amber-500"></i> أرقام مفضلة:</span> تفعيل وإضافة أرقام هاتف مفضلة لتمييز البطاقات بنجمة وتصفيتها بسرعة.</div>
                         <div class="glass-panel p-3 rounded-xl"><span class="font-bold"><i class="fas fa-paper-plane ml-1 text-purple-500"></i> SMS جماعي:</span> تفعيل ميزة الإرسال المتتابع للرسائل القصيرة لعدة مستلمين.</div>
@@ -2421,6 +2488,7 @@
                                 <tr class="border-b border-gray-200 dark:border-gray-700"><td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">نقر البطاقة</td><td class="py-2.5">توسيع/طي</td></tr>
                                 <tr class="border-b border-gray-200 dark:border-gray-700"><td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">🎤 ميكروفون</td><td class="py-2.5">إدراج ملاحظة صوتية</td></tr>
                                 <tr class="border-b border-gray-200 dark:border-gray-700"><td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">زر +</td><td class="py-2.5">طرد / مهمة / تركيز</td></tr>
+                                <tr class="border-b border-gray-200 dark:border-gray-700"><td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">▲ ▼ أسهم</td><td class="py-2.5">نقل البطاقة للأعلى/الأسفل</td></tr>
                                 <tr><td class="py-2.5 font-bold text-gray-800 dark:text-gray-200">تمرير لأسفل</td><td class="py-2.5">إخفاء الشريط العلوي</td></tr>
                             </tbody>
                         </table>
@@ -2436,12 +2504,12 @@
         </div>
 
         <!-- SMS Editor Modal -->
-        <div v-if="showSmsEditor" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" @mousedown.self="closeSmsEditor">
-            <div class="modal-glass rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] flex flex-col">
+        <div v-if="showSmsEditor" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center pb-[72px] sm:pb-0 bg-black/60 backdrop-blur-sm" @mousedown.self="closeSmsEditor">
+            <div class="modal-glass rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[80vh] sm:max-h-[85vh] flex flex-col">
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                         <i class="fas fa-edit text-green-500"></i>
-                        {{ smsEditorKey === 'smsTemplate' ? 'رسالة الاستلام' : smsEditorKey === 'smsStatusTemplate' ? 'رسالة عدم الرد' : 'رسالة رقم خاطئ' }}
+                        {{ smsEditorKey === 'smsTemplate' ? 'رسالة الاستلام' : smsEditorKey === 'smsStatusTemplate' ? 'رسالة عدم الرد/مغلق' : 'رسالة رقم خاطئ' }}
                     </h3>
                     <button @click="closeSmsEditor" class="w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition">
                         <i class="fas fa-times text-gray-500"></i>
@@ -2459,6 +2527,17 @@
                             <button @click="insertSmsTag('{البلدية}')" class="bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-200 dark:hover:bg-teal-900/50 transition">البلدية</button>
                             <button @click="insertSmsTag('{الولاية}')" class="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-cyan-200 dark:hover:bg-cyan-900/50 transition">الولاية</button>
                             <button @click="insertSmsTag('{اسم_المرسل}')" class="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 dark:hover:bg-purple-900/50 transition">اسم_المرسل</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-gray-100 dark:bg-gray-700/40">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-text-width text-gray-500 text-sm"></i>
+                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300">عدد حروف المحتوى</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button @click="settings.smsContentLength = Math.max(1, (settings.smsContentLength || 10) - 5); saveSettings()" class="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center font-bold text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">−</button>
+                            <span class="w-8 text-center font-bold text-gray-800 dark:text-gray-200 text-sm">{{ settings.smsContentLength || 10 }}</span>
+                            <button @click="settings.smsContentLength = (settings.smsContentLength || 10) + 5; saveSettings()" class="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center font-bold text-sm hover:bg-gray-300 dark:hover:bg-gray-500 transition">+</button>
                         </div>
                     </div>
                 </div>
@@ -2485,6 +2564,29 @@
                     <button @click="confirmDelete" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition shadow-lg">
                         <i class="fas fa-trash-alt ml-1"></i>
                         حذف
+                    </button>
+                </div>
+            </div>
+        </div>
+    </transition>
+
+    <!-- Clear Data Confirm Modal -->
+    <transition name="fade">
+        <div v-if="showClearDataConfirm" class="fixed inset-0 z-[300] flex items-center justify-center p-4" @click.self="showClearDataConfirm = false">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <div class="relative w-full max-w-sm glass-panel rounded-3xl p-6 animate-scale-in text-center">
+                <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-database text-red-500 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">مسح جميع البيانات</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">سيتم حذف جميع الطرود والأرشيف نهائياً. لا يمكن التراجع عن هذا الإجراء!</p>
+                <div class="flex gap-3">
+                    <button @click="showClearDataConfirm = false" class="flex-1 py-3 rounded-xl glass-input text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                        إلغاء
+                    </button>
+                    <button @click="confirmClearAllData" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition shadow-lg">
+                        <i class="fas fa-trash-alt ml-1"></i>
+                        مسح الكل
                     </button>
                 </div>
             </div>

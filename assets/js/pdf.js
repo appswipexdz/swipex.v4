@@ -429,6 +429,7 @@ const pdfFunctions = {
                 }
             }
 
+            extractedParcels.sort((a, b) => (a.municipality || "").localeCompare(b.municipality || "", "ar"));
             this.findAndMerge(extractedParcels);
             this.saveData();
             this.$nextTick(() => {

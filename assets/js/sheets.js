@@ -67,6 +67,7 @@ const sheetsManager = {
     "duplicateCount",
     "insertedAt",
     "smsSent",
+    "senderSmsSent",
   ],
 
   // سجل التغييرات (Changes sheet)
@@ -308,6 +309,7 @@ const sheetsManager = {
       String(p.duplicateCount || 0),
       p.insertedAt || this.nowInsertedAt(),
       p.smsSent ? "1" : "0",
+      p.senderSmsSent ? "1" : "0",
     ];
   },
 
@@ -340,6 +342,7 @@ const sheetsManager = {
       duplicateCount: parseInt(row[22]) || 0,
       insertedAt: row[23] || "",
       smsSent: row[24] === "1",
+      senderSmsSent: row[25] === "1",
       expanded: false,
     };
   },

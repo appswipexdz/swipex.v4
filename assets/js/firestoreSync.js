@@ -1,17 +1,8 @@
 const firestoreSync = {
     _saveTimeout: null,
-    _debounceMs: 500,
-    _maxRetries: 10,
-    _retryCount: 0,
-    _pendingData: null,
-    _isSaving: false,
-    _onlineHandlerAttached: false,
-    _lastSavedPayload: {
-        parcels: null,
-        settings: null,
-        archive: null,
-        tasks: null
-    },
+    _debounceMs: 500,  // تقليل التأخير من 2000 إلى 500 للمزامنة الأسرع
+    _maxRetries: 10,   // الحد الأقصى لعدد محاولات إعادة الاتصال
+    _retryCount: 0,    // عداد محاولات إعادة الاتصال
 
     getUid() {
         try {
@@ -32,81 +23,7 @@ const firestoreSync = {
         return window.db.collection('users').doc(uid).collection('data').doc(collection);
     },
 
-    _mergePayload(base, next) {
-        const merged = { ...(base || {}) };
-        if (!next || typeof next !== 'object') return merged;
-
-        ['parcels', 'settings', 'archive', 'tasks'].forEach((key) => {
-            if (Object.prototype.hasOwnProperty.call(next, key)) {
-                merged[key] = next[key];
-            }
-        });
-
-        return merged;
-    },
-
-    _serializePayload(data) {
-        const serialized = {};
-        if (!data || typeof data !== 'object') return serialized;
-
-        ['parcels', 'settings', 'archive', 'tasks'].forEach((key) => {
-            if (!Object.prototype.hasOwnProperty.call(data, key)) return;
-            serialized[key] = JSON.stringify(data[key] ?? null);
-        });
-
-        return serialized;
-    },
-
-    _extractChanged(serialized) {
-        const changed = {};
-        Object.keys(serialized).forEach((key) => {
-            if (this._lastSavedPayload[key] !== serialized[key]) {
-                changed[key] = serialized[key];
-            }
-        });
-        return changed;
-    },
-
-    async _setWithRetry(collection, jsonData) {
-        const ref = this._docRef(collection);
-        if (!ref) return false;
-
-        let attempt = 0;
-        while (attempt <= this._maxRetries) {
-            try {
-                await ref.set({
-                    data: jsonData,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                return true;
-            } catch (e) {
-                attempt++;
-                this._retryCount = attempt;
-
-                const reachedLimit = attempt > this._maxRetries;
-                if (!navigator.onLine || reachedLimit) {
-                    console.error(`firestoreSync.${collection}:`, e);
-                    return false;
-                }
-
-                const backoff = Math.min((2 ** attempt) * 250, 10000);
-                const jitter = Math.floor(Math.random() * 250);
-                await new Promise((resolve) => setTimeout(resolve, backoff + jitter));
-            }
-        }
-
-        return false;
-    },
-
-    _ensureOnlineHandler() {
-        if (this._onlineHandlerAttached || typeof window === 'undefined') return;
-
-        this._onlineHandlerAttached = true;
-        window.addEventListener('online', () => {
-            this.flushPendingSaves();
-        });
-    },
-
+    // تحديث حالة syncStatus
     updateSyncStatus(status) {
         if (window.appState) {
             window.appState.syncStatus = status;
@@ -114,47 +31,113 @@ const firestoreSync = {
         }
     },
 
+    // ============ Save Methods ============
+
     async saveParcels(parcels) {
-        return this.saveAll({ parcels });
+        this.updateSyncStatus('syncing');
+        
+        try {
+            const ref = this._docRef('parcels');
+            if (!ref) {
+                this.updateSyncStatus('error');
+                return false;
+            }
+            await ref.set({
+                data: JSON.stringify(parcels),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            this._retryCount = 0; // إعادة تعيين عدد المحاولات عند النجاح
+            this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
+            console.log('✓ تم حفظ الطرود في Firestore بنجاح');
+            return true;
+        } catch (e) {
+            console.error('❌ فشل حفظ الطرود:', e.message);
+            this.updateSyncStatus('error');
+            
+            // محاولة إعادة الحفظ في حالة الخطأ المؤقت
+            if (navigator.onLine && this._retryCount < this._maxRetries) {
+                this._retryCount++;
+                console.log(`🔄 إعادة محاولة الحفظ (محاولة ${this._retryCount}/${this._maxRetries})...`);
+                setTimeout(() => {
+                    const currentParcels = window.appState ? window.appState.parcels : parcels;
+                    this.saveParcels(currentParcels);
+                }, Math.min(this._retryCount * 2000, 10000));
+            }
+            return false;
+        }
     },
 
     async saveSettings(settings) {
-        return this.saveAll({ settings });
+        try {
+            const ref = this._docRef('settings');
+            if (!ref) return false;
+            await ref.set({
+                data: JSON.stringify(settings),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error('firestoreSync.saveSettings:', e);
+            return false;
+        }
     },
 
     async saveArchive(archive) {
-        return this.saveAll({ archive });
+        try {
+            const ref = this._docRef('archive');
+            if (!ref) return false;
+            await ref.set({
+                data: JSON.stringify(archive),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error('firestoreSync.saveArchive:', e);
+            return false;
+        }
     },
 
     async saveTasks(tasks) {
-        return this.saveAll({ tasks });
+        try {
+            const ref = this._docRef('tasks');
+            if (!ref) return false;
+            await ref.set({
+                data: JSON.stringify(tasks),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (e) {
+            console.error('firestoreSync.saveTasks:', e);
+            return false;
+        }
     },
+
+    // ============ Load Methods ============
 
     async loadParcels() {
         this.updateSyncStatus('syncing');
-
+        
         try {
             const ref = this._docRef('parcels');
             if (!ref) {
                 this.updateSyncStatus('idle');
                 return [];
             }
-
+            
             const snap = await ref.get();
             if (!snap.exists) {
-                console.log('No parcels in Firestore');
+                console.log('⚠ لم يتم العثور على طرود في Firestore');
                 this.updateSyncStatus('idle');
                 return [];
             }
-
+            
             const raw = snap.data().data;
             const parcels = raw ? JSON.parse(raw) : [];
-            this._lastSavedPayload.parcels = JSON.stringify(parcels);
-            console.log('Loaded parcels from Firestore:', parcels.length);
+            console.log('✓ تم تحميل', parcels.length, 'طرد من Firestore');
             this.updateSyncStatus('synced');
             return parcels;
         } catch (e) {
-            console.error('firestoreSync.loadParcels:', e);
+            console.error('❌ خطأ في تحميل الطرود:', e);
             this.updateSyncStatus('error');
             return [];
         }
@@ -164,18 +147,19 @@ const firestoreSync = {
         try {
             const ref = this._docRef('settings');
             if (!ref) return null;
-
+            
             const snap = await ref.get();
-            if (!snap.exists) {
-                return null;
+            if (snap.exists) {
+                const raw = snap.data().data;
+                const settings = raw ? JSON.parse(raw) : null;
+                if (settings) {
+                    console.log('✓ تم تحميل الإعدادات من Firestore');
+                    return settings;
+                }
             }
-
-            const raw = snap.data().data;
-            const settings = raw ? JSON.parse(raw) : null;
-            if (settings) {
-                this._lastSavedPayload.settings = JSON.stringify(settings);
-            }
-            return settings;
+            
+            console.log('⚠ لم يتم العثور على إعدادات في Firestore');
+            return null;
         } catch (e) {
             console.error('firestoreSync.loadSettings:', e);
             return null;
@@ -186,18 +170,19 @@ const firestoreSync = {
         try {
             const ref = this._docRef('archive');
             if (!ref) return null;
-
+            
             const snap = await ref.get();
-            if (!snap.exists) {
-                return null;
+            if (snap.exists) {
+                const raw = snap.data().data;
+                const archive = raw ? JSON.parse(raw) : null;
+                if (archive) {
+                    console.log('✓ تم تحميل الأرشيف من Firestore');
+                    return archive;
+                }
             }
-
-            const raw = snap.data().data;
-            const archive = raw ? JSON.parse(raw) : null;
-            if (archive) {
-                this._lastSavedPayload.archive = JSON.stringify(archive);
-            }
-            return archive;
+            
+            console.log('⚠ لم يتم العثور على أرشيف في Firestore');
+            return null;
         } catch (e) {
             console.error('firestoreSync.loadArchive:', e);
             return null;
@@ -206,121 +191,62 @@ const firestoreSync = {
 
     async loadTasks() {
         try {
+            // تحميل المهام من Firestore فقط
             const ref = this._docRef('tasks');
             if (!ref) return null;
-
             const snap = await ref.get();
-            if (!snap.exists) {
-                return null;
-            }
-
+            if (!snap.exists) return null;
             const raw = snap.data().data;
-            const tasks = raw ? JSON.parse(raw) : null;
-            if (tasks) {
-                this._lastSavedPayload.tasks = JSON.stringify(tasks);
-            }
-            return tasks;
+            return raw ? JSON.parse(raw) : null;
         } catch (e) {
             console.error('firestoreSync.loadTasks:', e);
             return null;
         }
     },
 
-    async flushPendingSaves() {
-        if (this._isSaving) return true;
-        if (!this._pendingData) return true;
-
-        this._isSaving = true;
-        this.updateSyncStatus('syncing');
-        let allOk = true;
-
-        try {
-            while (this._pendingData) {
-                const currentPayload = this._pendingData;
-                this._pendingData = null;
-
-                if (!this.isAvailable()) {
-                    this._pendingData = this._mergePayload(currentPayload, this._pendingData);
-                    this.updateSyncStatus(navigator.onLine ? 'error' : 'offline');
-                    return false;
-                }
-
-                const serialized = this._serializePayload(currentPayload);
-                const changed = this._extractChanged(serialized);
-                const keys = Object.keys(changed);
-
-                if (keys.length === 0) {
-                    continue;
-                }
-
-                const results = await Promise.all(
-                    keys.map((key) => this._setWithRetry(key, changed[key]))
-                );
-                const ok = results.every(Boolean);
-
-                if (!ok) {
-                    this._pendingData = this._mergePayload(currentPayload, this._pendingData);
-                    this.updateSyncStatus(navigator.onLine ? 'error' : 'offline');
-                    allOk = false;
-                    break;
-                }
-
-                keys.forEach((key) => {
-                    this._lastSavedPayload[key] = changed[key];
-                });
-                this._retryCount = 0;
-            }
-
-            if (allOk) {
-                this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
-            }
-            return allOk;
-        } catch (e) {
-            console.error('firestoreSync.flushPendingSaves:', e);
-            this.updateSyncStatus('error');
-            return false;
-        } finally {
-            this._isSaving = false;
-        }
-    },
-
     async saveAll(data) {
-        this._ensureOnlineHandler();
-        this._pendingData = this._mergePayload(this._pendingData, data);
-        return this.flushPendingSaves();
+        if (!this.isAvailable()) return false;
+        try {
+            const results = await Promise.all([
+                data.parcels !== undefined ? this.saveParcels(data.parcels) : true,
+                data.settings !== undefined ? this.saveSettings(data.settings) : true,
+                data.archive !== undefined ? this.saveArchive(data.archive) : true,
+                data.tasks !== undefined ? this.saveTasks(data.tasks) : true
+            ]);
+            return results.every(r => r);
+        } catch (e) {
+            console.error('firestoreSync.saveAll:', e);
+            return false;
+        }
     },
 
     async loadAll() {
         if (!this.isAvailable()) {
-            console.log('Firestore unavailable: loading local data');
+            console.log('Firestore غير متاح - سيتم التحميل محلياً');
             return null;
         }
-
+        
         try {
+            console.log('بدء تحميل البيانات من السحابة...');
             const [parcels, settings, archive, tasks] = await Promise.all([
                 this.loadParcels(),
                 this.loadSettings(),
                 this.loadArchive(),
                 this.loadTasks()
             ]);
-
+            
+            console.log('تم تحميل البيانات من السحابة');
             return { parcels, settings, archive, tasks };
         } catch (e) {
-            console.error('firestoreSync.loadAll:', e);
+            console.error('خطأ في loadAll:', e);
             return null;
         }
     },
 
     scheduleSave(data, callback) {
-        this._ensureOnlineHandler();
-        this._pendingData = this._mergePayload(this._pendingData, data);
-
-        if (this._saveTimeout) {
-            clearTimeout(this._saveTimeout);
-        }
-
+        if (this._saveTimeout) clearTimeout(this._saveTimeout);
         this._saveTimeout = setTimeout(async () => {
-            const result = await this.flushPendingSaves();
+            const result = await this.saveAll(data);
             this._saveTimeout = null;
             if (callback) callback(result);
         }, this._debounceMs);
