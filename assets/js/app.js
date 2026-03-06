@@ -107,20 +107,27 @@ createApp({
             });
         };
         
-        if (firebase.auth().currentUser) {
+        if (typeof firebase !== 'undefined' && firebase.auth().currentUser) {
             startLoad();
-        } else {
+        } else if (typeof firebase !== 'undefined') {
+            let loaded = false;
             const unsubAuth = firebase.auth().onAuthStateChanged(user => {
+                if (loaded) return;
+                loaded = true;
                 unsubAuth();
                 startLoad();
             });
             // حماية: إذا لم يستجب خلال 3 ثوانٍ، حمّل البيانات المحلية
             setTimeout(() => {
-                if (!firebase.auth().currentUser) {
+                if (!loaded) {
+                    loaded = true;
                     console.log('⚠ تجاوز مهلة المصادقة - تحميل محلي');
                     startLoad();
                 }
             }, 3000);
+        } else {
+            console.log('⚠ Firebase غير متاح - تحميل محلي فقط');
+            startLoad();
         }
         
         setTimeout(() => this.initSortable(), 500);
