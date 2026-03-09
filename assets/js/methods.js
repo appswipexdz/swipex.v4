@@ -285,6 +285,27 @@ const appMethods = {
     this.saveSettings();
   },
 
+  addParcelToFavorites(parcel) {
+    if (!this.settings.favoritePhonesEnabled) {
+      this.settings.favoritePhonesEnabled = true;
+    }
+    let added = [];
+    if (parcel.phone && !this.settings.favoritePhones.includes(parcel.phone)) {
+      this.settings.favoritePhones.push(parcel.phone);
+      added.push(parcel.phone);
+    }
+    if (parcel.phone2 && !this.settings.favoritePhones.includes(parcel.phone2)) {
+      this.settings.favoritePhones.push(parcel.phone2);
+      added.push(parcel.phone2);
+    }
+    if (added.length > 0) {
+      this.saveSettings();
+      this.showToast('تمت إضافة ' + added.join(' و ') + ' للمفضلة', 'success');
+    } else {
+      this.showToast('الرقم موجود بالفعل في المفضلة', 'info');
+    }
+  },
+
   // ========== Duplicates Detection ==========
   detectDuplicates() {
     const phoneCount = {};
@@ -993,6 +1014,8 @@ const appMethods = {
       );
     } else if (this.bulkSmsFilter === "favorite") {
       list = list.filter((p) => this.isFavoriteParcel(p));
+    } else if (this.bulkSmsFilter === "filtered") {
+      list = this.filteredParcels;
     }
     return list.filter((p) => p.phone);
   },

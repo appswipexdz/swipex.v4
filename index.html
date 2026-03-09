@@ -624,6 +624,10 @@
                                                     <i class="fas fa-edit"></i>
                                                     تعديل
                                                 </button>
+                                                <button @click="addParcelToFavorites(parcel); parcel._showMore = false" class="w-full px-4 py-3 flex items-center gap-3 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition text-sm font-bold border-t border-gray-100 dark:border-gray-700">
+                                                    <i class="fas fa-star"></i>
+                                                    إضافة للمفضلة
+                                                </button>
                                                 <button @click="deleteParcel(parcel.id); parcel._showMore = false" class="w-full px-4 py-3 flex items-center gap-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition text-sm font-bold border-t border-gray-100 dark:border-gray-700">
                                                     <i class="fas fa-trash-alt"></i>
                                                     حذف
@@ -1412,11 +1416,24 @@
                         <div v-if="bulkSmsQueue[bulkSmsIndex].phone2" class="font-mono text-xs text-gray-400 mt-1" dir="ltr">+ {{ bulkSmsQueue[bulkSmsIndex].phone2 }}</div>
                     </div>
 
+                    <div v-if="settings.smsSaving && bulkSmsQueue[bulkSmsIndex] && bulkSmsQueue[bulkSmsIndex].smsSent" class="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-sm">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>تم مراسلة هذا المستلم سابقاً</span>
+                    </div>
+
                     <div class="flex gap-3">
-                        <a :href="getSmsLink(bulkSmsQueue[bulkSmsIndex])" @click="bulkSmsSendAndNext()" class="flex-1 bg-gradient-to-r from-purple-500 to-violet-600 text-white py-3 rounded-xl font-bold text-center shadow-lg hover:scale-[1.02] transition transform flex items-center justify-center gap-2">
-                            <i class="fas fa-paper-plane"></i>
-                            إرسال وتالي
-                        </a>
+                        <template v-if="settings.smsSaving && bulkSmsQueue[bulkSmsIndex] && bulkSmsQueue[bulkSmsIndex].smsSent">
+                            <button @click="bulkSmsSendAndNext()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-center shadow-lg hover:scale-[1.02] transition transform flex items-center justify-center gap-2">
+                                <i class="fas fa-forward"></i>
+                                التالي
+                            </button>
+                        </template>
+                        <template v-else>
+                            <a :href="getSmsLink(bulkSmsQueue[bulkSmsIndex])" @click="bulkSmsSendAndNext()" class="flex-1 bg-gradient-to-r from-purple-500 to-violet-600 text-white py-3 rounded-xl font-bold text-center shadow-lg hover:scale-[1.02] transition transform flex items-center justify-center gap-2">
+                                <i class="fas fa-paper-plane"></i>
+                                إرسال وتالي
+                            </a>
+                        </template>
                         <button @click="bulkSmsSkip()" class="px-4 py-3 rounded-xl glass-panel text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                             تخطي
                         </button>
@@ -1453,6 +1470,10 @@
                             <button v-if="settings.favoritePhonesEnabled" @click="bulkSmsFilter = 'favorite'" :class="bulkSmsFilter === 'favorite' ? 'bg-purple-600 text-white shadow-lg' : 'glass-panel text-gray-600 dark:text-gray-300'" class="px-3 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                                 <i class="fas fa-star"></i>
                                 المفضلة
+                            </button>
+                            <button @click="bulkSmsFilter = 'filtered'" :class="bulkSmsFilter === 'filtered' ? 'bg-purple-600 text-white shadow-lg' : 'glass-panel text-gray-600 dark:text-gray-300'" class="px-3 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                                <i class="fas fa-filter"></i>
+                                المفلتر حالياً
                             </button>
                         </div>
                     </div>
