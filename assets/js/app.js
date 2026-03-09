@@ -219,12 +219,14 @@ createApp({
                     this.initFirestoreListener();
                 }
                 
-                // مزامنة فورية عند استعادة الاتصال
-                this.syncStatus = 'syncing';
-                setTimeout(() => {
-                    console.log('🔄 إعادة مزامنة عند استعادة الاتصال...');
-                    this.syncNow();
-                }, 1000);
+                // مزامنة فورية عند استعادة الاتصال (فقط بعد اكتمال التحميل الأولي)
+                if (firestoreSync._initialLoadDone) {
+                    this.syncStatus = 'syncing';
+                    setTimeout(() => {
+                        console.log('🔄 إعادة مزامنة عند استعادة الاتصال...');
+                        this.syncNow();
+                    }, 1000);
+                }
             } else {
                 this.syncStatus = 'offline';
                 console.log('⚠ وضع عدم الاتصال - البيانات من الذاكرة المحلية فقط');
@@ -255,6 +257,12 @@ createApp({
                         (snapshot) => {
                             // إعادة تعيين عدد المحاولات عند النجاح
                             this._firestoreRetries = 0;
+                            
+                            // تجاهل التحديثات من الكاش المحلي قبل اكتمال التحميل الأولي
+                            if (!firestoreSync._initialLoadDone && snapshot.metadata.fromCache) {
+                                console.log('⏳ تجاهل بيانات الكاش - في انتظار التحميل الأولي');
+                                return;
+                            }
                             
                             let updated = false;
                             let shouldRefresh = false;

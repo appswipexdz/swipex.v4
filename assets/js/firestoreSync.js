@@ -1,8 +1,9 @@
 const firestoreSync = {
     _saveTimeout: null,
-    _debounceMs: 500,  // تقليل التأخير من 2000 إلى 500 للمزامنة الأسرع
-    _maxRetries: 10,   // الحد الأقصى لعدد محاولات إعادة الاتصال
-    _retryCount: 0,    // عداد محاولات إعادة الاتصال
+    _debounceMs: 500,
+    _maxRetries: 10,
+    _retryCount: 0,
+    _initialLoadDone: false,  // منع الكتابة قبل اكتمال أول تحميل
 
     getUid() {
         try {
@@ -34,6 +35,10 @@ const firestoreSync = {
     // ============ Save Methods ============
 
     async saveParcels(parcels) {
+        if (!this._initialLoadDone) {
+            console.log('⏳ في انتظار اكتمال التحميل الأولي - تأجيل الحفظ');
+            return false;
+        }
         this.updateSyncStatus('syncing');
         
         try {
@@ -127,6 +132,7 @@ const firestoreSync = {
             const snap = await ref.get();
             if (!snap.exists) {
                 console.log('⚠ لم يتم العثور على طرود في Firestore');
+                this._initialLoadDone = true;
                 this.updateSyncStatus('idle');
                 return [];
             }
@@ -134,6 +140,7 @@ const firestoreSync = {
             const raw = snap.data().data;
             const parcels = raw ? JSON.parse(raw) : [];
             console.log('✓ تم تحميل', parcels.length, 'طرد من Firestore');
+            this._initialLoadDone = true;
             this.updateSyncStatus('synced');
             return parcels;
         } catch (e) {
