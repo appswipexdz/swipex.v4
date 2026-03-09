@@ -2637,7 +2637,7 @@
     </div>
 
         <!-- ============ Bottom Navigation Bar ============ -->
-        <div class="bottom-nav" v-if="!focusModeActive">
+        <div class="bottom-nav" v-if="!focusModeActive && !showGuide && !showDashboard && !showBulkSmsModal && !showAddModal && !showEditModal && !showImportSummary && !showHistoryModal && !showNotificationsPanel && !showReminderPicker && !showAddTaskModal && !showEditTaskModal && !showNotificationHistory">
             <div class="bottom-nav-inner">
                 <!-- Profile/Settings -->
                 <button class="bottom-nav-item" :class="{'active': currentView === 'settings'}" @click="currentView = currentView === 'settings' ? 'main' : 'settings'; showFabMenu = false; showYalidineMenu = false">
