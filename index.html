@@ -1675,6 +1675,19 @@
                         </div>
                     </div>
 
+                    <!-- التمييز السابق -->
+                    <div v-if="currentHistory.tag" class="glass-panel p-4 rounded-2xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-at text-white text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">التمييز السابق</div>
+                                <div class="text-base font-bold text-purple-600 dark:text-purple-400">@{{ currentHistory.tag }}</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- الملاحظات السابقة -->
                     <div v-if="currentHistory.notes" class="glass-panel p-4 rounded-2xl">
                         <div class="flex items-start gap-3">
