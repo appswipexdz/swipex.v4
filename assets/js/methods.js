@@ -1128,6 +1128,32 @@ const appMethods = {
     }
   },
 
+  // ========== Voice Search ==========
+  startVoiceSearch() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      this.showToast('متصفحك لا يدعم البحث الصوتي', 'error');
+      return;
+    }
+    if (this.voiceSearchActive) {
+      this._voiceSearchRec.stop();
+      this.voiceSearchActive = false;
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this._voiceSearchRec = new SpeechRecognition();
+    this._voiceSearchRec.lang = 'ar-DZ';
+    this._voiceSearchRec.continuous = false;
+    this._voiceSearchRec.interimResults = false;
+    this.voiceSearchActive = true;
+    this._voiceSearchRec.onresult = (event) => {
+      this.filters.search = event.results[0][0].transcript;
+      this.voiceSearchActive = false;
+    };
+    this._voiceSearchRec.onend = () => { this.voiceSearchActive = false; };
+    this._voiceSearchRec.onerror = () => { this.voiceSearchActive = false; };
+    this._voiceSearchRec.start();
+  },
+
   // ========== Computed Properties ==========
   uniqueMunicipalities() {
     const munis = new Set(

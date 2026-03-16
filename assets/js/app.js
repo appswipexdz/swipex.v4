@@ -173,6 +173,28 @@ createApp({
         // Scroll listener for header hide/show
         window.addEventListener('scroll', () => this.handleScroll(), { passive: true });
         
+        // Pull-to-search: سحب للأسفل لفتح البحث
+        let pullStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0 && this.currentView === 'main' && !this.showFilters) {
+                pullStartY = e.touches[0].clientY;
+            } else {
+                pullStartY = 0;
+            }
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (pullStartY > 0) {
+                const pullDistance = e.changedTouches[0].clientY - pullStartY;
+                if (pullDistance > 80) {
+                    this.showFilters = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.searchInput) this.$refs.searchInput.focus();
+                    });
+                }
+                pullStartY = 0;
+            }
+        }, { passive: true });
+        
         // استقبال رسائل من Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (event) => {
