@@ -57,6 +57,15 @@ const appMethods = {
 
   // ========== Data Management ==========
   _cloudLoadPromise: null,
+  _debouncedSaveTimeout: null,
+
+  debouncedSaveData() {
+    if (this._debouncedSaveTimeout) clearTimeout(this._debouncedSaveTimeout);
+    this._debouncedSaveTimeout = setTimeout(() => {
+      this._debouncedSaveTimeout = null;
+      this.saveData();
+    }, 1500);
+  },
 
   _nowTimestamp() {
     const d = new Date();
@@ -268,6 +277,17 @@ const appMethods = {
     return this.settings.favoritePhones.some(
       (fav) => fav === parcel.phone || fav === parcel.phone2,
     );
+  },
+
+  openNoteModal(parcel) {
+    this.noteModalParcel = parcel;
+    this.showNoteModal = true;
+  },
+
+  closeNoteModal() {
+    this.saveData();
+    this.showNoteModal = false;
+    this.noteModalParcel = null;
   },
 
   addFavoritePhone() {
@@ -1133,12 +1153,15 @@ const appMethods = {
         !query ||
         (p.receiver && p.receiver.toLowerCase().includes(query)) ||
         (p.phone && p.phone.includes(query)) ||
+        (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
         (p.notes && p.notes.toLowerCase().includes(query));
       const matchesMuni =
         !this.filters.municipality ||
         p.municipality === this.filters.municipality;
-      return matchesSearch && matchesMuni;
+      const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
+      const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
+      return matchesSearch && matchesMuni && matchesTag && matchesFav;
     });
     return this.allStatuses
       .map((status) => ({
@@ -1154,6 +1177,7 @@ const appMethods = {
       return this.parcels.filter((p) =>
         (p.receiver && p.receiver.toLowerCase().includes(query)) ||
         (p.phone && p.phone.includes(query)) ||
+        (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
         (p.notes && p.notes.toLowerCase().includes(query))
       );
@@ -1758,9 +1782,11 @@ const appMethods = {
 
   getUsedTags() {
     const usedTags = new Set();
-    this.parcels.forEach((p) => {
-      if (p.tag) usedTags.add(p.tag);
-    });
+    this.parcels
+      .filter((p) => !this.filters.municipality || p.municipality === this.filters.municipality)
+      .forEach((p) => {
+        if (p.tag) usedTags.add(p.tag);
+      });
     return Array.from(usedTags);
   },
 
