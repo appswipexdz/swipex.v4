@@ -41,6 +41,12 @@ createApp({
         unreadNotificationsCount() {
             return this.notifications.filter(n => !n.read).length;
         },
+        favInfoData() {
+            if (!this.favInfoParcelId) return null;
+            const parcel = this.parcels.find(p => p.id === this.favInfoParcelId);
+            if (!parcel) return null;
+            return appMethods.getFavoriteInfo.call(this, parcel);
+        },
         allStatuses() {
             const custom = (this.settings.customStatuses || []).map(s => ({
                 name: s.name,

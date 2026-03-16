@@ -421,25 +421,7 @@
                                 <div class="flex justify-between items-start mb-2 pr-12">
                                     <div class="flex-1 ml-2 min-w-0 max-w-[calc(100%-100px)]">
                                         <div class="font-bold text-gray-900 dark:text-gray-100 text-sm mb-1 truncate flex items-center gap-1 relative">
-                                            <span v-if="isFavoriteParcel(parcel)" class="relative flex-shrink-0">
-                                                <i @click.stop="favInfoParcelId = favInfoParcelId === parcel.id ? null : parcel.id" class="fas fa-star text-amber-400 text-xs cursor-pointer hover:text-amber-500 transition"></i>
-                                                <div v-if="favInfoParcelId === parcel.id && getFavoriteInfo(parcel)" @click.stop class="absolute top-6 right-0 z-40 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-amber-200 dark:border-amber-700 p-3 min-w-[200px]" style="animation: fadeIn 0.2s ease;">
-                                                    <div class="text-xs space-y-2 mb-3">
-                                                        <div class="flex items-center gap-2">
-                                                            <i class="fas fa-user text-amber-500 w-4"></i>
-                                                            <span class="text-gray-600 dark:text-gray-300">{{ (getFavoriteInfo(parcel).name) || 'بدون اسم' }}</span>
-                                                        </div>
-                                                        <div class="flex items-center gap-2">
-                                                            <i class="fas fa-map-marker-alt text-amber-500 w-4"></i>
-                                                            <span class="text-gray-600 dark:text-gray-300">{{ (getFavoriteInfo(parcel).municipality) || 'بدون بلدية' }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <button @click.stop="applyFavoriteToParcel(parcel); favInfoParcelId = null" class="w-full py-2 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition">
-                                                        <i class="fas fa-check ml-1"></i>
-                                                        تطبيق على الطرد
-                                                    </button>
-                                                </div>
-                                            </span>
+                                            <i v-if="isFavoriteParcel(parcel)" @click.stop="openFavInfo(parcel)" class="fas fa-star text-amber-400 text-xs cursor-pointer hover:text-amber-500 transition flex-shrink-0"></i>
                                             {{ parcel.receiver }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate flex items-center gap-2">
@@ -1143,6 +1125,54 @@
 
                 <div class="pt-2 text-center text-xs text-gray-400">
                     <p>SwiPex Pro v3.0 © 2026</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Info Modal -->
+        <div v-if="favInfoParcelId" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" @click="favInfoParcelId = null">
+            <div class="modal-glass rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" @click.stop>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-star text-amber-500"></i>
+                        بيانات المفضلة
+                    </h3>
+                    <button @click="favInfoParcelId = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div v-if="favInfoData" class="space-y-3">
+                    <div class="glass-panel p-3 rounded-xl flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-amber-600 dark:text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-400">الاسم</div>
+                            <div class="text-sm font-bold text-gray-800 dark:text-white">{{ favInfoData.name || 'غير محدد' }}</div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-3 rounded-xl flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-map-marker-alt text-amber-600 dark:text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-400">البلدية</div>
+                            <div class="text-sm font-bold text-gray-800 dark:text-white">{{ favInfoData.municipality || 'غير محدد' }}</div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-3 rounded-xl flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-phone text-amber-600 dark:text-amber-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-400">الرقم</div>
+                            <div class="text-sm font-bold font-mono text-gray-800 dark:text-white" dir="ltr">{{ favInfoData.phone }}</div>
+                        </div>
+                    </div>
+                    <button @click="applyFavInfoToParcel()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg hover:scale-[1.02] transition transform flex items-center justify-center gap-2">
+                        <i class="fas fa-check"></i>
+                        تطبيق الاسم والبلدية على الطرد
+                    </button>
                 </div>
             </div>
         </div>

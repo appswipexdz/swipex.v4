@@ -300,6 +300,18 @@ const appMethods = {
     this.showToast('تم تطبيق بيانات المفضلة', 'success');
   },
 
+  openFavInfo(parcel) {
+    this.favInfoParcelId = parcel.id;
+  },
+
+  applyFavInfoToParcel() {
+    const parcel = this.parcels.find(p => p.id === this.favInfoParcelId);
+    if (parcel) {
+      this.applyFavoriteToParcel(parcel);
+    }
+    this.favInfoParcelId = null;
+  },
+
   openNoteModal(parcel) {
     this.noteModalParcel = parcel;
     this.showNoteModal = true;
