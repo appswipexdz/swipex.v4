@@ -275,8 +275,29 @@ const appMethods = {
     )
       return false;
     return this.settings.favoritePhones.some(
-      (fav) => fav === parcel.phone || fav === parcel.phone2,
+      (fav) => {
+        const favPhone = typeof fav === 'string' ? fav : fav.phone;
+        return favPhone === parcel.phone || favPhone === parcel.phone2;
+      }
     );
+  },
+
+  getFavoriteInfo(parcel) {
+    if (!this.settings.favoritePhones.length) return null;
+    return this.settings.favoritePhones.find((fav) => {
+      const favPhone = typeof fav === 'string' ? fav : fav.phone;
+      return favPhone === parcel.phone || favPhone === parcel.phone2;
+    }) || null;
+  },
+
+  applyFavoriteToParcel(parcel) {
+    const fav = this.getFavoriteInfo(parcel);
+    if (!fav || typeof fav === 'string') return;
+    if (fav.name) parcel.receiver = fav.name;
+    if (fav.municipality) parcel.municipality = fav.municipality;
+    parcel.updatedAt = new Date().toISOString();
+    this.saveData();
+    this.showToast('تم تطبيق بيانات المفضلة', 'success');
   },
 
   openNoteModal(parcel) {
@@ -292,15 +313,19 @@ const appMethods = {
 
   addFavoritePhone() {
     const phone = (this.newFavoritePhone || "").trim();
-    if (!phone || this.settings.favoritePhones.includes(phone)) return;
-    this.settings.favoritePhones.push(phone);
+    if (!phone) return;
+    const exists = this.settings.favoritePhones.some(
+      (fav) => (typeof fav === 'string' ? fav : fav.phone) === phone
+    );
+    if (exists) return;
+    this.settings.favoritePhones.push({ phone: phone, name: '', municipality: '' });
     this.newFavoritePhone = "";
     this.saveSettings();
   },
 
   removeFavoritePhone(phone) {
     this.settings.favoritePhones = this.settings.favoritePhones.filter(
-      (p) => p !== phone,
+      (fav) => (typeof fav === 'string' ? fav : fav.phone) !== phone,
     );
     this.saveSettings();
   },
@@ -310,12 +335,23 @@ const appMethods = {
       this.settings.favoritePhonesEnabled = true;
     }
     let added = [];
-    if (parcel.phone && !this.settings.favoritePhones.includes(parcel.phone)) {
-      this.settings.favoritePhones.push(parcel.phone);
+    const phoneExists = (p) => this.settings.favoritePhones.some(
+      (fav) => (typeof fav === 'string' ? fav : fav.phone) === p
+    );
+    if (parcel.phone && !phoneExists(parcel.phone)) {
+      this.settings.favoritePhones.push({
+        phone: parcel.phone,
+        name: parcel.receiver || '',
+        municipality: parcel.municipality || ''
+      });
       added.push(parcel.phone);
     }
-    if (parcel.phone2 && !this.settings.favoritePhones.includes(parcel.phone2)) {
-      this.settings.favoritePhones.push(parcel.phone2);
+    if (parcel.phone2 && !phoneExists(parcel.phone2)) {
+      this.settings.favoritePhones.push({
+        phone: parcel.phone2,
+        name: parcel.receiver || '',
+        municipality: parcel.municipality || ''
+      });
       added.push(parcel.phone2);
     }
     if (added.length > 0) {

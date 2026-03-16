@@ -420,8 +420,26 @@
 
                                 <div class="flex justify-between items-start mb-2 pr-12">
                                     <div class="flex-1 ml-2 min-w-0 max-w-[calc(100%-100px)]">
-                                        <div class="font-bold text-gray-900 dark:text-gray-100 text-sm mb-1 truncate flex items-center gap-1">
-                                            <i v-if="isFavoriteParcel(parcel)" class="fas fa-star text-amber-400 text-xs"></i>
+                                        <div class="font-bold text-gray-900 dark:text-gray-100 text-sm mb-1 truncate flex items-center gap-1 relative">
+                                            <span v-if="isFavoriteParcel(parcel)" class="relative flex-shrink-0">
+                                                <i @click.stop="parcel._showFavInfo = !parcel._showFavInfo" class="fas fa-star text-amber-400 text-xs cursor-pointer hover:text-amber-500 transition"></i>
+                                                <div v-if="parcel._showFavInfo && getFavoriteInfo(parcel)" @click.stop class="absolute top-6 right-0 z-40 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-amber-200 dark:border-amber-700 p-3 min-w-[200px]" style="animation: fadeIn 0.2s ease;">
+                                                    <div class="text-xs space-y-2 mb-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <i class="fas fa-user text-amber-500 w-4"></i>
+                                                            <span class="text-gray-600 dark:text-gray-300">{{ (getFavoriteInfo(parcel).name) || 'بدون اسم' }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <i class="fas fa-map-marker-alt text-amber-500 w-4"></i>
+                                                            <span class="text-gray-600 dark:text-gray-300">{{ (getFavoriteInfo(parcel).municipality) || 'بدون بلدية' }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button @click.stop="applyFavoriteToParcel(parcel); parcel._showFavInfo = false" class="w-full py-2 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition">
+                                                        <i class="fas fa-check ml-1"></i>
+                                                        تطبيق على الطرد
+                                                    </button>
+                                                </div>
+                                            </span>
                                             {{ parcel.receiver }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate flex items-center gap-2">
@@ -815,13 +833,19 @@
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
-                            <div v-if="settings.favoritePhones.length > 0" class="flex flex-wrap gap-2">
-                                <span v-for="phone in settings.favoritePhones" :key="phone" class="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-xl text-sm font-bold font-mono flex items-center gap-2" dir="ltr">
-                                    {{ phone }}
-                                    <button @click="removeFavoritePhone(phone)" class="text-amber-400 hover:text-red-500 transition">
-                                        <i class="fas fa-times text-xs"></i>
-                                    </button>
-                                </span>
+                            <div v-if="settings.favoritePhones.length > 0" class="space-y-2">
+                                <div v-for="(fav, idx) in settings.favoritePhones" :key="typeof fav === 'string' ? fav : fav.phone" class="glass-panel p-3 rounded-xl space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-mono font-bold text-amber-700 dark:text-amber-400 text-sm" dir="ltr">{{ typeof fav === 'string' ? fav : fav.phone }}</span>
+                                        <button @click="removeFavoritePhone(typeof fav === 'string' ? fav : fav.phone)" class="text-red-400 hover:text-red-600 transition p-1">
+                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div v-if="typeof fav === 'object'" class="grid grid-cols-2 gap-2">
+                                        <input v-model="fav.name" @blur="saveSettings()" placeholder="الاسم" class="p-2 rounded-lg glass-input text-xs text-gray-800 dark:text-white outline-none focus:ring-1 focus:ring-amber-400" />
+                                        <input v-model="fav.municipality" @blur="saveSettings()" placeholder="البلدية" class="p-2 rounded-lg glass-input text-xs text-gray-800 dark:text-white outline-none focus:ring-1 focus:ring-amber-400" />
+                                    </div>
+                                </div>
                             </div>
                             <p v-else class="text-xs text-gray-400 text-center py-2">لا توجد أرقام مفضلة بعد</p>
                         </div>
