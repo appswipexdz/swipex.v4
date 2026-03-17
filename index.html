@@ -678,29 +678,29 @@
                     <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input v-model="archiveSearch" type="text" placeholder="بحث بالتتبع، الاسم، الهاتف، أو الملاحظات..." class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                    <input v-model="archiveSearch" @input="archiveVisibleCount = 30" type="text" placeholder="بحث بالتتبع، الاسم، الهاتف، أو الملاحظات..." class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
                 </div>
             </div>
 
             <!-- Archive Filter Pills -->
             <div class="mx-3 mt-2 flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none;">
-                <button @click="archiveStatusFilter = ''" :class="[
+                <button @click="archiveStatusFilter = ''; archiveVisibleCount = 30" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     !archiveStatusFilter ? 'bg-purple-600 text-white border-purple-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">الكل</button>
-                <button @click="archiveStatusFilter = 'تم التسليم'" :class="[
+                <button @click="archiveStatusFilter = 'تم التسليم'; archiveVisibleCount = 30" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     archiveStatusFilter === 'تم التسليم' ? 'bg-green-600 text-white border-green-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">تم التسليم</button>
-                <button @click="archiveStatusFilter = 'إلغاء الطلبية'" :class="[
+                <button @click="archiveStatusFilter = 'إلغاء الطلبية'; archiveVisibleCount = 30" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     archiveStatusFilter === 'إلغاء الطلبية' ? 'bg-red-600 text-white border-red-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">إلغاء</button>
-                <button @click="archiveStatusFilter = 'لا يرد'" :class="[
+                <button @click="archiveStatusFilter = 'لا يرد'; archiveVisibleCount = 30" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     archiveStatusFilter === 'لا يرد' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">لا يرد</button>
-                <button @click="archiveStatusFilter = 'رقم خاطئ'" :class="[
+                <button @click="archiveStatusFilter = 'رقم خاطئ'; archiveVisibleCount = 30" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     archiveStatusFilter === 'رقم خاطئ' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">رقم خاطئ</button>
@@ -711,9 +711,9 @@
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-gray-600 dark:text-gray-400">
                         <i class="fas fa-archive text-purple-500 ml-1"></i>
-                        {{ filteredArchive.length }} طرد مؤرشف
+                        يعرض {{ Math.min(archiveVisibleCount, filteredArchive.length) }} من {{ filteredArchive.length }} طرد
                     </span>
-                    <span class="text-xs text-gray-400">من أصل {{ archiveList.length }}</span>
+                    <span class="text-xs text-gray-400">الأرشيف: {{ archiveList.length }}</span>
                 </div>
             </div>
 
@@ -725,7 +725,7 @@
                     <p class="text-sm mt-1">الطرود تُؤرشف تلقائياً عند استيراد ملف جديد في يوم جديد</p>
                 </div>
 
-                <div v-for="item in filteredArchive" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4" :class="{
+                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4" :class="{
                     'border-green-500': item.status === 'تم التسليم',
                     'border-red-500': item.status === 'إلغاء الطلبية',
                     'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
@@ -764,6 +764,11 @@
                         @{{ item.tag }}
                     </div>
                 </div>
+
+                <button v-if="archiveVisibleCount < filteredArchive.length" @click="archiveVisibleCount += 30" class="w-full py-3 rounded-xl glass-panel text-purple-600 dark:text-purple-400 font-bold text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800/50">
+                    <i class="fas fa-chevron-down"></i>
+                    عرض المزيد ({{ filteredArchive.length - archiveVisibleCount }} متبقي)
+                </button>
             </div>
         </div>
 
@@ -1192,7 +1197,7 @@
                             <i class="fas fa-file-export"></i>
                             تصدير النتائج
                         </button>
-                        <button @click="currentView = 'archive'" class="w-full bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                        <button @click="archiveVisibleCount = 30; archiveSearch = ''; archiveStatusFilter = ''; currentView = 'archive'" class="w-full bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
                             <i class="fas fa-archive"></i>
                             الأرشيف
                         </button>

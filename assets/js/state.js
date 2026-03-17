@@ -165,6 +165,7 @@ showYalidineMenu: false,
     // الأرشيف
     archiveSearch: '',
     archiveStatusFilter: '',
+    archiveVisibleCount: 30,
     // سجل العميل
     showCustomerHistory: false,
     customerHistoryParcel: null,
