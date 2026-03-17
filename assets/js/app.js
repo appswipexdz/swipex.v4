@@ -63,6 +63,9 @@ createApp({
             }
             return list;
         },
+        _archivePhoneMap() {
+            return this._buildArchivePhoneMap();
+        },
         unreadNotificationsCount() {
             return this.notifications.filter(n => !n.read).length;
         },

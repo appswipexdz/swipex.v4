@@ -414,9 +414,9 @@
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1">
-                                        <div v-if="getCustomerHistory(parcel).length > 0" @click.stop="openCustomerHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 transition relative">
+                                        <div v-if="getCustomerHistoryCount(parcel) > 0" @click.stop="openCustomerHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 transition relative">
                                             <i class="fas fa-exclamation text-xs"></i>
-                                            <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">{{ getCustomerHistory(parcel).length }}</span>
+                                            <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">{{ getCustomerHistoryCount(parcel) }}</span>
                                         </div>
                                         <div v-if="parcel.history" @click.stop="showHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 transition">
                                             <i class="fas fa-history text-xs"></i>
@@ -2986,7 +2986,7 @@
     </div>
 
         <!-- ============ Bottom Navigation Bar ============ -->
-        <div class="bottom-nav" v-if="!focusModeActive && !showGuide && !showDashboard && !showBulkSmsModal && !showAddModal && !showEditModal && !showImportSummary && !showHistoryModal && !showNotificationsPanel && !showReminderPicker && !showAddTaskModal && !showEditTaskModal && !showNotificationHistory && !showNoteModal && !favInfoParcelId">
+        <div class="bottom-nav" v-if="!focusModeActive && !showGuide && !showDashboard && !showBulkSmsModal && !showAddModal && !showEditModal && !showImportSummary && !showHistoryModal && !showNotificationsPanel && !showReminderPicker && !showAddTaskModal && !showEditTaskModal && !showNotificationHistory && !showNoteModal && !favInfoParcelId && !showCustomerHistory">
             <div class="bottom-nav-inner">
                 <!-- Profile/Settings -->
                 <button class="bottom-nav-item" :class="{'active': currentView === 'settings'}" @click="currentView = currentView === 'settings' ? 'main' : 'settings'; showFabMenu = false; showYalidineMenu = false">

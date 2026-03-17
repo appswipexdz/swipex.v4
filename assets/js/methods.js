@@ -534,30 +534,50 @@ const appMethods = {
   },
 
   // ========== Customer History (سجل العميل) ==========
-  getCustomerHistory(parcel) {
-    if (!parcel || !parcel.phone) return [];
-    const phone = parcel.phone;
-    const phone2 = parcel.phone2 || '';
-    const currentTracking = (parcel.tracking || '').trim();
-    const results = [];
+  _buildArchivePhoneMap() {
+    const map = {};
     for (const [tracking, data] of Object.entries(this.archive)) {
-      if (tracking === currentTracking) continue;
-      const archivePhone = data.phone || '';
-      const archivePhone2 = data.phone2 || '';
-      if (
-        (archivePhone && (archivePhone === phone || archivePhone === phone2)) ||
-        (archivePhone2 && (archivePhone2 === phone || archivePhone2 === phone2))
-      ) {
-        results.push({ tracking, ...data });
-      }
+      const phones = [data.phone, data.phone2].filter(Boolean);
+      phones.forEach(ph => {
+        if (!map[ph]) map[ph] = [];
+        map[ph].push({ tracking, ...data });
+      });
     }
-    results.sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
-    return results;
+    for (const key in map) {
+      map[key].sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+    }
+    return map;
+  },
+
+  getCustomerHistoryCount(parcel) {
+    if (!parcel || !parcel.phone || !this._archivePhoneMap) return 0;
+    const map = this._archivePhoneMap;
+    const seen = new Set();
+    const tracking = (parcel.tracking || '').trim();
+    [parcel.phone, parcel.phone2].filter(Boolean).forEach(ph => {
+      (map[ph] || []).forEach(item => {
+        if (item.tracking !== tracking) seen.add(item.tracking);
+      });
+    });
+    return seen.size;
   },
 
   openCustomerHistory(parcel) {
+    const map = this._archivePhoneMap || {};
+    const tracking = (parcel.tracking || '').trim();
+    const seen = new Set();
+    const results = [];
+    [parcel.phone, parcel.phone2].filter(Boolean).forEach(ph => {
+      (map[ph] || []).forEach(item => {
+        if (item.tracking !== tracking && !seen.has(item.tracking)) {
+          seen.add(item.tracking);
+          results.push(item);
+        }
+      });
+    });
+    results.sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
     this.customerHistoryParcel = parcel;
-    this.customerHistoryData = this.getCustomerHistory(parcel);
+    this.customerHistoryData = results;
     this.showCustomerHistory = true;
   },
 
