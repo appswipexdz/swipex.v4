@@ -38,6 +38,31 @@ createApp({
         editMunicipalitySuggestions() {
             return appMethods.editMunicipalitySuggestions.call(this);
         },
+        archiveList() {
+            return Object.entries(this.archive).map(([tracking, data]) => ({
+                tracking,
+                ...data
+            })).sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+        },
+        filteredArchive() {
+            let list = this.archiveList;
+            if (this.archiveStatusFilter) {
+                list = list.filter(item => item.status === this.archiveStatusFilter);
+            }
+            if (this.archiveSearch) {
+                const q = this.archiveSearch.toLowerCase();
+                list = list.filter(item =>
+                    (item.tracking || '').toLowerCase().includes(q) ||
+                    (item.receiver || '').toLowerCase().includes(q) ||
+                    (item.phone || '').includes(q) ||
+                    (item.phone2 || '').includes(q) ||
+                    (item.notes || '').toLowerCase().includes(q) ||
+                    (item.tag || '').toLowerCase().includes(q) ||
+                    (item.municipality || '').toLowerCase().includes(q)
+                );
+            }
+            return list;
+        },
         unreadNotificationsCount() {
             return this.notifications.filter(n => !n.read).length;
         },

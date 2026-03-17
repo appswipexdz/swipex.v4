@@ -417,6 +417,8 @@ const appMethods = {
         lastUpdate: new Date().toISOString(),
         municipality: p.municipality || "",
         receiver: p.receiver || "",
+        phone: p.phone || "",
+        phone2: p.phone2 || "",
         smsSent: p.smsSent || false,
         senderSmsSent: p.senderSmsSent || false,
       };
@@ -529,6 +531,34 @@ const appMethods = {
 
     this.importStats = stats;
     return stats;
+  },
+
+  // ========== Customer History (سجل العميل) ==========
+  getCustomerHistory(parcel) {
+    if (!parcel || !parcel.phone) return [];
+    const phone = parcel.phone;
+    const phone2 = parcel.phone2 || '';
+    const currentTracking = (parcel.tracking || '').trim();
+    const results = [];
+    for (const [tracking, data] of Object.entries(this.archive)) {
+      if (tracking === currentTracking) continue;
+      const archivePhone = data.phone || '';
+      const archivePhone2 = data.phone2 || '';
+      if (
+        (archivePhone && (archivePhone === phone || archivePhone === phone2)) ||
+        (archivePhone2 && (archivePhone2 === phone || archivePhone2 === phone2))
+      ) {
+        results.push({ tracking, ...data });
+      }
+    }
+    results.sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+    return results;
+  },
+
+  openCustomerHistory(parcel) {
+    this.customerHistoryParcel = parcel;
+    this.customerHistoryData = this.getCustomerHistory(parcel);
+    this.showCustomerHistory = true;
   },
 
   // ========== History ==========

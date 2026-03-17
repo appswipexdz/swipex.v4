@@ -413,8 +413,14 @@
                                             {{ parcel.municipality }}
                                         </span>
                                     </div>
-                                    <div v-if="parcel.history" @click.stop="showHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 transition">
-                                        <i class="fas fa-history text-xs"></i>
+                                    <div class="flex items-center gap-1">
+                                        <div v-if="getCustomerHistory(parcel).length > 0" @click.stop="openCustomerHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/50 transition relative">
+                                            <i class="fas fa-exclamation text-xs"></i>
+                                            <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center">{{ getCustomerHistory(parcel).length }}</span>
+                                        </div>
+                                        <div v-if="parcel.history" @click.stop="showHistory(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 transition">
+                                            <i class="fas fa-history text-xs"></i>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -651,6 +657,114 @@
         </main>
 
         
+        </div>
+
+        <!-- ============ صفحة الأرشيف ============ -->
+        <div v-if="currentView === 'archive'" class="min-h-screen">
+            <div class="sticky top-0 z-40 bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600 text-white px-4 py-3 flex items-center justify-between shadow-lg">
+                <button @click="currentView = 'main'" class="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center border border-white/20 transition">
+                    <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+                <h1 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fas fa-archive"></i>
+                    الأرشيف
+                </h1>
+                <div class="w-9"></div>
+            </div>
+
+            <!-- Search in Archive -->
+            <div class="mx-3 mt-3">
+                <div class="relative">
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input v-model="archiveSearch" type="text" placeholder="بحث بالتتبع، الاسم، الهاتف، أو الملاحظات..." class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                </div>
+            </div>
+
+            <!-- Archive Filter Pills -->
+            <div class="mx-3 mt-2 flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none;">
+                <button @click="archiveStatusFilter = ''" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    !archiveStatusFilter ? 'bg-purple-600 text-white border-purple-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">الكل</button>
+                <button @click="archiveStatusFilter = 'تم التسليم'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'تم التسليم' ? 'bg-green-600 text-white border-green-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">تم التسليم</button>
+                <button @click="archiveStatusFilter = 'إلغاء الطلبية'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'إلغاء الطلبية' ? 'bg-red-600 text-white border-red-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">إلغاء</button>
+                <button @click="archiveStatusFilter = 'لا يرد'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'لا يرد' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">لا يرد</button>
+                <button @click="archiveStatusFilter = 'رقم خاطئ'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'رقم خاطئ' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">رقم خاطئ</button>
+            </div>
+
+            <!-- Archive Stats -->
+            <div class="mx-3 mt-2 glass-panel rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/30">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-archive text-purple-500 ml-1"></i>
+                        {{ filteredArchive.length }} طرد مؤرشف
+                    </span>
+                    <span class="text-xs text-gray-400">من أصل {{ archiveList.length }}</span>
+                </div>
+            </div>
+
+            <!-- Archive List -->
+            <div class="p-3 space-y-3 pb-24">
+                <div v-if="filteredArchive.length === 0" class="text-center py-16 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-archive text-5xl mb-4 block opacity-30"></i>
+                    <p class="font-bold">لا توجد طرود مؤرشفة</p>
+                    <p class="text-sm mt-1">الطرود تُؤرشف تلقائياً عند استيراد ملف جديد في يوم جديد</p>
+                </div>
+
+                <div v-for="item in filteredArchive" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4" :class="{
+                    'border-green-500': item.status === 'تم التسليم',
+                    'border-red-500': item.status === 'إلغاء الطلبية',
+                    'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                    'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                }">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span @click.stop="copyTracking(item.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 transition">
+                                <i class="fas fa-copy text-[9px] ml-1 opacity-60"></i>
+                                {{ item.tracking }}
+                            </span>
+                            <span v-if="item.municipality" class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-lg text-[10px] font-bold">{{ item.municipality }}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400">{{ formatDate(item.lastUpdate) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div v-if="item.receiver" class="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">{{ item.receiver }}</div>
+                            <div v-if="item.phone" class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ item.phone }}<span v-if="item.phone2"> | {{ item.phone2 }}</span></div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="w-2 h-2 rounded-full" :class="{
+                                'bg-green-500': item.status === 'تم التسليم',
+                                'bg-red-500': item.status === 'إلغاء الطلبية',
+                                'bg-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                                'bg-gray-400': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                            }"></span>
+                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300">{{ item.status }}</span>
+                        </div>
+                    </div>
+                    <div v-if="item.notes" class="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-300">
+                        <i class="fas fa-sticky-note text-[10px] ml-1"></i>
+                        {{ item.notes }}
+                    </div>
+                    <div v-if="item.tag" class="mt-1 text-xs text-purple-600 dark:text-purple-400 font-bold">
+                        @{{ item.tag }}
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- FAB Menu Options (overlay) -->
@@ -1327,6 +1441,91 @@
                     <button @click="closeStatusSmsConfirm" class="w-full py-2 text-gray-500 dark:text-gray-400 text-sm hover:text-gray-700 dark:hover:text-gray-200 transition">
                         إلغاء
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer History Modal -->
+        <div v-if="showCustomerHistory" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" @click="showCustomerHistory = false">
+            <div class="modal-glass rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[85vh] overflow-hidden" @click.stop>
+                <div class="p-4 bg-gradient-to-r from-red-600 to-rose-600 text-white sticky top-0 z-10">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fas fa-user-clock"></i>
+                            سجل العميل
+                        </h2>
+                        <button @click="showCustomerHistory = false" class="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div v-if="customerHistoryParcel" class="mt-2 text-sm opacity-90">
+                        <div class="font-bold">{{ customerHistoryParcel.receiver }}</div>
+                        <div class="font-mono text-xs opacity-75">{{ customerHistoryParcel.phone }}<span v-if="customerHistoryParcel.phone2"> | {{ customerHistoryParcel.phone2 }}</span></div>
+                    </div>
+                </div>
+
+                <div class="p-4 overflow-y-auto max-h-[65vh]">
+                    <div v-if="customerHistoryData.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3 block opacity-40"></i>
+                        <p>لا يوجد سجل سابق لهذا العميل</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div v-for="(item, idx) in customerHistoryData" :key="idx" class="glass-panel rounded-xl p-3 border-r-4" :class="{
+                            'border-green-500': item.status === 'تم التسليم',
+                            'border-red-500': item.status === 'إلغاء الطلبية',
+                            'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                            'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                        }">
+                            <div class="flex items-center justify-between mb-2">
+                                <span @click.stop="copyTracking(item.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 transition">
+                                    <i class="fas fa-copy text-[9px] ml-1 opacity-60"></i>
+                                    {{ item.tracking }}
+                                </span>
+                                <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ formatDate(item.lastUpdate) }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2 h-2 rounded-full flex-shrink-0" :class="{
+                                    'bg-green-500': item.status === 'تم التسليم',
+                                    'bg-red-500': item.status === 'إلغاء الطلبية',
+                                    'bg-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                                    'bg-gray-400': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                                }"></span>
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ item.status }}</span>
+                                <span v-if="item.municipality" class="text-xs text-gray-400 mr-auto">{{ item.municipality }}</span>
+                            </div>
+                            <div v-if="item.receiver" class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                <i class="fas fa-user text-[10px] ml-1"></i>
+                                {{ item.receiver }}
+                            </div>
+                            <div v-if="item.notes" class="mt-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-300">
+                                <i class="fas fa-sticky-note text-[10px] ml-1"></i>
+                                {{ item.notes }}
+                            </div>
+                            <div v-if="item.tag" class="mt-1 text-xs text-purple-600 dark:text-purple-400 font-bold">
+                                @{{ item.tag }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ملخص -->
+                    <div v-if="customerHistoryData.length > 0" class="mt-4 glass-panel rounded-xl p-3">
+                        <div class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">ملخص</div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                <div class="text-lg font-bold text-gray-800 dark:text-gray-200">{{ customerHistoryData.length }}</div>
+                                <div class="text-[10px] text-gray-500">إجمالي</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-green-50 dark:bg-green-900/20">
+                                <div class="text-lg font-bold text-green-600">{{ customerHistoryData.filter(i => i.status === 'تم التسليم').length }}</div>
+                                <div class="text-[10px] text-gray-500">تم التسليم</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/20">
+                                <div class="text-lg font-bold text-red-600">{{ customerHistoryData.filter(i => i.status === 'إلغاء الطلبية' || i.status === 'لا يرد' || i.status === 'رقم خاطئ').length }}</div>
+                                <div class="text-[10px] text-gray-500">مشكلة</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2789,6 +2988,11 @@
                 <button class="bottom-nav-item" :class="{'active': currentView === 'main' && !showNotificationsPanel}" @click="currentView = 'main'; showNotificationsPanel = false; showFabMenu = false; showYalidineMenu = false">
                     <i class="fas fa-box"></i>
                     <span>الطرود</span>
+                </button>
+                <!-- Archive -->
+                <button class="bottom-nav-item" :class="{'active': currentView === 'archive'}" @click="currentView = 'archive'; showFabMenu = false; showYalidineMenu = false; showNotificationsPanel = false">
+                    <i class="fas fa-archive"></i>
+                    <span>الأرشيف</span>
                 </button>
                 <!-- Center + Button -->
                 <button class="bottom-nav-center" :class="{'rotate-45': showFabMenu}" @click="showFabMenu = !showFabMenu; currentView = 'main'; showNotificationsPanel = false; showYalidineMenu = false">

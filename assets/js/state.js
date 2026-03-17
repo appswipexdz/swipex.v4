@@ -161,5 +161,12 @@ showYalidineMenu: false,
     // Top Menu (three dots)
     showTopMenu: false,
     // Progress bar compact mode
-    progressBarCompact: false
+    progressBarCompact: false,
+    // الأرشيف
+    archiveSearch: '',
+    archiveStatusFilter: '',
+    // سجل العميل
+    showCustomerHistory: false,
+    customerHistoryParcel: null,
+    customerHistoryData: []
 };
