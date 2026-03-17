@@ -379,15 +379,15 @@
 
                         <div class="card-content border-r-4" :class="[getStatusColor(parcel.status), {'snapping': !isDragging || activeSwipeId !== parcel.id}]" @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)" @touchend="touchEnd($event, parcel)" :style="getTransformStyle(parcel)">
                             <div class="p-3 cursor-pointer relative" @click="toggleExpand(parcel.id)">
-                                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0" @touchstart.stop>
-                                    <button @click.stop="moveParcelUp(parcel)" class="w-6 h-4 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
-                                        <i class="fas fa-chevron-up text-[9px]"></i>
+                                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5" @touchstart.stop>
+                                    <button @click.stop="moveParcelUp(parcel)" class="w-7 h-6 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
+                                        <i class="fas fa-chevron-up text-[11px]"></i>
                                     </button>
-                                    <div class="handle w-7 h-5 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
-                                        <i class="fas fa-grip-lines text-[10px]"></i>
+                                    <div class="handle w-8 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
+                                        <i class="fas fa-grip-lines text-[11px]"></i>
                                     </div>
-                                    <button @click.stop="moveParcelDown(parcel)" class="w-6 h-4 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
-                                        <i class="fas fa-chevron-down text-[9px]"></i>
+                                    <button @click.stop="moveParcelDown(parcel)" class="w-7 h-6 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
+                                        <i class="fas fa-chevron-down text-[11px]"></i>
                                     </button>
                                 </div>
 
