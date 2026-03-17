@@ -1192,6 +1192,10 @@
                             <i class="fas fa-file-export"></i>
                             تصدير النتائج
                         </button>
+                        <button @click="currentView = 'archive'" class="w-full bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                            <i class="fas fa-archive"></i>
+                            الأرشيف
+                        </button>
                         <button @click="clearAllData" class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
                             <i class="fas fa-trash-alt"></i>
                             مسح جميع البيانات
@@ -2988,11 +2992,6 @@
                 <button class="bottom-nav-item" :class="{'active': currentView === 'main' && !showNotificationsPanel}" @click="currentView = 'main'; showNotificationsPanel = false; showFabMenu = false; showYalidineMenu = false">
                     <i class="fas fa-box"></i>
                     <span>الطرود</span>
-                </button>
-                <!-- Archive -->
-                <button class="bottom-nav-item" :class="{'active': currentView === 'archive'}" @click="currentView = 'archive'; showFabMenu = false; showYalidineMenu = false; showNotificationsPanel = false">
-                    <i class="fas fa-archive"></i>
-                    <span>الأرشيف</span>
                 </button>
                 <!-- Center + Button -->
                 <button class="bottom-nav-center" :class="{'rotate-45': showFabMenu}" @click="showFabMenu = !showFabMenu; currentView = 'main'; showNotificationsPanel = false; showYalidineMenu = false">
