@@ -292,12 +292,21 @@ const appMethods = {
 
   applyFavoriteToParcel(parcel) {
     const fav = this.getFavoriteInfo(parcel);
-    if (!fav || typeof fav === 'string') return;
-    if (fav.name) parcel.receiver = fav.name;
-    if (fav.municipality) parcel.municipality = fav.municipality;
-    parcel.updatedAt = new Date().toISOString();
-    this.saveData();
-    this.showToast('تم تطبيق بيانات المفضلة', 'success');
+    if (!fav) return;
+    if (typeof fav === 'string') {
+      this.showToast('لا توجد بيانات محفوظة - عدّل المفضلة من الإعدادات', 'info');
+      return;
+    }
+    let applied = false;
+    if (fav.name) { parcel.receiver = fav.name; applied = true; }
+    if (fav.municipality) { parcel.municipality = fav.municipality; applied = true; }
+    if (applied) {
+      parcel.updatedAt = new Date().toISOString();
+      this.saveData();
+      this.showToast('تم تطبيق بيانات المفضلة', 'success');
+    } else {
+      this.showToast('لا يوجد اسم أو بلدية محفوظة', 'info');
+    }
   },
 
   openFavInfo(parcel) {
