@@ -889,3 +889,352 @@ select {
     background: none;
     -webkit-tap-highlight-color: transparent;
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 📋 أنماط نظام الجلسات التعاونية (Collaborative Sessions) */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* بطاقات الجلسات */
+.session-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.session-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.dark .session-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* شارة الحالة */
+.session-status-badge {
+    position: relative;
+    padding-left: 20px;
+}
+
+.session-status-badge::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.session-status-active::before {
+    background: #10b981;
+}
+
+.session-status-ended::before {
+    background: #6b7280;
+}
+
+/* المشاركون النشطون */
+.participant-avatar {
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.participant-avatar:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.participant-online-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #10b981;
+    border-radius: 50%;
+    border: 2px solid white;
+    animation: pulse 2s infinite;
+}
+
+.dark .participant-online-indicator {
+    border-color: #1f2937;
+}
+
+/* قفل الطرد */
+.parcel-locked {
+    position: relative;
+    opacity: 0.7;
+}
+
+.parcel-locked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(239, 68, 68, 0.1) 10px,
+        rgba(239, 68, 68, 0.1) 20px
+    );
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* إشعارات الجلسة */
+.session-notification {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* أدوار المشاركين */
+.role-owner {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+    color: white;
+}
+
+.role-admin {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.role-editor {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.role-viewer {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+/* تأثير النبض */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* تأثير التحميل */
+.session-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.session-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+.dark .session-loading::after {
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+}
+
+@keyframes shimmer {
+    to {
+        left: 100%;
+    }
+}
+
+/* سجل النشاطات */
+.activity-timeline {
+    position: relative;
+    padding-right: 24px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+        to bottom,
+        #3b82f6,
+        transparent
+    );
+}
+
+.activity-item {
+    position: relative;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* إحصائيات الجلسة */
+.session-stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.session-stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.session-stat-card:hover::before {
+    opacity: 1;
+}
+
+/* تأثير الزجاج للجلسات */
+.session-glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .session-glass {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* أزرار الإجراءات العائمة للجلسات */
+.session-fab {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.session-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.session-fab:active {
+    transform: scale(0.95);
+}
+
+/* تأثير الموجة عند النقر */
+.session-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.session-ripple::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.session-ripple:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* استجابة للشاشات الصغيرة */
+@media (max-width: 640px) {
+    .session-card {
+        padding: 12px;
+    }
+    
+    .session-fab {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .participant-avatar {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* تحسينات الأداء */
+.session-optimized {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* تأثيرات الانتقال السلسة */
+.session-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* حالة التحميل للطرود */
+.parcel-syncing {
+    position: relative;
+}
+
+.parcel-syncing::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        #a855f7,
+        transparent
+    );
+    animation: syncProgress 1.5s infinite;
+}
+
+@keyframes syncProgress {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}

@@ -2407,4 +2407,557 @@ const appMethods = {
       this.focusTouchDeltaX = 0;
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 📋 نظام الجلسات التعاونية (Collaborative Sessions)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * فتح عرض الجلسات
+   */
+  openSessionsView() {
+    this.showSessionsView = true;
+    this.loadUserSessions();
+  },
+
+  /**
+   * إغلاق عرض الجلسات
+   */
+  closeSessionsView() {
+    this.showSessionsView = false;
+    if (this.currentSession) {
+      this.leaveSession();
+    }
+  },
+
+  /**
+   * تحميل جلسات المستخدم
+   */
+  async loadUserSessions() {
+    try {
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      this.sessions = await sessionsManager.getUserSessions();
+      console.log(`✅ تم تحميل ${this.sessions.length} جلسة`);
+    } catch (error) {
+      console.error('❌ خطأ في تحميل الجلسات:', error);
+      this.showToast('فشل تحميل الجلسات', 'error');
+    }
+  },
+
+  /**
+   * فتح نافذة إنشاء جلسة جديدة
+   */
+  openCreateSessionModal() {
+    this.newSession = {
+      name: '',
+      description: '',
+      useCurrentFilter: true,
+      selectedParcels: [],
+      invites: []
+    };
+    this.showCreateSessionModal = true;
+  },
+
+  /**
+   * إغلاق نافذة إنشاء الجلسة
+   */
+  closeCreateSessionModal() {
+    this.showCreateSessionModal = false;
+  },
+
+  /**
+   * إنشاء جلسة جديدة
+   */
+  async createSession() {
+    try {
+      if (!this.newSession.name.trim()) {
+        this.showToast('يرجى إدخال اسم الجلسة', 'error');
+        return;
+      }
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      // تحديد الطرود المراد مشاركتها
+      let parcelsToShare = [];
+      if (this.newSession.useCurrentFilter) {
+        // استخدام الفلتر الحالي
+        parcelsToShare = this.filteredParcels;
+      } else {
+        // استخدام الطرود المحددة يدوياً
+        parcelsToShare = this.newSession.selectedParcels;
+      }
+
+      if (parcelsToShare.length === 0) {
+        this.showToast('لا توجد طرود للمشاركة', 'error');
+        return;
+      }
+
+      // إنشاء الجلسة
+      const sessionData = {
+        name: this.newSession.name,
+        description: this.newSession.description,
+        filters: this.filters,
+        parcels: parcelsToShare,
+        allowInvite: true,
+        autoSync: true,
+        notifyOnChanges: true
+      };
+
+      const sessionId = await sessionsManager.createSession(sessionData);
+
+      // دعوة المستخدمين
+      for (const invite of this.newSession.invites) {
+        await sessionsManager.inviteUser(sessionId, invite.email, invite.role);
+      }
+
+      this.showToast(`تم إنشاء الجلسة بنجاح (${parcelsToShare.length} طرد)`, 'success');
+      this.closeCreateSessionModal();
+      await this.loadUserSessions();
+      
+      // فتح الجلسة مباشرة
+      await this.joinSession(sessionId);
+
+    } catch (error) {
+      console.error('❌ خطأ في إنشاء الجلسة:', error);
+      this.showToast('فشل إنشاء الجلسة', 'error');
+    }
+  },
+
+  /**
+   * إضافة دعوة لمستخدم
+   */
+  addInviteToSession() {
+    if (!this.newInvite.email.trim()) {
+      this.showToast('يرجى إدخال البريد الإلكتروني', 'error');
+      return;
+    }
+
+    // التحقق من صحة البريد الإلكتروني
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.newInvite.email)) {
+      this.showToast('البريد الإلكتروني غير صحيح', 'error');
+      return;
+    }
+
+    // التحقق من عدم تكرار البريد
+    if (this.newSession.invites.some(inv => inv.email === this.newInvite.email)) {
+      this.showToast('هذا المستخدم مدعو بالفعل', 'error');
+      return;
+    }
+
+    this.newSession.invites.push({
+      email: this.newInvite.email,
+      role: this.newInvite.role
+    });
+
+    this.newInvite = { email: '', role: 'editor' };
+    this.showToast('تمت إضافة الدعوة', 'success');
+  },
+
+  /**
+   * إزالة دعوة
+   */
+  removeInvite(index) {
+    this.newSession.invites.splice(index, 1);
+  },
+
+  /**
+   * الانضمام لجلسة
+   */
+  async joinSession(sessionId) {
+    try {
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      // تحميل بيانات الجلسة
+      this.currentSession = await sessionsManager.getSession(sessionId);
+      this.sessionParcels = await sessionsManager.getSessionParcels(sessionId);
+      this.sessionParticipants = await sessionsManager.getParticipants(sessionId);
+
+      // بدء تتبع الحضور
+      sessionsManager.startPresenceTracking(sessionId);
+
+      // بدء الاستماع للتحديثات الفورية
+      this.startSessionListeners(sessionId);
+
+      // عرض واجهة الجلسة
+      this.showSessionDetailsModal = true;
+
+      this.showToast(`انضممت للجلسة: ${this.currentSession.name}`, 'success');
+      console.log('✅ تم الانضمام للجلسة:', sessionId);
+
+    } catch (error) {
+      console.error('❌ خطأ في الانضمام للجلسة:', error);
+      this.showToast('فشل الانضمام للجلسة', 'error');
+    }
+  },
+
+  /**
+   * مغادرة الجلسة
+   */
+  async leaveSession() {
+    try {
+      if (!this.currentSession) return;
+
+      const sessionId = this.currentSession.id;
+
+      // إيقاف تتبع الحضور
+      if (typeof sessionsManager !== 'undefined') {
+        sessionsManager.stopPresenceTracking(sessionId);
+        sessionsManager.stopListening(sessionId);
+      }
+
+      // إعادة تعيين البيانات
+      this.currentSession = null;
+      this.sessionParcels = [];
+      this.sessionParticipants = [];
+      this.sessionActivity = [];
+      this.showSessionDetailsModal = false;
+
+      this.showToast('غادرت الجلسة', 'info');
+      console.log('✅ تم مغادرة الجلسة');
+
+    } catch (error) {
+      console.error('❌ خطأ في مغادرة الجلسة:', error);
+    }
+  },
+
+  /**
+   * بدء الاستماع لتحديثات الجلسة
+   */
+  startSessionListeners(sessionId) {
+    if (typeof sessionsManager === 'undefined') return;
+
+    // الاستماع لتحديثات الجلسة
+    sessionsManager.listenToSession(sessionId, (session) => {
+      this.currentSession = session;
+    });
+
+    // الاستماع لتحديثات الطرود
+    sessionsManager.listenToSessionParcels(sessionId, (changeType, parcel) => {
+      const index = this.sessionParcels.findIndex(p => p.id === parcel.id);
+
+      if (changeType === 'added' && index === -1) {
+        this.sessionParcels.push(parcel);
+        this.showSessionNotificationToast(`تمت إضافة طرد جديد بواسطة ${parcel.addedBy}`);
+      } else if (changeType === 'modified' && index !== -1) {
+        this.sessionParcels[index] = parcel;
+        this.showSessionNotificationToast(`تم تحديث طرد بواسطة ${parcel.lastModifiedBy}`);
+      } else if (changeType === 'removed' && index !== -1) {
+        this.sessionParcels.splice(index, 1);
+      }
+    });
+
+    // الاستماع لتحديثات المشاركين
+    sessionsManager.listenToParticipants(sessionId, (participants) => {
+      this.sessionParticipants = participants;
+      this.onlineParticipants = participants.filter(p => p.isOnline);
+    });
+  },
+
+  /**
+   * تحديث طرد في الجلسة
+   */
+  async updateSessionParcel(parcelId, updates) {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.updateSessionParcel(this.currentSession.id, parcelId, updates);
+      console.log('✅ تم تحديث الطرد في الجلسة');
+
+    } catch (error) {
+      console.error('❌ خطأ في تحديث الطرد:', error);
+      this.showToast(error.message || 'فشل تحديث الطرد', 'error');
+    }
+  },
+
+  /**
+   * قفل طرد للتعديل
+   */
+  async lockSessionParcel(parcelId) {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') return;
+
+      await sessionsManager.lockParcel(this.currentSession.id, parcelId);
+      this.lockedParcels[parcelId] = true;
+
+    } catch (error) {
+      console.error('❌ خطأ في قفل الطرد:', error);
+    }
+  },
+
+  /**
+   * فك قفل طرد
+   */
+  async unlockSessionParcel(parcelId) {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') return;
+
+      await sessionsManager.unlockParcel(this.currentSession.id, parcelId);
+      delete this.lockedParcels[parcelId];
+
+    } catch (error) {
+      console.error('❌ خطأ في فك قفل الطرد:', error);
+    }
+  },
+
+  /**
+   * دعوة مستخدم للجلسة الحالية
+   */
+  async inviteUserToCurrentSession() {
+    try {
+      if (!this.currentSession) return;
+
+      if (!this.newInvite.email.trim()) {
+        this.showToast('يرجى إدخال البريد الإلكتروني', 'error');
+        return;
+      }
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.inviteUser(
+        this.currentSession.id,
+        this.newInvite.email,
+        this.newInvite.role
+      );
+
+      this.showToast('تم إرسال الدعوة بنجاح', 'success');
+      this.newInvite = { email: '', role: 'editor' };
+      this.showInviteUserModal = false;
+
+    } catch (error) {
+      console.error('❌ خطأ في دعوة المستخدم:', error);
+      this.showToast('فشل إرسال الدعوة', 'error');
+    }
+  },
+
+  /**
+   * إزالة مشارك من الجلسة
+   */
+  async removeParticipantFromSession(userId) {
+    try {
+      if (!this.currentSession) return;
+
+      if (!confirm('هل أنت متأكد من إزالة هذا المشارك؟')) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.removeParticipant(this.currentSession.id, userId);
+      this.showToast('تمت إزالة المشارك', 'success');
+
+    } catch (error) {
+      console.error('❌ خطأ في إزالة المشارك:', error);
+      this.showToast(error.message || 'فشل إزالة المشارك', 'error');
+    }
+  },
+
+  /**
+   * تحديث دور مشارك
+   */
+  async updateParticipantRole(userId, newRole) {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.updateParticipantRole(this.currentSession.id, userId, newRole);
+      this.showToast('تم تحديث الدور بنجاح', 'success');
+
+    } catch (error) {
+      console.error('❌ خطأ في تحديث الدور:', error);
+      this.showToast(error.message || 'فشل تحديث الدور', 'error');
+    }
+  },
+
+  /**
+   * عرض سجل النشاطات
+   */
+  async showSessionActivity() {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      this.sessionActivity = await sessionsManager.getActivityLog(this.currentSession.id);
+      this.showSessionActivityLog = true;
+
+    } catch (error) {
+      console.error('❌ خطأ في جلب سجل النشاطات:', error);
+      this.showToast('فشل تحميل سجل النشاطات', 'error');
+    }
+  },
+
+  /**
+   * عرض إحصائيات الجلسة
+   */
+  async showSessionStatistics() {
+    try {
+      if (!this.currentSession) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      this.sessionStats = await sessionsManager.getSessionStats(this.currentSession.id);
+      this.showSessionStatsModal = true;
+
+    } catch (error) {
+      console.error('❌ خطأ في جلب الإحصائيات:', error);
+      this.showToast('فشل تحميل الإحصائيات', 'error');
+    }
+  },
+
+  /**
+   * إنهاء الجلسة
+   */
+  async endSession(sessionId) {
+    try {
+      if (!confirm('هل أنت متأكد من إنهاء هذه الجلسة؟')) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.updateSession(sessionId, { status: 'ended' });
+      this.showToast('تم إنهاء الجلسة', 'success');
+      
+      if (this.currentSession && this.currentSession.id === sessionId) {
+        await this.leaveSession();
+      }
+      
+      await this.loadUserSessions();
+
+    } catch (error) {
+      console.error('❌ خطأ في إنهاء الجلسة:', error);
+      this.showToast('فشل إنهاء الجلسة', 'error');
+    }
+  },
+
+  /**
+   * حذف جلسة
+   */
+  async deleteSession(sessionId) {
+    try {
+      if (!confirm('هل أنت متأكد من حذف هذه الجلسة؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+
+      if (typeof sessionsManager === 'undefined') {
+        console.error('❌ مدير الجلسات غير متوفر');
+        return;
+      }
+
+      await sessionsManager.deleteSession(sessionId);
+      this.showToast('تم حذف الجلسة', 'success');
+      
+      if (this.currentSession && this.currentSession.id === sessionId) {
+        await this.leaveSession();
+      }
+      
+      await this.loadUserSessions();
+
+    } catch (error) {
+      console.error('❌ خطأ في حذف الجلسة:', error);
+      this.showToast(error.message || 'فشل حذف الجلسة', 'error');
+    }
+  },
+
+  /**
+   * عرض إشعار الجلسة
+   */
+  showSessionNotificationToast(message) {
+    // يمكن استخدام نظام الإشعارات الموجود
+    if (this.settings.notifyOnChanges !== false) {
+      this.showToast(message, 'info');
+    }
+  },
+
+  /**
+   * الحصول على اسم الدور بالعربية
+   */
+  getRoleNameAr(role) {
+    const roles = {
+      'owner': 'مالك',
+      'admin': 'مدير',
+      'editor': 'محرر',
+      'viewer': 'مشاهد'
+    };
+    return roles[role] || role;
+  },
+
+  /**
+   * الحصول على لون الدور
+   */
+  getRoleColor(role) {
+    const colors = {
+      'owner': 'text-purple-600',
+      'admin': 'text-blue-600',
+      'editor': 'text-green-600',
+      'viewer': 'text-gray-600'
+    };
+    return colors[role] || 'text-gray-600';
+  },
+
+  /**
+   * التحقق من الصلاحية
+   */
+  canEditSession() {
+    if (!this.currentSession || !this.currentUser) return false;
+    const myParticipant = this.sessionParticipants.find(p => p.uid === this.currentUser.uid);
+    return myParticipant && ['owner', 'admin', 'editor'].includes(myParticipant.role);
+  },
+
+  /**
+   * التحقق من صلاحية الإدارة
+   */
+  canManageSession() {
+    if (!this.currentSession || !this.currentUser) return false;
+    const myParticipant = this.sessionParticipants.find(p => p.uid === this.currentUser.uid);
+    return myParticipant && ['owner', 'admin'].includes(myParticipant.role);
+  },
+
+  /**
+   * تنسيق وقت النشاط
+   */
+  formatActivityTime(timestamp) {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'الآن';
+    if (diff < 3600000) return `منذ ${Math.floor(diff / 60000)} دقيقة`;
+    if (diff < 86400000) return `منذ ${Math.floor(diff / 3600000)} ساعة`;
+    return `منذ ${Math.floor(diff / 86400000)} يوم`;
+  },
 };

@@ -169,5 +169,46 @@ showYalidineMenu: false,
     // سجل العميل
     showCustomerHistory: false,
     customerHistoryParcel: null,
-    customerHistoryData: []
+    customerHistoryData: [],
+    // ═══════════════════════════════════════════════════════════════
+    // 📋 نظام الجلسات التعاونية (Collaborative Sessions)
+    // ═══════════════════════════════════════════════════════════════
+    // عرض الجلسات
+    showSessionsView: false,
+    showCreateSessionModal: false,
+    showSessionDetailsModal: false,
+    showInviteUserModal: false,
+    showSessionActivityLog: false,
+    showSessionStatsModal: false,
+    // بيانات الجلسات
+    sessions: [],
+    currentSession: null,
+    sessionParcels: [],
+    sessionParticipants: [],
+    sessionActivity: [],
+    sessionStats: null,
+    // إنشاء جلسة جديدة
+    newSession: {
+        name: '',
+        description: '',
+        useCurrentFilter: true,
+        selectedParcels: [],
+        invites: []
+    },
+    // دعوة مستخدمين
+    newInvite: {
+        email: '',
+        role: 'editor' // viewer, editor, admin
+    },
+    // حالة المزامنة
+    sessionSyncStatus: 'idle', // idle, syncing, synced, error
+    sessionListeners: {},
+    // المشاركون النشطون
+    onlineParticipants: [],
+    // الطرد المقفل حالياً
+    lockedParcels: {},
+    // إشعارات الجلسة
+    sessionNotifications: [],
+    showSessionNotification: false,
+    currentSessionNotification: null
 };
