@@ -2480,6 +2480,11 @@ const appMethods = {
       const sessionId = await sessionsManager.acceptInvite(invite.id);
       this.showToast(`تم قبول الدعوة بنجاح لـ: ${invite.sessionName}`, 'success');
       
+      // السماح بالحفظ في السحابة فوراً (تخطي التحميل الأولي)
+      if (typeof firestoreSync !== 'undefined') {
+        firestoreSync.skipInitialLoadCheck();
+      }
+
       // تحديث البيانات
       await this.loadUserSessions();
       
@@ -2636,6 +2641,11 @@ const appMethods = {
       if (typeof sessionsManager === 'undefined') {
         console.error('❌ مدير الجلسات غير متوفر');
         return;
+      }
+
+      // السماح بالحفظ في السحابة فوراً (تخطي التحميل الأولي)
+      if (typeof firestoreSync !== 'undefined') {
+        firestoreSync.skipInitialLoadCheck();
       }
 
       // تحميل بيانات الجلسة

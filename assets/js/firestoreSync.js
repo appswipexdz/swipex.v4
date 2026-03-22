@@ -5,6 +5,12 @@ const firestoreSync = {
     _retryCount: 0,
     _initialLoadDone: false,  // منع الكتابة قبل اكتمال أول تحميل
 
+    // تخطي التحميل الأولي (يستخدم عند العمل داخل جلسة تعاونية)
+    skipInitialLoadCheck() {
+        this._initialLoadDone = true;
+        console.log('🔓 تم تخطي فحص التحميل الأولي للعمل في الجلسة');
+    },
+
     getUid() {
         try {
             return firebase.auth().currentUser?.uid || null;
