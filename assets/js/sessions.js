@@ -29,11 +29,21 @@ const getDocs = (ref) => ref.get();
 const setDoc = (ref, data) => ref.set(data);
 const updateDoc = (ref, data) => ref.update(data);
 const deleteDoc = (ref) => ref.delete();
-const query = (ref, ...queryConstraints) => ref.where(...queryConstraints);
-const where = (field, op, value) => db.where(field, op, value);
-const orderBy = (field, direction) => db.orderBy(field, direction);
+const query = (ref, ...constraints) => {
+  let q = ref;
+  constraints.forEach(c => {
+    if (c.type === 'where') q = q.where(...c.args);
+    if (c.type === 'orderBy') q = q.orderBy(...c.args);
+    if (c.type === 'limit') q = q.limit(...c.args);
+  });
+  return q;
+};
+const where = (field, op, value) => ({ type: 'where', args: [field, op, value] });
+const orderBy = (field, direction) => ({ type: 'orderBy', args: [field, direction] });
+const limit = (n) => ({ type: 'limit', args: [n] });
 const onSnapshot = (ref, onNext, onError) => ref.onSnapshot(onNext, onError);
 const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+const increment = (n) => firebase.firestore.FieldValue.increment(n);
 const arrayUnion = (...elements) => firebase.firestore.FieldValue.arrayUnion(...elements);
 const arrayRemove = (...elements) => firebase.firestore.FieldValue.arrayRemove(...elements);
 const Timestamp = firebase.firestore.Timestamp;
@@ -240,16 +250,20 @@ async function getUserSessions() {
     const sessionsSnap = await getDocs(q);
 
     for (const sessionDoc of sessionsSnap.docs) {
-      const sessionData = sessionDoc.data();
-      const participantRef = doc(db, 'sessions', sessionDoc.id, 'participants', user.uid);
-      const participantSnap = await getDoc(participantRef);
-      
-      if (participantSnap.exists()) {
-        sessions.push({
-          id: sessionDoc.id,
-          ...sessionData,
-          myRole: participantSnap.data().role
-        });
+      try {
+        const sessionData = sessionDoc.data();
+        const participantRef = doc(db, 'sessions', sessionDoc.id, 'participants', user.uid);
+        const participantSnap = await getDoc(participantRef);
+        
+        if (participantSnap.exists()) {
+          sessions.push({
+            id: sessionDoc.id,
+            ...sessionData,
+            myRole: participantSnap.data().role
+          });
+        }
+      } catch (e) {
+        console.warn(`⚠️ فشل جلب بيانات المشارك للجلسة ${sessionDoc.id}:`, e);
       }
     }
 
@@ -289,7 +303,7 @@ async function addParticipant(sessionId, participantData) {
     // تحديث عداد المشاركين وقائمة المعرفات
     const sessionRef = doc(db, 'sessions', sessionId);
     await updateDoc(sessionRef, {
-      'stats.participantsCount': arrayUnion(participantData.uid).length,
+      'stats.participantsCount': increment(1),
       'participantIds': arrayUnion(participantData.uid)
     });
 
@@ -514,10 +528,11 @@ async function removeParticipant(sessionId, userId) {
     const participantRef = doc(db, 'sessions', sessionId, 'participants', userId);
     await deleteDoc(participantRef);
 
-    // تحديث قائمة المعرفات في الجلسة
+    // تحديث قائمة المعرفات والعداد في الجلسة
     const sessionRef = doc(db, 'sessions', sessionId);
     await updateDoc(sessionRef, {
-      'participantIds': arrayRemove(userId)
+      'participantIds': arrayRemove(userId),
+      'stats.participantsCount': increment(-1)
     });
 
     // تسجيل النشاط
@@ -961,19 +976,15 @@ async function logActivity(sessionId, activity) {
  * @param {number} limit - عدد النشاطات (افتراضي 50)
  * @returns {Promise<Array>} - قائمة النشاطات
  */
-async function getActivityLog(sessionId, limit = 50) {
+async function getActivityLog(sessionId, limitAmount = 50) {
   try {
     const activityRef = collection(db, 'sessions', sessionId, 'activity');
-    const q = query(activityRef, orderBy('timestamp', 'desc'));
+    const q = query(activityRef, orderBy('timestamp', 'desc'), limit(limitAmount));
     const activitySnap = await getDocs(q);
     
     const activities = [];
-    let count = 0;
     activitySnap.forEach(doc => {
-      if (count < limit) {
-        activities.push({ id: doc.id, ...doc.data() });
-        count++;
-      }
+      activities.push({ id: doc.id, ...doc.data() });
     });
 
     return activities;

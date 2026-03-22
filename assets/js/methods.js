@@ -2465,7 +2465,7 @@ const appMethods = {
       console.log(`✅ تم تحميل ${this.sessions.length} جلسة`);
     } catch (error) {
       console.error('❌ خطأ في تحميل الجلسات:', error);
-      this.showToast('فشل تحميل الجلسات', 'error');
+      this.showToast('فشل تحميل الجلسات: ' + (error.message || 'خطأ غير معروف'), 'error');
     }
   },
 
