@@ -346,12 +346,14 @@ async function inviteUser(sessionId, email, role = 'editor') {
       throw new Error('ليس لديك صلاحية دعوة مستخدمين');
     }
 
-    // إنشاء دعوة
+    // إنشاء دعوة في المجموعة العامة
     const inviteId = `invite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const inviteRef = doc(db, 'sessions', sessionId, 'invites', inviteId);
+    const inviteRef = doc(db, 'invites', inviteId);
     
     await setDoc(inviteRef, {
       id: inviteId,
+      sessionId: sessionId,
+      sessionName: (await getSession(sessionId)).name,
       email: email.toLowerCase(),
       role: role,
       invitedBy: user.email,
@@ -382,16 +384,15 @@ async function inviteUser(sessionId, email, role = 'editor') {
 
 /**
  * قبول دعوة للانضمام لجلسة
- * @param {string} sessionId - معرف الجلسة
  * @param {string} inviteId - معرف الدعوة
  */
-async function acceptInvite(sessionId, inviteId) {
+async function acceptInvite(inviteId) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
 
     // جلب بيانات الدعوة
-    const inviteRef = doc(db, 'sessions', sessionId, 'invites', inviteId);
+    const inviteRef = doc(db, 'invites', inviteId);
     const inviteSnap = await getDoc(inviteRef);
     
     if (!inviteSnap.exists) {
@@ -399,6 +400,7 @@ async function acceptInvite(sessionId, inviteId) {
     }
 
     const invite = inviteSnap.data();
+    const sessionId = invite.sessionId;
     
     // التحقق من البريد الإلكتروني
     if (invite.email !== user.email.toLowerCase()) {
@@ -439,9 +441,52 @@ async function acceptInvite(sessionId, inviteId) {
     });
 
     console.log('✅ تم قبول الدعوة والانضمام للجلسة');
+    return sessionId;
   } catch (error) {
     console.error('❌ خطأ في قبول الدعوة:', error);
     throw error;
+  }
+}
+
+/**
+ * رفض دعوة
+ * @param {string} inviteId - معرف الدعوة
+ */
+async function rejectInvite(inviteId) {
+  try {
+    const inviteRef = doc(db, 'invites', inviteId);
+    await updateDoc(inviteRef, {
+      status: 'rejected',
+      rejectedAt: serverTimestamp()
+    });
+    console.log('✅ تم رفض الدعوة');
+  } catch (error) {
+    console.error('❌ خطأ في رفض الدعوة:', error);
+    throw error;
+  }
+}
+
+/**
+ * جلب الدعوات المعلقة للمستخدم الحالي
+ */
+async function getPendingInvites() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const q = query(collection(db, 'invites'), 
+                  where('email', '==', user.email.toLowerCase()),
+                  where('status', '==', 'pending'));
+    
+    const snap = await getDocs(q);
+    const invites = [];
+    snap.forEach(doc => {
+      invites.push({ id: doc.id, ...doc.data() });
+    });
+    return invites;
+  } catch (error) {
+    console.error('❌ خطأ في جلب الدعوات:', error);
+    return [];
   }
 }
 
@@ -1170,6 +1215,8 @@ window.sessionsManager = {
   addParticipant,
   inviteUser,
   acceptInvite,
+  rejectInvite,
+  getPendingInvites,
   getParticipant,
   getParticipants,
   updateParticipantRole,

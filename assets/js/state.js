@@ -183,6 +183,7 @@ showYalidineMenu: false,
     showSessionStatsModal: false,
     // بيانات الجلسات
     sessions: [],
+    pendingInvites: [], // الدعوات المعلقة
     currentSession: null,
     sessionParcels: [],
     sessionParticipants: [],

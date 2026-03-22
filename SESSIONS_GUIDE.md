@@ -68,11 +68,13 @@
 
 1. **من قائمة الجلسات**
    - افتح صفحة الجلسات
-   - اضغط على الجلسة المراد الانضمام إليها
+   - ستظهر لك قسم "دعوات الانضمام" في الأعلى إذا كان لديك دعوات معلقة
+   - اضغط على "قبول الدعوة" للانضمام مباشرة
+   - أو "رفض" لإزالة الدعوة من قائمتك
 
-2. **من دعوة بريد إلكتروني**
-   - افتح الرابط المرسل في البريد الإلكتروني
-   - سيتم توجيهك للجلسة مباشرة
+2. **الجلسات المشترك فيها**
+   - الجلسات التي قبلت دعوتها أو أنشأتها ستظهر في قسم "الجلسات النشطة"
+   - اضغط على أي جلسة للدخول إليها والبدء بالعمل التعاوني.
 
 ### العمل داخل الجلسة
 
@@ -270,18 +272,30 @@ service cloud.firestore {
           get(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)).data.role in ['owner', 'admin', 'editor'];
       }
       
-      // النشاطات
+      // قواعد النشاطات
       match /activity/{activityId} {
-        allow read: if request.auth != null;
+        allow read: if request.auth != null && 
+          (request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.participantIds ||
+           exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)));
+        
         allow create: if request.auth != null;
       }
+    }
+
+    // 3. قواعد الدعوات العامة
+    match /invites/{inviteId} {
+      // السماح بالقراءة فقط إذا كان البريد الإلكتروني للمستخدم يطابق الدعوة
+      // أو إذا كان المستخدم هو من أرسل الدعوة
+      allow read: if request.auth != null && 
+        (request.auth.token.email.toLowerCase() == resource.data.email || 
+         request.auth.uid == resource.data.invitedByUid);
       
-      // الدعوات
-      match /invites/{inviteId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && 
-          get(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)).data.role in ['owner', 'admin'];
-      }
+      // السماح بالإنشاء لأي مستخدم مسجل
+      allow create: if request.auth != null;
+      
+      // السماح بالتعديل (قبول/رفض) للمدعو
+      allow update: if request.auth != null && 
+        request.auth.token.email.toLowerCase() == resource.data.email;
     }
   }
 }

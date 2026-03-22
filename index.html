@@ -686,6 +686,39 @@
 
             <!-- Content -->
             <div class="p-4 space-y-4">
+                <!-- الدعوات المعلقة -->
+                <div v-if="pendingInvites.length > 0">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-envelope-open-text text-amber-500"></i>
+                        دعوات الانضمام
+                        <span class="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full">{{ pendingInvites.length }}</span>
+                    </h2>
+                    <div class="space-y-3">
+                        <div v-for="invite in pendingInvites" :key="invite.id" 
+                             class="glass-panel p-4 rounded-xl border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10">
+                            <div class="flex items-start gap-3">
+                                <div class="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user-plus text-amber-600 dark:text-amber-400"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-gray-800 dark:text-white truncate">{{ invite.sessionName }}</h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">بواسطة: {{ invite.invitedBy }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">الدور المقترح: <span class="font-bold text-amber-600">{{ getRoleNameAr(invite.role) }}</span></p>
+                                    
+                                    <div class="flex items-center gap-2 mt-3">
+                                        <button @click="acceptSessionInvite(invite)" class="flex-1 py-2 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition">
+                                            قبول الدعوة
+                                        </button>
+                                        <button @click="rejectSessionInvite(invite.id)" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                                            رفض
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- الجلسات النشطة -->
                 <div v-if="sessions.filter(s => s.status === 'active').length > 0">
                     <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-3">

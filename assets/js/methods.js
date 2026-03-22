@@ -2462,10 +2462,49 @@ const appMethods = {
       }
 
       this.sessions = await sessionsManager.getUserSessions();
-      console.log(`✅ تم تحميل ${this.sessions.length} جلسة`);
+      this.pendingInvites = await sessionsManager.getPendingInvites();
+      console.log(`✅ تم تحميل ${this.sessions.length} جلسة و ${this.pendingInvites.length} دعوة`);
     } catch (error) {
       console.error('❌ خطأ في تحميل الجلسات:', error);
       this.showToast('فشل تحميل الجلسات: ' + (error.message || 'خطأ غير معروف'), 'error');
+    }
+  },
+
+  /**
+   * قبول دعوة
+   */
+  async acceptSessionInvite(invite) {
+    try {
+      if (typeof sessionsManager === 'undefined') return;
+
+      const sessionId = await sessionsManager.acceptInvite(invite.id);
+      this.showToast(`تم قبول الدعوة بنجاح لـ: ${invite.sessionName}`, 'success');
+      
+      // تحديث البيانات
+      await this.loadUserSessions();
+      
+      // الانضمام للجلسة
+      await this.joinSession(sessionId);
+    } catch (error) {
+      console.error('❌ خطأ في قبول الدعوة:', error);
+      this.showToast('فشل قبول الدعوة', 'error');
+    }
+  },
+
+  /**
+   * رفض دعوة
+   */
+  async rejectSessionInvite(inviteId) {
+    try {
+      if (typeof sessionsManager === 'undefined') return;
+      if (!confirm('هل أنت متأكد من رفض هذه الدعوة؟')) return;
+
+      await sessionsManager.rejectInvite(inviteId);
+      this.showToast('تم رفض الدعوة', 'info');
+      await this.loadUserSessions();
+    } catch (error) {
+      console.error('❌ خطأ في رفض الدعوة:', error);
+      this.showToast('فشل رفض الدعوة', 'error');
     }
   },
 
