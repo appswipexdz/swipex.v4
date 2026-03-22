@@ -22,8 +22,14 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 // استخدام دوال Firestore من النطاق العام
-const collection = (dbRef, path, ...pathSegments) => dbRef.collection(path, ...pathSegments);
-const doc = (dbRef, path, ...pathSegments) => dbRef.doc(path, ...pathSegments);
+const collection = (dbRef, ...pathSegments) => {
+  const path = pathSegments.join('/');
+  return dbRef.collection(path);
+};
+const doc = (dbRef, ...pathSegments) => {
+  const path = pathSegments.join('/');
+  return dbRef.doc(path);
+};
 const getDoc = (ref) => ref.get();
 const getDocs = (ref) => ref.get();
 const setDoc = (ref, data) => ref.set(data);
