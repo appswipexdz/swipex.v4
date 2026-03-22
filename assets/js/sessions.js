@@ -56,7 +56,7 @@ let presenceInterval = null; // فاصل تحديث الحضور
  * @param {Object} sessionData - بيانات الجلسة
  * @returns {Promise<string>} - معرف الجلسة
  */
-export async function createSession(sessionData) {
+async function createSession(sessionData) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -143,7 +143,7 @@ export async function createSession(sessionData) {
  * @param {string} sessionId - معرف الجلسة
  * @returns {Promise<Object>} - بيانات الجلسة
  */
-export async function getSession(sessionId) {
+async function getSession(sessionId) {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
     const sessionSnap = await getDoc(sessionRef);
@@ -164,7 +164,7 @@ export async function getSession(sessionId) {
  * @param {string} sessionId - معرف الجلسة
  * @param {Object} updates - التحديثات
  */
-export async function updateSession(sessionId, updates) {
+async function updateSession(sessionId, updates) {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
     await updateDoc(sessionRef, {
@@ -183,7 +183,7 @@ export async function updateSession(sessionId, updates) {
  * حذف جلسة
  * @param {string} sessionId - معرف الجلسة
  */
-export async function deleteSession(sessionId) {
+async function deleteSession(sessionId) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -228,7 +228,7 @@ export async function deleteSession(sessionId) {
  * الحصول على جميع جلسات المستخدم
  * @returns {Promise<Array>} - قائمة الجلسات
  */
-export async function getUserSessions() {
+async function getUserSessions() {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -275,7 +275,7 @@ export async function getUserSessions() {
  * @param {string} sessionId - معرف الجلسة
  * @param {Object} participantData - بيانات المشارك
  */
-export async function addParticipant(sessionId, participantData) {
+async function addParticipant(sessionId, participantData) {
   try {
     const participantRef = doc(db, 'sessions', sessionId, 'participants', participantData.uid);
     await setDoc(participantRef, {
@@ -304,7 +304,7 @@ export async function addParticipant(sessionId, participantData) {
  * @param {string} email - البريد الإلكتروني
  * @param {string} role - الدور (editor, viewer)
  */
-export async function inviteUser(sessionId, email, role = 'editor') {
+async function inviteUser(sessionId, email, role = 'editor') {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -354,7 +354,7 @@ export async function inviteUser(sessionId, email, role = 'editor') {
  * @param {string} sessionId - معرف الجلسة
  * @param {string} inviteId - معرف الدعوة
  */
-export async function acceptInvite(sessionId, inviteId) {
+async function acceptInvite(sessionId, inviteId) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -420,7 +420,7 @@ export async function acceptInvite(sessionId, inviteId) {
  * @param {string} userId - معرف المستخدم
  * @returns {Promise<Object>} - بيانات المشارك
  */
-export async function getParticipant(sessionId, userId) {
+async function getParticipant(sessionId, userId) {
   try {
     const participantRef = doc(db, 'sessions', sessionId, 'participants', userId);
     const participantSnap = await getDoc(participantRef);
@@ -441,7 +441,7 @@ export async function getParticipant(sessionId, userId) {
  * @param {string} sessionId - معرف الجلسة
  * @returns {Promise<Array>} - قائمة المشاركين
  */
-export async function getParticipants(sessionId) {
+async function getParticipants(sessionId) {
   try {
     const participantsRef = collection(db, 'sessions', sessionId, 'participants');
     const participantsSnap = await getDocs(participantsRef);
@@ -464,7 +464,7 @@ export async function getParticipants(sessionId) {
  * @param {string} userId - معرف المستخدم
  * @param {string} newRole - الدور الجديد
  */
-export async function updateParticipantRole(sessionId, userId, newRole) {
+async function updateParticipantRole(sessionId, userId, newRole) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -498,7 +498,7 @@ export async function updateParticipantRole(sessionId, userId, newRole) {
  * @param {string} sessionId - معرف الجلسة
  * @param {string} userId - معرف المستخدم
  */
-export async function removeParticipant(sessionId, userId) {
+async function removeParticipant(sessionId, userId) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -536,7 +536,7 @@ export async function removeParticipant(sessionId, userId) {
  * @param {string} sessionId - معرف الجلسة
  * @param {Array} parcels - قائمة الطرود
  */
-export async function addParcelsToSession(sessionId, parcels) {
+async function addParcelsToSession(sessionId, parcels) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -599,7 +599,7 @@ export async function addParcelsToSession(sessionId, parcels) {
  * @param {string} parcelId - معرف الطرد
  * @param {Object} updates - التحديثات
  */
-export async function updateSessionParcel(sessionId, parcelId, updates) {
+async function updateSessionParcel(sessionId, parcelId, updates) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -673,7 +673,7 @@ export async function updateSessionParcel(sessionId, parcelId, updates) {
  * @param {string} sessionId - معرف الجلسة
  * @param {string} parcelId - معرف الطرد
  */
-export async function lockParcel(sessionId, parcelId) {
+async function lockParcel(sessionId, parcelId) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
@@ -697,7 +697,7 @@ export async function lockParcel(sessionId, parcelId) {
  * @param {string} sessionId - معرف الجلسة
  * @param {string} parcelId - معرف الطرد
  */
-export async function unlockParcel(sessionId, parcelId) {
+async function unlockParcel(sessionId, parcelId) {
   try {
     const parcelRef = doc(db, 'sessions', sessionId, 'parcels', parcelId);
     await updateDoc(parcelRef, {
@@ -718,7 +718,7 @@ export async function unlockParcel(sessionId, parcelId) {
  * @param {string} sessionId - معرف الجلسة
  * @returns {Promise<Array>} - قائمة الطرود
  */
-export async function getSessionParcels(sessionId) {
+async function getSessionParcels(sessionId) {
   try {
     const parcelsRef = collection(db, 'sessions', sessionId, 'parcels');
     const parcelsSnap = await getDocs(parcelsRef);
@@ -745,7 +745,7 @@ export async function getSessionParcels(sessionId) {
  * @param {Function} onUpdate - دالة التحديث
  * @returns {Function} - دالة إلغاء الاستماع
  */
-export function listenToSession(sessionId, onUpdate) {
+function listenToSession(sessionId, onUpdate) {
   try {
     const sessionRef = doc(db, 'sessions', sessionId);
     
@@ -771,7 +771,7 @@ export function listenToSession(sessionId, onUpdate) {
  * @param {Function} onUpdate - دالة التحديث
  * @returns {Function} - دالة إلغاء الاستماع
  */
-export function listenToSessionParcels(sessionId, onUpdate) {
+function listenToSessionParcels(sessionId, onUpdate) {
   try {
     const parcelsRef = collection(db, 'sessions', sessionId, 'parcels');
     
@@ -798,7 +798,7 @@ export function listenToSessionParcels(sessionId, onUpdate) {
  * @param {Function} onUpdate - دالة التحديث
  * @returns {Function} - دالة إلغاء الاستماع
  */
-export function listenToParticipants(sessionId, onUpdate) {
+function listenToParticipants(sessionId, onUpdate) {
   try {
     const participantsRef = collection(db, 'sessions', sessionId, 'participants');
     
@@ -824,7 +824,7 @@ export function listenToParticipants(sessionId, onUpdate) {
  * إيقاف جميع مستمعي الجلسة
  * @param {string} sessionId - معرف الجلسة (اختياري)
  */
-export function stopListening(sessionId = null) {
+function stopListening(sessionId = null) {
   try {
     if (sessionId) {
       // إيقاف مستمعي جلسة محددة
@@ -856,7 +856,7 @@ export function stopListening(sessionId = null) {
  * @param {string} sessionId - معرف الجلسة
  * @param {boolean} isOnline - حالة الاتصال
  */
-export async function updatePresence(sessionId, isOnline = true) {
+async function updatePresence(sessionId, isOnline = true) {
   try {
     const user = auth.currentUser;
     if (!user) return;
@@ -875,7 +875,7 @@ export async function updatePresence(sessionId, isOnline = true) {
  * بدء تتبع الحضور التلقائي
  * @param {string} sessionId - معرف الجلسة
  */
-export function startPresenceTracking(sessionId) {
+function startPresenceTracking(sessionId) {
   try {
     // تحديث الحضور كل 30 ثانية
     presenceInterval = setInterval(() => {
@@ -909,7 +909,7 @@ export function startPresenceTracking(sessionId) {
  * إيقاف تتبع الحضور
  * @param {string} sessionId - معرف الجلسة
  */
-export function stopPresenceTracking(sessionId) {
+function stopPresenceTracking(sessionId) {
   try {
     if (presenceInterval) {
       clearInterval(presenceInterval);
@@ -932,7 +932,7 @@ export function stopPresenceTracking(sessionId) {
  * @param {string} sessionId - معرف الجلسة
  * @param {Object} activity - بيانات النشاط
  */
-export async function logActivity(sessionId, activity) {
+async function logActivity(sessionId, activity) {
   try {
     const activityId = `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const activityRef = doc(db, 'sessions', sessionId, 'activity', activityId);
@@ -953,7 +953,7 @@ export async function logActivity(sessionId, activity) {
  * @param {number} limit - عدد النشاطات (افتراضي 50)
  * @returns {Promise<Array>} - قائمة النشاطات
  */
-export async function getActivityLog(sessionId, limit = 50) {
+async function getActivityLog(sessionId, limit = 50) {
   try {
     const activityRef = collection(db, 'sessions', sessionId, 'activity');
     const q = query(activityRef, orderBy('timestamp', 'desc'));
@@ -1015,7 +1015,7 @@ async function updateSessionStats(sessionId, oldStatus, newStatus) {
  * @param {string} sessionId - معرف الجلسة
  * @returns {Promise<Object>} - الإحصائيات
  */
-export async function getSessionStats(sessionId) {
+async function getSessionStats(sessionId) {
   try {
     const session = await getSession(sessionId);
     const participants = await getParticipants(sessionId);
@@ -1067,7 +1067,7 @@ export async function getSessionStats(sessionId) {
  * @param {string} requiredRole - الدور المطلوب
  * @returns {Promise<boolean>} - هل لديه الصلاحية
  */
-export async function checkPermission(sessionId, requiredRole) {
+async function checkPermission(sessionId, requiredRole) {
   try {
     const user = auth.currentUser;
     if (!user) return false;
@@ -1091,7 +1091,7 @@ export async function checkPermission(sessionId, requiredRole) {
  * تنظيف الجلسات القديمة
  * @param {number} daysOld - عدد الأيام
  */
-export async function cleanupOldSessions(daysOld = 30) {
+async function cleanupOldSessions(daysOld = 30) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error('يجب تسجيل الدخول أولاً');
