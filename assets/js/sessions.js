@@ -163,7 +163,7 @@ async function getSession(sessionId) {
     const sessionRef = doc(db, 'sessions', sessionId);
     const sessionSnap = await getDoc(sessionRef);
     
-    if (!sessionSnap.exists()) {
+    if (!sessionSnap.exists) {
       throw new Error('الجلسة غير موجودة');
     }
 
@@ -266,18 +266,18 @@ async function getUserSessions() {
 
     for (const sessionDoc of sessionsSnap.docs) {
       try {
-        const sessionData = sessionDoc.data();
-        const participantRef = doc(db, 'sessions', sessionDoc.id, 'participants', user.uid);
-        const participantSnap = await getDoc(participantRef);
-        
-        if (participantSnap.exists()) {
-          sessions.push({
-            id: sessionDoc.id,
-            ...sessionData,
-            myRole: participantSnap.data().role
-          });
-        }
-      } catch (e) {
+          const sessionData = sessionDoc.data();
+          const participantRef = doc(db, 'sessions', sessionDoc.id, 'participants', user.uid);
+          const participantSnap = await getDoc(participantRef);
+          
+          if (participantSnap.exists) {
+            sessions.push({
+              id: sessionDoc.id,
+              ...sessionData,
+              myRole: participantSnap.data().role
+            });
+          }
+        } catch (e) {
         console.warn(`⚠️ فشل جلب بيانات المشارك للجلسة ${sessionDoc.id}:`, e);
       }
     }
@@ -394,7 +394,7 @@ async function acceptInvite(sessionId, inviteId) {
     const inviteRef = doc(db, 'sessions', sessionId, 'invites', inviteId);
     const inviteSnap = await getDoc(inviteRef);
     
-    if (!inviteSnap.exists()) {
+    if (!inviteSnap.exists) {
       throw new Error('الدعوة غير موجودة');
     }
 
@@ -456,7 +456,7 @@ async function getParticipant(sessionId, userId) {
     const participantRef = doc(db, 'sessions', sessionId, 'participants', userId);
     const participantSnap = await getDoc(participantRef);
     
-    if (!participantSnap.exists()) {
+    if (!participantSnap.exists) {
       throw new Error('المشارك غير موجود');
     }
 
@@ -788,7 +788,7 @@ function listenToSession(sessionId, onUpdate) {
     const sessionRef = doc(db, 'sessions', sessionId);
     
     const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
-      if (snapshot.exists()) {
+      if (snapshot.exists) {
         onUpdate({ id: snapshot.id, ...snapshot.data() });
       }
     }, (error) => {
