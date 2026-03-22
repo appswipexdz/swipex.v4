@@ -247,7 +247,16 @@ async function getUserSessions() {
     // البحث في الجلسات التي المستخدم مشارك فيها
     // ملاحظة: تم إضافة participantIds لدعم الاستعلام بكفاءة وأمان
     const q = query(collection(db, 'sessions'), where('participantIds', 'array-contains', user.uid));
-    const sessionsSnap = await getDocs(q);
+    
+    let sessionsSnap;
+    try {
+      sessionsSnap = await getDocs(q);
+    } catch (e) {
+      if (e.code === 'permission-denied') {
+        throw new Error('ليس لديك صلاحية الوصول للجلسات. يرجى التأكد من تحديث قواعد Firestore في Firebase Console.');
+      }
+      throw e;
+    }
 
     for (const sessionDoc of sessionsSnap.docs) {
       try {

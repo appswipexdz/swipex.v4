@@ -235,7 +235,7 @@ sessions/
 
 ### 3. تحديث قواعد Firestore
 
-أضف هذه القواعد في Firebase Console:
+أضف هذه القواعد في Firebase Console لضمان عمل المزامنة والاستعلام بكفاءة:
 
 ```javascript
 rules_version = '2';
@@ -244,11 +244,15 @@ service cloud.firestore {
     // قواعد الجلسات
     match /sessions/{sessionId} {
       // السماح بالقراءة للمشاركين فقط
+      // تدعم القراءة الفردية والاستعلام عن القائمة
       allow read: if request.auth != null && 
-        exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+        (request.auth.uid in resource.data.participantIds || 
+         exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)));
       
-      // السماح بالكتابة للمالك فقط
-      allow write: if request.auth != null && 
+      // السماح بالإنشاء لأي مستخدم مسجل
+      // السماح بالتعديل والحذف للمالك فقط
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
         resource.data.createdByUid == request.auth.uid;
       
       // المشاركون
