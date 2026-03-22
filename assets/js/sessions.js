@@ -17,28 +17,26 @@
  * @date 2026-03-22
  */
 
-// استخدام Firebase عبر CDN (compat mode)
-const { 
-  collection: _collection, 
-  doc: _doc, 
-  getDoc: _getDoc, 
-  getDocs: _getDocs, 
-  setDoc: _setDoc, 
-  updateDoc: _updateDoc, 
-  deleteDoc: _deleteDoc,
-  query: _query, 
-  where: _where, 
-  orderBy: _orderBy,
-  onSnapshot: _onSnapshot,
-  serverTimestamp: _serverTimestamp,
-  arrayUnion: _arrayUnion,
-  arrayRemove: _arrayRemove,
-  Timestamp: _Timestamp
-} = firebase.firestore;
-
 // توفير db و auth من النطاق العام
 const db = firebase.firestore();
 const auth = firebase.auth();
+
+// استخدام دوال Firestore من النطاق العام
+const collection = (path, ...pathSegments) => db.collection(path, ...pathSegments);
+const doc = (path, ...pathSegments) => db.doc(path, ...pathSegments);
+const getDoc = (ref) => ref.get();
+const getDocs = (ref) => ref.get();
+const setDoc = (ref, data) => ref.set(data);
+const updateDoc = (ref, data) => ref.update(data);
+const deleteDoc = (ref) => ref.delete();
+const query = (ref, ...queryConstraints) => ref.where(...queryConstraints);
+const where = (field, op, value) => db.where(field, op, value);
+const orderBy = (field, direction) => db.orderBy(field, direction);
+const onSnapshot = (ref, onNext, onError) => ref.onSnapshot(onNext, onError);
+const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+const arrayUnion = (...elements) => firebase.firestore.FieldValue.arrayUnion(...elements);
+const arrayRemove = (...elements) => firebase.firestore.FieldValue.arrayRemove(...elements);
+const Timestamp = firebase.firestore.Timestamp;
 
 // ═══════════════════════════════════════════════════════════════
 // 🔧 متغيرات عامة
