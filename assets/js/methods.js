@@ -4,6 +4,27 @@
 // ============================================
 
 const appMethods = {
+  // ========== UI & Toasts ==========
+  showToast(message, type = 'info', duration = 3000) {
+    const id = Date.now();
+    this.toasts.push({ id, message, type });
+    
+    // إزالة التوست بعد المدة المحددة
+    setTimeout(() => {
+      this.toasts = this.toasts.filter(t => t.id !== id);
+    }, duration);
+
+    // إضافة لإشعارات النظام الدائمة أيضاً
+    if (type === 'error' || type === 'success') {
+      this.addNotification({
+        title: type === 'error' ? 'خطأ' : 'نجاح',
+        message: message,
+        type: type,
+        time: new Date().toISOString()
+      });
+    }
+  },
+
   // ========== Scroll Header ==========
   handleScroll() {
     const currentScrollY = window.scrollY;

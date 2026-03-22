@@ -65,6 +65,7 @@ showYalidineMenu: false,
     isListeningForTask: false,
     isListeningForEditTask: false,
     isPageLoading: true,
+    toasts: [], // نظام الإشعارات المؤقتة
     statusList: [
         { name: "دون إجراء", color: "border-gray-300", dot: "bg-gray-400", icon: "fa-hourglass-start" },
         { name: "في الإنتظار", color: "border-orange-400", dot: "bg-orange-400", icon: "fa-clock" },

@@ -69,6 +69,7 @@ async function createSession(sessionData) {
       description: sessionData.description || '',
       createdBy: user.email,
       createdByUid: user.uid,
+      participantIds: [user.uid], // قائمة المعرفات للمشاركين لسهولة الاستعلام
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       status: 'active', // active, paused, ended, archived
@@ -233,18 +234,20 @@ async function getUserSessions() {
 
     const sessions = [];
     
-    // البحث في جميع الجلسات التي المستخدم مشارك فيها
-    const sessionsRef = collection(db, 'sessions');
-    const sessionsSnap = await getDocs(sessionsRef);
+    // البحث في الجلسات التي المستخدم مشارك فيها
+    // ملاحظة: تم إضافة participantIds لدعم الاستعلام بكفاءة وأمان
+    const q = query(collection(db, 'sessions'), where('participantIds', 'array-contains', user.uid));
+    const sessionsSnap = await getDocs(q);
 
     for (const sessionDoc of sessionsSnap.docs) {
+      const sessionData = sessionDoc.data();
       const participantRef = doc(db, 'sessions', sessionDoc.id, 'participants', user.uid);
       const participantSnap = await getDoc(participantRef);
       
       if (participantSnap.exists()) {
         sessions.push({
           id: sessionDoc.id,
-          ...sessionDoc.data(),
+          ...sessionData,
           myRole: participantSnap.data().role
         });
       }
@@ -283,10 +286,11 @@ async function addParticipant(sessionId, participantData) {
       lastSeen: serverTimestamp()
     });
 
-    // تحديث عداد المشاركين
+    // تحديث عداد المشاركين وقائمة المعرفات
     const sessionRef = doc(db, 'sessions', sessionId);
     await updateDoc(sessionRef, {
-      'stats.participantsCount': arrayUnion(participantData.uid).length
+      'stats.participantsCount': arrayUnion(participantData.uid).length,
+      'participantIds': arrayUnion(participantData.uid)
     });
 
     console.log('✅ تم إضافة المشارك بنجاح');
@@ -509,6 +513,12 @@ async function removeParticipant(sessionId, userId) {
 
     const participantRef = doc(db, 'sessions', sessionId, 'participants', userId);
     await deleteDoc(participantRef);
+
+    // تحديث قائمة المعرفات في الجلسة
+    const sessionRef = doc(db, 'sessions', sessionId);
+    await updateDoc(sessionRef, {
+      'participantIds': arrayRemove(userId)
+    });
 
     // تسجيل النشاط
     await logActivity(sessionId, {

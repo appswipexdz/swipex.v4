@@ -3485,6 +3485,28 @@
         <!-- Yalidine Menu Overlay -->
         <div v-if="showYalidineMenu" @click="showYalidineMenu = false" class="fixed inset-0 z-40"></div>
 
+        <!-- Toasts Container -->
+        <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-[90%] pointer-events-none">
+            <transition-group name="toast">
+                <div v-for="toast in toasts" :key="toast.id" 
+                     class="px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto backdrop-blur-md animate-toast-in"
+                     :class="{
+                         'bg-gray-800/90 text-white': toast.type === 'info',
+                         'bg-green-600/90 text-white': toast.type === 'success',
+                         'bg-red-600/90 text-white': toast.type === 'error',
+                         'bg-amber-500/90 text-white': toast.type === 'warning'
+                     }">
+                    <i class="fas" :class="{
+                        'fa-info-circle': toast.type === 'info',
+                        'fa-check-circle': toast.type === 'success',
+                        'fa-exclamation-circle': toast.type === 'error',
+                        'fa-exclamation-triangle': toast.type === 'warning'
+                    }"></i>
+                    <span class="text-sm font-bold">{{ toast.message }}</span>
+                </div>
+            </transition-group>
+        </div>
+
     </div>
 
     <!-- Custom Scripts -->
