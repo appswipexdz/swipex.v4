@@ -3293,36 +3293,111 @@
 
             <!-- Content - قائمة الطرود -->
             <div class="p-4 space-y-3">
-                <div v-for="parcel in sessionParcels" :key="parcel.id" class="glass-panel p-4 rounded-xl">
-                    <div class="flex items-start gap-3">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-2">
-                                <h3 class="font-bold text-gray-800 dark:text-white">{{ parcel.receiver }}</h3>
+                <div v-for="parcel in sessionParcels" :key="parcel.id" 
+                     class="glass-panel rounded-2xl overflow-hidden border-r-4 transition-all"
+                     :class="{
+                        'border-green-500 bg-green-50/10': parcel.status === 'تم التسليم ✓',
+                        'border-red-500 bg-red-50/10': parcel.status === 'إلغاء الطلبية ✗',
+                        'border-yellow-400 bg-yellow-50/10': ['لا يرد ☎', 'مغلق 🔒', 'رقم خاطئ ⚠'].includes(parcel.status),
+                        'border-gray-300': !['تم التسليم ✓', 'إلغاء الطلبية ✗', 'لا يرد ☎', 'مغلق 🔒', 'رقم خاطئ ⚠'].includes(parcel.status)
+                     }">
+                    
+                    <div class="p-4" @click="parcel.expanded = !parcel.expanded">
+                        <!-- Header: Tracking & Municipality -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-gray-800 dark:bg-gray-900 text-white px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-sm">
+                                    {{ parcel.tracking }}
+                                </span>
+                                <span v-if="parcel.municipality" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-200 dark:border-gray-700">
+                                    {{ parcel.municipality }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
                                 <span v-if="parcel.lockedBy && parcel.lockedBy !== currentUser?.uid" 
-                                      class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 text-xs font-bold">
+                                      class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 text-[10px] font-bold">
                                     <i class="fas fa-lock ml-1"></i>
                                     {{ parcel.lockedByEmail?.split('@')[0] }}
                                 </span>
+                                <i class="fas" :class="parcel.expanded ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-gray-400 text-xs"></i>
                             </div>
-                            <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                <div><i class="fas fa-phone ml-1"></i>{{ parcel.phone }}</div>
-                                <div><i class="fas fa-map-marker-alt ml-1"></i>{{ parcel.municipality }}</div>
-                                <div><i class="fas fa-barcode ml-1"></i>{{ parcel.tracking }}</div>
+                        </div>
+
+                        <!-- Body: Receiver & Phone -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-gray-800 dark:text-white text-base truncate">{{ parcel.receiver }}</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-sm font-mono text-gray-500 dark:text-gray-400">{{ parcel.phone }}</span>
+                                    <span v-if="parcel.phone2" class="text-xs font-mono text-gray-400 opacity-60">| {{ parcel.phone2 }}</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2 mt-2">
-                                <span class="px-2 py-1 rounded-lg text-xs font-bold" :class="getStatusColor(parcel.status)">
+                            
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm" :class="getStatusColor(parcel.status)">
                                     {{ parcel.status }}
-                                </span>
-                                <span v-if="parcel.lastModifiedBy" class="text-xs text-gray-400">
-                                    {{ parcel.lastModifiedBy.split('@')[0] }} • {{ formatActivityTime(parcel.lastModifiedAt) }}
                                 </span>
                             </div>
                         </div>
-                        <button v-if="canEditSession()" @click="statusModalParcel = parcel" 
-                                class="w-8 h-8 rounded-lg glass-panel flex items-center justify-center hover:scale-110 transition">
-                            <i class="fas fa-ellipsis-v text-gray-600 dark:text-gray-300"></i>
-                        </button>
+
+                        <!-- Quick Info (Tag, Note) -->
+                        <div class="flex items-center gap-3 mt-3">
+                            <div v-if="parcel.tag" class="flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                <i class="fas fa-at"></i>
+                                {{ parcel.tag }}
+                            </div>
+                            <div v-if="parcel.notes" class="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
+                                <i class="fas fa-sticky-note opacity-60"></i>
+                                {{ parcel.notes }}
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Expanded Content -->
+                    <transition name="fade">
+                        <div v-if="parcel.expanded" class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                            <div class="space-y-4">
+                                <!-- Notes & Tags -->
+                                <div class="space-y-3">
+                                    <div v-if="parcel.notes" class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30">
+                                        <p class="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">{{ parcel.notes }}</p>
+                                    </div>
+                                    <div v-if="parcel.tag" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs font-bold w-fit">
+                                        <i class="fas fa-at"></i>
+                                        {{ parcel.tag }}
+                                    </div>
+                                </div>
+
+                                <!-- Metadata -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div v-if="parcel.sender" class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                                        <span class="block text-[10px] text-gray-400 mb-1">المرسل</span>
+                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ parcel.sender }}</span>
+                                    </div>
+                                    <div v-if="parcel.type" class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                                        <span class="block text-[10px] text-gray-400 mb-1">نوع الطرد</span>
+                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ parcel.type }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex items-center gap-2 pt-2">
+                                    <a :href="'tel:' + parcel.phone" class="flex-1 py-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-blue-500/30 active:scale-95 transition">
+                                        <i class="fas fa-phone-alt"></i>
+                                        اتصال
+                                    </a>
+                                    <a :href="'https://wa.me/213' + formatPhoneForWa(parcel.phone)" target="_blank" class="flex-1 py-2.5 rounded-xl bg-green-500 text-white flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-green-500/30 active:scale-95 transition">
+                                        <i class="fab fa-whatsapp"></i>
+                                        واتساب
+                                    </a>
+                                    <button v-if="canEditSession()" @click.stop="statusModalParcel = parcel" 
+                                            class="w-12 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center border border-gray-200 dark:border-gray-700 active:scale-95 transition">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </transition>
                 </div>
 
                 <!-- رسالة عدم وجود طرود -->

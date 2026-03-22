@@ -474,6 +474,9 @@ async function getPendingInvites() {
     const user = auth.currentUser;
     if (!user) return [];
 
+    console.log('🔍 البحث عن دعوات لـ:', user.email.toLowerCase());
+    
+    // Firestore queries are case-sensitive, and we store emails in lowercase
     const q = query(collection(db, 'invites'), 
                   where('email', '==', user.email.toLowerCase()),
                   where('status', '==', 'pending'));
@@ -483,6 +486,8 @@ async function getPendingInvites() {
     snap.forEach(doc => {
       invites.push({ id: doc.id, ...doc.data() });
     });
+    
+    console.log('📦 تم العثور على', invites.length, 'دعوة معلقة');
     return invites;
   } catch (error) {
     console.error('❌ خطأ في جلب الدعوات:', error);

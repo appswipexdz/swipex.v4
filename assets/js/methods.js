@@ -2736,8 +2736,27 @@ const appMethods = {
         return;
       }
 
+      // 1. تحديث الطرد في Firestore (الجلسة)
       await sessionsManager.updateSessionParcel(this.currentSession.id, parcelId, updates);
       console.log('✅ تم تحديث الطرد في الجلسة');
+
+      // 2. تحديث الطرد في appState المحلي (الطرد الأصلي)
+      // نبحث عن الطرد في القائمة المحلية باستخدام رقم التتبع
+      const parcelInSession = this.sessionParcels.find(p => p.id === parcelId);
+      if (parcelInSession) {
+        const tracking = parcelInSession.tracking;
+        const localParcelIndex = this.parcels.findIndex(p => p.tracking === tracking);
+        
+        if (localParcelIndex !== -1) {
+          // دمج التحديثات في الطرد المحلي
+          const localParcel = this.parcels[localParcelIndex];
+          this.parcels[localParcelIndex] = { ...localParcel, ...updates };
+          
+          // حفظ التغييرات محلياً وفي سحابة المستخدم الخاصة
+          this.saveData();
+          console.log('✅ تم تحديث الطرد الأصلي محلياً');
+        }
+      }
 
     } catch (error) {
       console.error('❌ خطأ في تحديث الطرد:', error);
