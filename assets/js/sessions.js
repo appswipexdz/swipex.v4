@@ -13,29 +13,32 @@
  * - تتبع المستخدمين النشطين
  * - سجل التغييرات والنشاطات
  * 
- * @version 1.0.0
+ * @version 1.0.1
  * @date 2026-03-22
  */
 
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc,
-  query, 
-  where, 
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove,
-  Timestamp
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+// استخدام Firebase عبر CDN (compat mode)
+const { 
+  collection: _collection, 
+  doc: _doc, 
+  getDoc: _getDoc, 
+  getDocs: _getDocs, 
+  setDoc: _setDoc, 
+  updateDoc: _updateDoc, 
+  deleteDoc: _deleteDoc,
+  query: _query, 
+  where: _where, 
+  orderBy: _orderBy,
+  onSnapshot: _onSnapshot,
+  serverTimestamp: _serverTimestamp,
+  arrayUnion: _arrayUnion,
+  arrayRemove: _arrayRemove,
+  Timestamp: _Timestamp
+} = firebase.firestore;
 
-import { db, auth } from './firestoreSync.js';
+// توفير db و auth من النطاق العام
+const db = firebase.firestore();
+const auth = firebase.auth();
 
 // ═══════════════════════════════════════════════════════════════
 // 🔧 متغيرات عامة
@@ -1117,10 +1120,11 @@ export async function cleanupOldSessions(daysOld = 30) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 📤 التصدير
+// 📤 التصدير - إضافة للدالة على window
 // ═══════════════════════════════════════════════════════════════
 
-export default {
+// إضافة جميع الدوال على window.sessionsManager
+window.sessionsManager = {
   // إدارة الجلسات
   createSession,
   getSession,
@@ -1166,3 +1170,5 @@ export default {
   checkPermission,
   cleanupOldSessions
 };
+
+console.log('✅ تم تحميل مدير الجلسات التعاونية');
