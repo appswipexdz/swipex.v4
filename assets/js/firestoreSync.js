@@ -57,7 +57,11 @@ const firestoreSync = {
                 data: JSON.stringify(parcels),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            this._retryCount = 0; // إعادة تعيين عدد المحاولات عند النجاح
+            
+            // تحديث metadata
+            await this.updateMetadata(['parcels']);
+            
+            this._retryCount = 0;
             this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             console.log('✓ تم حفظ الطرود في Firestore بنجاح');
             return true;
@@ -65,7 +69,6 @@ const firestoreSync = {
             console.error('❌ فشل حفظ الطرود:', e.message);
             this.updateSyncStatus('error');
             
-            // محاولة إعادة الحفظ في حالة الخطأ المؤقت
             if (navigator.onLine && this._retryCount < this._maxRetries) {
                 this._retryCount++;
                 console.log(`🔄 إعادة محاولة الحفظ (محاولة ${this._retryCount}/${this._maxRetries})...`);
@@ -86,6 +89,7 @@ const firestoreSync = {
                 data: JSON.stringify(settings),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            await this.updateMetadata(['settings']);
             return true;
         } catch (e) {
             console.error('firestoreSync.saveSettings:', e);
@@ -101,6 +105,7 @@ const firestoreSync = {
                 data: JSON.stringify(archive),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            await this.updateMetadata(['archive']);
             return true;
         } catch (e) {
             console.error('firestoreSync.saveArchive:', e);
@@ -116,6 +121,7 @@ const firestoreSync = {
                 data: JSON.stringify(tasks),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            await this.updateMetadata(['tasks']);
             return true;
         } catch (e) {
             console.error('firestoreSync.saveTasks:', e);
@@ -253,6 +259,66 @@ const firestoreSync = {
         } catch (e) {
             console.error('خطأ في loadAll:', e);
             return null;
+        }
+    },
+
+    // ============ Load Cloud Metadata (Timestamps) ============
+    async loadCloudMetadata() {
+        if (!this.isAvailable()) {
+            return null;
+        }
+        
+        try {
+            const uid = this.getUid();
+            const metadataRef = window.db.collection('users').doc(uid).collection('data').doc('_metadata');
+            const snap = await metadataRef.get();
+            
+            if (!snap.exists) {
+                console.log('⚠ لا توجد metadata في السحابة');
+                return null;
+            }
+            
+            const metadata = snap.data();
+            console.log('✓ تم تحميل metadata من السحابة:', {
+                parcelsUpdatedAt: metadata.parcelsUpdatedAt?.toMillis?.() || 0,
+                settingsUpdatedAt: metadata.settingsUpdatedAt?.toMillis?.() || 0,
+                archiveUpdatedAt: metadata.archiveUpdatedAt?.toMillis?.() || 0,
+                tasksUpdatedAt: metadata.tasksUpdatedAt?.toMillis?.() || 0
+            });
+            return metadata;
+        } catch (e) {
+            console.error('خطأ في تحميل metadata:', e);
+            return null;
+        }
+    },
+
+    // تحديث metadata (يتم استدعاؤه عند الحفظ)
+    async updateMetadata(updatedCollections) {
+        if (!this.isAvailable()) return false;
+        
+        try {
+            const uid = this.getUid();
+            const metadataRef = window.db.collection('users').doc(uid).collection('data').doc('_metadata');
+            
+            const updateData = {};
+            if (updatedCollections.includes('parcels')) {
+                updateData.parcelsUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+            }
+            if (updatedCollections.includes('settings')) {
+                updateData.settingsUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+            }
+            if (updatedCollections.includes('archive')) {
+                updateData.archiveUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+            }
+            if (updatedCollections.includes('tasks')) {
+                updateData.tasksUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+            }
+            
+            await metadataRef.update(updateData);
+            return true;
+        } catch (e) {
+            console.error('خطأ في تحديث metadata:', e);
+            return false;
         }
     },
 

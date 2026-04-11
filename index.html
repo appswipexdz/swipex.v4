@@ -226,9 +226,43 @@
                             <i class="fas text-sm transition-transform duration-300" :class="showFilters ? 'fa-times rotate-90' : 'fa-search rotate-0'"></i>
                         </button>
                     </div>
-                    <!-- LEFT side in RTL: App icon -->
-                    <div class="flex items-center">
+                    <!-- LEFT side in RTL: App icon + Connection & Sync Status -->
+                    <div class="flex items-center gap-3">
                         <img src="assets/icons/logo.png" alt="SwiPex" class="h-7 rounded-lg">
+                        
+                        <!-- Sync Status Indicator -->
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+                            <!-- Sync Status Icon & Text -->
+                            <div v-if="syncStatus === 'syncing'" class="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                                <i class="fas fa-circle-notch animate-spin text-sm"></i>
+                                <span class="hidden sm:inline">مزامنة...</span>
+                            </div>
+                            <div v-else-if="syncStatus === 'synced'" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
+                                <i class="fas fa-check-circle text-sm"></i>
+                                <span class="hidden sm:inline">محفوظ</span>
+                            </div>
+                            <div v-else-if="syncStatus === 'error'" class="flex items-center gap-1.5 text-xs font-bold text-red-300">
+                                <i class="fas fa-exclamation-circle text-sm"></i>
+                                <span class="hidden sm:inline">خطأ</span>
+                            </div>
+                            <div v-else class="flex items-center gap-1.5 text-xs font-bold text-gray-300">
+                                <i class="fas fa-pause-circle text-sm"></i>
+                                <span class="hidden sm:inline">جاهز</span>
+                            </div>
+                            
+                            <!-- Separator -->
+                            <div class="h-3 w-px bg-white/20"></div>
+                            
+                            <!-- Connection Status -->
+                            <div v-if="isOnline" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
+                                <i class="fas fa-wifi text-sm"></i>
+                                <span class="hidden sm:inline">متصل</span>
+                            </div>
+                            <div v-else class="flex items-center gap-1.5 text-xs font-bold text-orange-300">
+                                <i class="fas fa-wifi-slash text-sm"></i>
+                                <span class="hidden sm:inline">منقطع</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

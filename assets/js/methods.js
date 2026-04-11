@@ -192,29 +192,104 @@ const appMethods = {
     });
   },
 
-  applyCloudData(cloud) {
-    let loaded = false;
-    if (cloud) {
-      if (cloud.parcels && cloud.parcels.length > 0) {
-        this.parcels = cloud.parcels;
-        loaded = true;
-        console.log("✓ تم تحميل الطرود من السحابة:", cloud.parcels.length);
-      }
-      if (cloud.settings && typeof cloud.settings === "object") {
-        const { _sessionDate, ...restSettings } = cloud.settings;
-        if (_sessionDate) this.sessionDate = _sessionDate;
-        this.settings = { ...this.settings, ...restSettings };
-        console.log("✓ تم تحميل الإعدادات من السحابة");
-      }
-      if (cloud.archive && typeof cloud.archive === "object") {
-        this.archive = cloud.archive;
-        console.log("✓ تم تحميل الأرشيف من السحابة");
-      }
-      if (cloud.tasks && cloud.tasks.length > 0) {
-        this.tasks = cloud.tasks;
-        console.log("✓ تم تحميل المهام من السحابة:", cloud.tasks.length);
+  // اختيار أحدث نسخة من البيانات: مقارنة timestamps
+  selectLatestVersion(localData, cloudData, cloudMetadata, collectionName) {
+    // إذا لا توجد بيانات سحابية، استخدم المحلية
+    if (!cloudData) {
+      console.log(`📦 استخدام البيانات المحلية (${collectionName}): لا توجد بيانات سحابية`);
+      return localData;
+    }
+
+    // إذا لا توجد بيانات محلية، استخدم السحابية
+    if (!localData) {
+      console.log(`☁️ استخدام البيانات السحابية (${collectionName}): لا توجد بيانات محلية`);
+      return cloudData;
+    }
+
+    // الحصول على timestamps
+    const localTimestamp = localData?.lastUpdate ? new Date(localData.lastUpdate).getTime() : 0;
+    
+    let cloudTimestamp = 0;
+    if (cloudMetadata) {
+      const metadataKey = `${collectionName}UpdatedAt`;
+      if (cloudMetadata[metadataKey]) {
+        cloudTimestamp = cloudMetadata[metadataKey].toMillis?.() || new Date(cloudMetadata[metadataKey]).getTime();
       }
     }
+
+    // مقارنة والاختيار
+    if (cloudTimestamp > localTimestamp) {
+      console.log(
+        `☁️ استخدام البيانات السحابية لـ "${collectionName}" (السحابة أحدث بـ ${(cloudTimestamp - localTimestamp) / 1000}s)`,
+      );
+      return cloudData;
+    } else if (localTimestamp > cloudTimestamp) {
+      console.log(
+        `📦 استخدام البيانات المحلية لـ "${collectionName}" (المحلية أحدث بـ ${(localTimestamp - cloudTimestamp) / 1000}s)`,
+      );
+      return localData;
+    } else {
+      console.log(`⚖️ البيانات متطابقة الوقت (${collectionName}) - استخدام السحابية`);
+      return cloudData;
+    }
+  },
+
+  applyCloudData(cloud, cloudMetadata = null) {
+    let loaded = false;
+    
+    // تحميل البيانات المحلية
+    const localSaved = localStorage.getItem("swipex_pro_v2");
+    const localData = localSaved ? JSON.parse(localSaved) : null;
+
+    if (cloud) {
+      // اختيار الطرود الأحدث
+      if (cloud.parcels) {
+        const selectedParcels = localData?.parcels
+          ? this.selectLatestVersion(localData, { parcels: cloud.parcels }, cloudMetadata, 'parcels').parcels
+          : cloud.parcels;
+        if (selectedParcels && selectedParcels.length > 0) {
+          this.parcels = selectedParcels;
+          loaded = true;
+          console.log("✓ تم تطبيق الطرود الأحدثة:", selectedParcels.length);
+        }
+      }
+      
+      // اختيار الإعدادات الأحدثة
+      if (cloud.settings && typeof cloud.settings === "object") {
+        const selectedSettings = localData?.settings
+          ? this.selectLatestVersion(localData, { settings: cloud.settings }, cloudMetadata, 'settings').settings
+          : cloud.settings;
+        if (selectedSettings) {
+          const { _sessionDate, ...restSettings } = selectedSettings;
+          if (_sessionDate) this.sessionDate = _sessionDate;
+          this.settings = { ...this.settings, ...restSettings };
+          console.log("✓ تم تطبيق الإعدادات الأحدثة");
+        }
+      }
+      
+      // اختيار الأرشيف الأحدث
+      if (cloud.archive && typeof cloud.archive === "object") {
+        const selectedArchive = localData?.archive
+          ? this.selectLatestVersion(localData, { archive: cloud.archive }, cloudMetadata, 'archive').archive
+          : cloud.archive;
+        if (selectedArchive) {
+          this.archive = selectedArchive;
+          console.log("✓ تم تطبيق الأرشيف الأحدث");
+        }
+      }
+      
+      // اختيار المهام الأحدثة
+      if (cloud.tasks && cloud.tasks.length > 0) {
+        const selectedTasks = localData?.tasks
+          ? this.selectLatestVersion(localData, { tasks: cloud.tasks }, cloudMetadata, 'tasks').tasks
+          : cloud.tasks;
+        if (selectedTasks) {
+          this.tasks = selectedTasks;
+          console.log("✓ تم تطبيق المهام الأحدثة:", selectedTasks.length);
+        }
+      }
+    }
+    
     if (loaded) {
       this.syncLocalStorage();
       this.applyTheme();
@@ -249,12 +324,13 @@ const appMethods = {
           setTimeout(() => reject(new Error("CLOUD_TIMEOUT")), 5000),
         );
 
-        const cloud = await Promise.race([
-          firestoreSync.loadAll(),
+        // تحميل البيانات و metadata معًا
+        const [cloud, cloudMetadata] = await Promise.race([
+          Promise.all([firestoreSync.loadAll(), firestoreSync.loadCloudMetadata()]),
           timeoutPromise,
         ]);
 
-        loaded = this.applyCloudData(cloud);
+        loaded = this.applyCloudData(cloud, cloudMetadata);
         this.syncStatus = loaded ? "synced" : "idle";
       } catch (e) {
         if (e.message === "CLOUD_TIMEOUT") {
