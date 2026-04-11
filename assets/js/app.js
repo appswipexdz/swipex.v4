@@ -112,6 +112,12 @@ createApp({
         },
         'filters.tag'() {
             this.saveFilters();
+        },
+        // إعادة تهيئة Sortable عند تغيير البيانات المفلترة
+        filteredParcels() {
+            this.$nextTick(() => {
+                this.initSortable();
+            });
         }
     },
     

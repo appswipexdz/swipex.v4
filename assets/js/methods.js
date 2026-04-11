@@ -781,6 +781,10 @@ const appMethods = {
     this.filters.tag = "";
     this.filters.favorite = false;
     this.saveFilters();
+    // إعادة تهيئة Sortable بعد تطبيق المرشح
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   filterByPhone(phone) {
@@ -788,11 +792,19 @@ const appMethods = {
     this.filters.municipality = "";
     this.filters.status = "";
     this.saveFilters();
+    // إعادة تهيئة Sortable بعد تطبيق المرشح
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   quickFilterStatus(statusName) {
     this.filters.status = this.filters.status === statusName ? "" : statusName;
     this.saveFilters();
+    // إعادة تهيئة Sortable بعد تطبيق المرشح
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   saveFilters() {
@@ -1038,6 +1050,10 @@ const appMethods = {
     }
     this.showDeleteConfirm = false;
     this.deleteConfirmId = null;
+    // إعادة تهيئة Sortable بعد الحذف
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   // ========== Edit Parcel Methods ==========
@@ -1091,6 +1107,10 @@ const appMethods = {
     this.showEditModal = false;
     this.editParcel = null;
     this.editParcelId = null;
+    // إعادة تهيئة Sortable بعد التعديل
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   // تأكيد تغيير السعر: يطبق التعديل ويغلق النوافذ
@@ -1120,6 +1140,10 @@ const appMethods = {
     this.showEditModal = false;
     this.editParcel = null;
     this.editParcelId = null;
+    // إعادة تهيئة Sortable بعد التعديل
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   // إلغاء تغيير السعر
@@ -1168,6 +1192,10 @@ const appMethods = {
       senderPhone: "",
       senderAddress: "",
     };
+    // إعادة تهيئة Sortable بعد إضافة طرد جديد
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   clearAllData() {
