@@ -104,6 +104,9 @@ showYalidineMenu: false,
     showEditModal: false,
     editParcel: null,
     editParcelId: null,
+    // تأكيد تعديل السعر
+    showPriceConfirmModal: false,
+    pendingPriceChange: null,
     showEditMunicipalityList: false,
     newFavoritePhone: '',
     settingsExpanded: {

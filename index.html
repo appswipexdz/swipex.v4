@@ -2030,6 +2030,10 @@
                         <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">رقم الهاتف الثاني (اختياري)</label>
                         <input v-model="editParcel.phone2" placeholder="رقم الهاتف الثاني" class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" type="tel" />
                     </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">المبلغ (دج)</label>
+                        <input v-model="editParcel.amount" placeholder="المبلغ" class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" type="text" />
+                    </div>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <button @click="showEditModal = false" class="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
@@ -2038,6 +2042,22 @@
                     <button @click="saveEditParcel" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 font-bold transition">
                         حفظ التعديلات
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Price Change Modal -->
+        <div v-if="showPriceConfirmModal" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="cancelPriceChange()">
+            <div class="modal-glass rounded-2xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold text-red-600 mb-3">تأكيد تغيير السعر</h3>
+                <div class="text-sm text-gray-700 dark:text-gray-200 space-y-2">
+                    <div>المبلغ الحالي: <span class="font-bold">{{ pendingPriceChange?.old || '-' }}</span> دج</div>
+                    <div>المبلغ الجديد: <span class="font-bold">{{ pendingPriceChange?.new || '-' }}</span> دج</div>
+                    <div class="text-sm text-red-600 mt-2">تحذير: تغيير السعر سيؤثر على بيانات الطلبية وقد يتطلب موافقة إضافية.</div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button @click="cancelPriceChange()" class="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">إلغاء</button>
+                    <button @click="confirmPriceChange()" class="px-6 py-2.5 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 font-bold transition">تأكيد وتحديث</button>
                 </div>
             </div>
         </div>

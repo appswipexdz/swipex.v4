@@ -974,6 +974,7 @@ const appMethods = {
       wilaya: parcel.wilaya || "",
       phone: parcel.phone || "",
       phone2: parcel.phone2 || "",
+      amount: parcel.amount || "",
       newMunicipality: "",
     };
     this.showEditModal = true;
@@ -987,6 +988,15 @@ const appMethods = {
   saveEditParcel() {
     const parcel = this.parcels.find((p) => p.id === this.editParcelId);
     if (parcel) {
+      // إذا تغير المبلغ، اطلب تأكيد المستخدم قبل التحديث
+      const oldAmount = parcel.amount || "";
+      const newAmount = this.editParcel.amount || "";
+      if ((oldAmount + "") !== (newAmount + "")) {
+        this.pendingPriceChange = { parcelId: this.editParcelId, old: oldAmount, new: newAmount };
+        this.showPriceConfirmModal = true;
+        return; // ننتظر تأكيد المستخدم
+      }
+
       parcel.receiver = this.editParcel.receiver;
       parcel.address = this.editParcel.address;
       // إذا اختار إضافة بلدية جديدة
@@ -998,7 +1008,6 @@ const appMethods = {
       parcel.wilaya = this.editParcel.wilaya;
       parcel.phone = this.editParcel.phone;
       parcel.phone2 = this.editParcel.phone2;
-
       parcel.updatedAt = new Date().toISOString();
       this.saveData();
       this.detectDuplicates();
@@ -1006,6 +1015,42 @@ const appMethods = {
     this.showEditModal = false;
     this.editParcel = null;
     this.editParcelId = null;
+  },
+
+  // تأكيد تغيير السعر: يطبق التعديل ويغلق النوافذ
+  confirmPriceChange() {
+    if (!this.pendingPriceChange) return;
+    const parcel = this.parcels.find((p) => p.id === this.pendingPriceChange.parcelId);
+    if (parcel && this.editParcel) {
+      // نطبق كل التعديلات بما في ذلك المبلغ الجديد
+      parcel.receiver = this.editParcel.receiver;
+      parcel.address = this.editParcel.address;
+      if (this.editParcel.municipality === "__new__") {
+        parcel.municipality = this.editParcel.newMunicipality || "";
+      } else {
+        parcel.municipality = this.editParcel.municipality;
+      }
+      parcel.wilaya = this.editParcel.wilaya;
+      parcel.phone = this.editParcel.phone;
+      parcel.phone2 = this.editParcel.phone2;
+      parcel.amount = this.pendingPriceChange.new;
+
+      parcel.updatedAt = new Date().toISOString();
+      this.saveData();
+      this.detectDuplicates();
+    }
+    this.showPriceConfirmModal = false;
+    this.pendingPriceChange = null;
+    this.showEditModal = false;
+    this.editParcel = null;
+    this.editParcelId = null;
+  },
+
+  // إلغاء تغيير السعر
+  cancelPriceChange() {
+    this.showPriceConfirmModal = false;
+    this.pendingPriceChange = null;
+    // اترك نافذة التعديل مفتوحة حتى يتمكن المستخدم من التعديل أو الإلغاء
   },
 
 
