@@ -1203,20 +1203,19 @@ const appMethods = {
   },
 
   confirmClearAllData() {
-    this.parcels = [];
-    this.archive = {};
-    this.sessionDate = null;
-    this.importStats = {
-      total: 0,
-      new: 0,
-      updated: 0,
-      duplicates: 0,
-      archived: 0,
-      favorites: 0,
-    };
+    // حذف فقط الطرود الظاهرة (المفلترة)
+    const visibleIds = new Set(this.filteredParcels.map(p => p.id));
+    this.parcels = this.parcels.filter(p => !visibleIds.has(p.id));
+    
+    // حفظ البيانات دون حذف الأرشيف والإعدادات
     this.saveData();
     this.showClearDataConfirm = false;
     this.currentView = "main";
+    
+    // إعادة تهيئة Sortable بعد الحذف
+    this.$nextTick(() => {
+      this.initSortable();
+    });
   },
 
   resetSmsTemplate() {
