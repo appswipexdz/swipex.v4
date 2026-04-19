@@ -122,14 +122,18 @@ const pdfFunctions = {
                             parcel.senderAddress = lines[expIdx + 2].text.trim();
                         }
                         if (expIdx + 3 < lines.length) {
-                            let senderPhoneLine = lines[expIdx + 3].text;
-                            senderPhoneLine = senderPhoneLine.replace(/\+213/g, "0");
-                            let cleanedLine = senderPhoneLine.replace(/[^\d]/g, "");
-                            const senderPhones = cleanedLine.match(/0[5-7]\d{8}/g);
-                            if (senderPhones) {
-                                parcel.senderPhone = senderPhones[0];
-                                if (senderPhones.length > 1) parcel.senderPhone2 = senderPhones[1];
+                            // تطبيع: +213 → 0، ثم نقسّم على الفواصل/المسافات/الشرطات
+                            // لتفادي دمج رقمين مثل "0561171237/0655500807"
+                            let senderPhoneLine = lines[expIdx + 3].text.replace(/\+213/g, "0");
+                            const senderPhoneSegments = senderPhoneLine.split(/[\s/،,|]+/);
+                            const senderPhones = [];
+                            for (const seg of senderPhoneSegments) {
+                                const cleaned = seg.replace(/[^\d]/g, "");
+                                const found = cleaned.match(/0[5-7]\d{8}/g);
+                                if (found) senderPhones.push(...found);
                             }
+                            if (senderPhones.length > 0) parcel.senderPhone = senderPhones[0];
+                            if (senderPhones.length > 1) parcel.senderPhone2 = senderPhones[1];
                         }
                     }
 
@@ -168,9 +172,16 @@ const pdfFunctions = {
                         // الهاتف دائماً آخر بيانات المستلم
                         let phoneLineIdx = -1;
                         for (let j = destLines.length - 1; j >= 0; j--) {
-                            const phoneCleaned = destLines[j].replace(/\+213/g, "0").replace(/[^\d]/g, "");
-                            const phones = phoneCleaned.match(/0[5-7]\d{8}/g);
-                            if (phones) {
+                            // نقسّم السطر على الفواصل/المسافات/الشرطات أولاً للتعامل مع رقمين في سطر
+                            const lineNorm = destLines[j].replace(/\+213/g, "0");
+                            const segments = lineNorm.split(/[\s/،,|]+/);
+                            const phones = [];
+                            for (const seg of segments) {
+                                const cleaned = seg.replace(/[^\d]/g, "");
+                                const found = cleaned.match(/0[5-7]\d{8}/g);
+                                if (found) phones.push(...found);
+                            }
+                            if (phones.length > 0) {
                                 parcel.phone = phones[0];
                                 if (phones.length > 1) parcel.phone2 = phones[1];
                                 phoneLineIdx = j;
@@ -199,7 +210,15 @@ const pdfFunctions = {
                             // الهاتف في أول سطر — نبحث عن فاصلة في أسطر أخرى
                             for (let j = 0; j < destLines.length; j++) {
                                 if (destLines[j].includes(",") || destLines[j].includes("،")) {
-                                    let munLine = destLines[j].replace(/\+213/g, "0").replace(/0[5-7]\d{8}/g, "").trim();
+                                    let munLine = destLines[j].replace(/\+213/g, "0");
+                                    // إزالة أرقام الهاتف من سطر البلدية
+                                    const segs = munLine.split(/[\s/،,|]+/);
+                                    for (const seg of segs) {
+                                        const c = seg.replace(/[^\d]/g, "");
+                                        if (/^0[5-7]\d{8}$/.test(c)) {
+                                            munLine = munLine.replace(seg, "");
+                                        }
+                                    }
                                     munLine = munLine.replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "").trim();
                                     munLine = munLine.replace(/\b\d{1,2}\b/g, "").trim();
                                     munLine = munLine.replace(/[,،]+/g, ",");
@@ -235,13 +254,12 @@ const pdfFunctions = {
                     }
 
                     // ============ استخراج المحتوى والمبلغ ============
-                    // نبحث عن "Recouvrement" في العناصر الخام للحصول على موقعه المكاني
-                    const recRawItem = textContent.items.find(it => it.str.trim() === "Recouvrement");
+                    // نبحث عن "Recouvrement" في عناصر الربع الحالي فقط (وليس كامل الصفحة)
+                    const recRawItem = items.find(it => it.s === "Recouvrement");
                     const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
 
                     if (recIdx !== -1) {
                         // --- استخراج المحتوى (الوصف) ---
-                        // نجمع أسطر الوصف حتى نصل لـ Assurance أو نهاية البيانات
                         let contentParts = [];
                         for (let j = recIdx + 1; j < lines.length; j++) {
                             const lt = lines[j].text.trim();
@@ -263,24 +281,22 @@ const pdfFunctions = {
                         parcel.content = rawContent;
 
                         // --- استخراج المبلغ من عمود Recouvrement بالموقع المكاني ---
+                        // نستخدم عناصر الربع الحالي فقط (items) لضمان عدم التداخل بين القسائم
                         if (recRawItem) {
-                            const recX = recRawItem.transform[4];
-                            const recY = recRawItem.transform[5];
+                            const recX = recRawItem.x;
+                            const recY = recRawItem.y;
 
-                            // نجمع كل العناصر الواقعة أسفل "Recouvrement" وفي نفس العمود
-                            const candidateItems = textContent.items.filter(it => {
-                                const x = it.transform[4];
-                                const y = it.transform[5];
-                                const s = it.str.trim();
+                            // نجمع كل عناصر الربع الواقعة أسفل "Recouvrement" وفي نفس العمود
+                            const candidateItems = items.filter(it => {
                                 return (
-                                    s.length > 0 &&
-                                    y < recY &&          // أسفل رأس العمود
-                                    y > recY - 200 &&    // ضمن نطاق الجدول
-                                    x >= recX - 20       // في عمود Recouvrement أو بعده
+                                    it.s.length > 0 &&
+                                    it.y < recY &&          // أسفل رأس العمود
+                                    it.y > recY - 200 &&    // ضمن نطاق الجدول
+                                    it.x >= recX - 20       // في عمود Recouvrement أو بعده
                                 );
                             });
 
-                            const candidateText = candidateItems.map(it => it.str.trim()).join(" ");
+                            const candidateText = candidateItems.map(it => it.s).join(" ");
 
                             // نبحث عن مبلغ رقمي متبوع بـ DA أو مسبوق بـ DA
                             const amountMatchAfter = candidateText.match(/(\d[\d\s]*)\s*DA/i);
@@ -295,8 +311,6 @@ const pdfFunctions = {
 
                         // --- Fallback: إذا فشل البحث بالموقع ---
                         if (!parcel.amount || parcel.amount === "0") {
-                            // نبحث في أسطر الوصف عن مبلغ
-                            // نأخذ آخر مبلغ في النص (الأقرب لعمود Recouvrement)
                             const allContentText = contentParts.join(" ");
                             const allAmounts = [...allContentText.matchAll(/(\d+)\s*DA|DA\s*(\d+)/gi)];
                             if (allAmounts.length > 0) {
