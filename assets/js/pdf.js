@@ -155,10 +155,11 @@ const pdfFunctions = {
                             // تجاهل الأسطر الفارغة
                             if (lineText.length === 0) continue;
 
-                            // تجاهل الرموز والأكواد القصيرة
-                            const isCode = /^[A-Z]{2,4}\d{1,2}$/.test(lineText);
-                            const isBigNumber = /^(39|3[89]\d{2})$/.test(lineText);
-                            if (isCode || isBigNumber) continue;
+                            // تجاهل أرقام الولايات (1-58) وأكواد الجهات مثل EOE1, OES1, STI1
+                            const isWilayaNumber = /^\d{1,2}$/.test(lineText) && parseInt(lineText) >= 1 && parseInt(lineText) <= 58;
+                            const isZoneCode = /^[A-Z]{2,4}\d{1,2}$/.test(lineText);
+                            const isBigNumber = /^\d{4,}$/.test(lineText);
+                            if (isWilayaNumber || isZoneCode || isBigNumber) continue;
 
                             destLines.push(lineText);
                         }
@@ -186,6 +187,9 @@ const pdfFunctions = {
 
                             // إزالة أي هاتف قد يكون اختلط بالسطر
                             munLine = munLine.replace(/\+213/g, "0").replace(/0[5-7]\d{8}/g, "").trim();
+                            // إزالة أكواد الجهات مثل EOE1, OES1, STI1 وأرقام الولايات المنفردة
+                            munLine = munLine.replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "").trim();
+                            munLine = munLine.replace(/\b\d{1,2}\b/g, "").trim();
                             munLine = munLine.replace(/[,،]+/g, ",");
 
                             const parts = munLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
@@ -195,7 +199,9 @@ const pdfFunctions = {
                             // الهاتف في أول سطر — نبحث عن فاصلة في أسطر أخرى
                             for (let j = 0; j < destLines.length; j++) {
                                 if (destLines[j].includes(",") || destLines[j].includes("،")) {
-                                    let munLine = destLines[j].replace(/0[5-7]\d{8}/g, "").trim();
+                                    let munLine = destLines[j].replace(/\+213/g, "0").replace(/0[5-7]\d{8}/g, "").trim();
+                                    munLine = munLine.replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "").trim();
+                                    munLine = munLine.replace(/\b\d{1,2}\b/g, "").trim();
                                     munLine = munLine.replace(/[,،]+/g, ",");
                                     const parts = munLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
                                     if (parts.length >= 1) parcel.municipality = parts[0];
