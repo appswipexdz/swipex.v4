@@ -79,7 +79,7 @@ const pdfFunctions = {
                         createdDate: ""
                     };
 
-                    // استخراج رقم التتبع
+                    // ============ استخراج رقم التتبع ============
                     const tLine = lines.find(l => l.text.includes("YAL-"));
                     if (tLine) {
                         const m = tLine.text.match(/YAL-[A-Z0-9]+/);
@@ -87,14 +87,14 @@ const pdfFunctions = {
                     }
                     if (!parcel.tracking) continue;
 
-                    // استخراج رقم PIN
+                    // ============ استخراج رقم PIN ============
                     const pinMatch = tLine.text.match(/PIN:\s*(\d+)/);
                     if (pinMatch) parcel.pin = pinMatch[1];
 
-                    // تحديد نوع الطرد
-                    const typeLineIdx = lines.findIndex(l => 
-                        l.text.includes("E-COMMERCE") || 
-                        l.text.includes("PARTICULIER") || 
+                    // ============ تحديد نوع الطرد ============
+                    const typeLineIdx = lines.findIndex(l =>
+                        l.text.includes("E-COMMERCE") ||
+                        l.text.includes("PARTICULIER") ||
                         l.text.includes("ECONOMIQUE") ||
                         l.text.includes("AVEC ÉCHANGE") ||
                         l.text.includes("AVEC ECHANGE") ||
@@ -112,28 +112,20 @@ const pdfFunctions = {
                         else if (typeLine.includes("AVEC ACCUSÉ") || typeLine.includes("AVEC ACCUSE")) parcel.type = "AVEC ACCUSÉ";
                     }
 
-                    // استخراج معلومات المرسل (Expéditeur)
+                    // ============ استخراج معلومات المرسل (Expéditeur) ============
                     const expIdx = lines.findIndex(l => l.text.includes("Expéditeur"));
                     if (expIdx !== -1) {
-                        // السطر التالي يحتوي على اسم المرسل
                         if (expIdx + 1 < lines.length) {
                             parcel.sender = lines[expIdx + 1].text.trim();
                         }
-                        
-                        // السطر الذي بعده يحتوي على عنوان المرسل
                         if (expIdx + 2 < lines.length) {
                             parcel.senderAddress = lines[expIdx + 2].text.trim();
                         }
-                        
-                        // السطر الذي بعده يحتوي على هاتف المرسل
                         if (expIdx + 3 < lines.length) {
                             let senderPhoneLine = lines[expIdx + 3].text;
-                            // تحويل +213 إلى 0
                             senderPhoneLine = senderPhoneLine.replace(/\+213/g, "0");
-                            // إزالة كل الرموز غير الأرقام
                             let cleanedLine = senderPhoneLine.replace(/[^\d]/g, "");
-                            // البحث عن أرقام الهاتف (10 أرقام تبدأ بـ 05 أو 06 أو 07)
-                            const senderPhones = cleanedLine.match(/0[567]\d{8}/g);
+                            const senderPhones = cleanedLine.match(/0[5-7]\d{8}/g);
                             if (senderPhones) {
                                 parcel.senderPhone = senderPhones[0];
                                 if (senderPhones.length > 1) parcel.senderPhone2 = senderPhones[1];
@@ -141,267 +133,181 @@ const pdfFunctions = {
                         }
                     }
 
-                    // ============ الاستراتيجية المحسّنة لاستخراج بيانات المستلم ============
+                    // ============ الاستراتيجية الجديدة لاستخراج بيانات المستلم ============
                     const destIdx = lines.findIndex(l => l.text.includes("Destinataire"));
-                    
+
                     if (destIdx !== -1) {
-                        // جمع الأسطر التالية لكلمة Destinataire (حتى 7 أسطر كحد أقصى)
-                        const maxLines = 7;
+                        const maxLines = 10;
                         let destLines = [];
-                        
+
                         for (let j = destIdx + 1; j < Math.min(destIdx + 1 + maxLines, lines.length); j++) {
                             const lineText = lines[j].text.trim();
-                            
-                            // تجاهل الأسطر التي تحتوي على كلمات مفتاحية غير مرغوبة
-                            if (lineText.includes("Description") || 
+
+                            // توقف عند الكلمات الدالة على نهاية قسم المستلم
+                            if (
+                                lineText.includes("Description") ||
                                 lineText.includes("Recouvrement") ||
                                 lineText.includes("Assurance") ||
-                                lineText.includes("trajet")) {
-                                break;
-                            }
-                            
-                            // تجاهل الأسطر التي تحتوي فقط على رموز محددة
+                                lineText.includes("trajet") ||
+                                lineText.includes("Expéditeur")
+                            ) break;
+
+                            // تجاهل الأسطر الفارغة
+                            if (lineText.length === 0) continue;
+
+                            // تجاهل الرموز والأكواد القصيرة
                             const isCode = /^[A-Z]{2,4}\d{1,2}$/.test(lineText);
-                            const isBigNumber = /^(39|3911|3912|3917|3913|3914|3915|3916|3918|3919)$/.test(lineText);
-                            const isCommonWord = /^(commune|retour|EOE|OES|ESE|CHU|STI|TIP|EKR|TZO)/.test(lineText);
-                            
-                            if (isCode || isBigNumber || isCommonWord) {
-                                continue;
-                            }
-                            
-                            // إضافة السطر إلى قائمة أسطر المستلم
-                            if (lineText.length > 0) {
-                                destLines.push(lineText);
-                            }
+                            const isBigNumber = /^(39|3[89]\d{2})$/.test(lineText);
+                            if (isCode || isBigNumber) continue;
+
+                            destLines.push(lineText);
                         }
-                        
-                        // الآن نحلل الأسطر المجمّعة
-                        // نبحث عن سطر يحتوي على فاصلة (البلدية والولاية)
-                        let municipalityLineIdx = -1;
-                        for (let j = 0; j < destLines.length; j++) {
-                            if (destLines[j].includes(",") || destLines[j].includes("،")) {
-                                municipalityLineIdx = j;
+
+                        // ── الخطوة 1: البحث عن سطر الهاتف من الأسفل ──
+                        // الهاتف دائماً آخر بيانات المستلم
+                        let phoneLineIdx = -1;
+                        for (let j = destLines.length - 1; j >= 0; j--) {
+                            const phoneCleaned = destLines[j].replace(/\+213/g, "0").replace(/[^\d]/g, "");
+                            const phones = phoneCleaned.match(/0[5-7]\d{8}/g);
+                            if (phones) {
+                                parcel.phone = phones[0];
+                                if (phones.length > 1) parcel.phone2 = phones[1];
+                                phoneLineIdx = j;
                                 break;
                             }
                         }
-                        
-                        if (municipalityLineIdx !== -1) {
-                            // ===== حالة وجود 4 أسطر =====
-                            if (municipalityLineIdx === 2 && destLines.length >= 3) {
-                                // استخراج الاسم (السطر الأول)
-                                parcel.receiver = destLines[0].replace(/^\*+\s*|^\.\s*|^\s+/, "").trim();
-                                
-                                // استخراج العنوان (السطر الثاني)
-                                parcel.receiverAddress = destLines[1].trim();
-                                
-                                // استخراج البلدية والولاية (السطر الثالث)
-                                let municipalityLine = destLines[2];
-                                
-                                // البحث عن أرقام الهاتف في هذا السطر أولاً
-                                const phonesInMunLine = municipalityLine.match(/0[567]\d{8}/g) || [];
-                                
-                                // إزالة أرقام الهواتف من سطر البلدية
-                                phonesInMunLine.forEach(phone => {
-                                    municipalityLine = municipalityLine.replace(phone, "");
-                                });
-                                
-                                // تنظيف وتقسيم البلدية والولاية
-                                municipalityLine = municipalityLine.replace(/[,،]+/g, ",").trim();
-                                const parts = municipalityLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
-                                if (parts.length >= 1) parcel.municipality = parts[0];
-                                if (parts.length >= 2) parcel.wilaya = parts[1];
-                                
-                                // استخراج أرقام الهاتف
-                                // أولاً: من السطر الرابع إن وُجد
-                                if (destLines.length > 3) {
-                                    const phoneLine = destLines[3];
-                                    const phones = phoneLine.match(/0[567]\d{8}/g);
-                                    if (phones && phones.length > 0) {
-                                        parcel.phone = phones[0];
-                                        if (phones.length > 1) parcel.phone2 = phones[1];
-                                    }
-                                }
-                                
-                                // ثانياً: إذا لم نجد في السطر الرابع، نأخذ من سطر البلدية
-                                if (!parcel.phone && phonesInMunLine.length > 0) {
-                                    parcel.phone = phonesInMunLine[0];
-                                    if (phonesInMunLine.length > 1) parcel.phone2 = phonesInMunLine[1];
-                                }
-                                
-                                // ثالثاً: البحث في جميع الأسطر المتبقية
-                                if (!parcel.phone) {
-                                    for (let k = 3; k < destLines.length; k++) {
-                                        const phones = destLines[k].match(/0[567]\d{8}/g);
-                                        if (phones && phones.length > 0) {
-                                            parcel.phone = phones[0];
-                                            if (phones.length > 1) parcel.phone2 = phones[1];
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            // ===== حالة وجود 5 أسطر =====
-                            else if (municipalityLineIdx === 3 && destLines.length >= 4) {
-                                // استخراج الاسم (السطر الأول)
-                                parcel.receiver = destLines[0].replace(/^\*+\s*|^\.\s*|^\s+/, "").trim();
-                                
-                                // استخراج العنوان (السطرين الثاني والثالث)
-                                parcel.receiverAddress = (destLines[1] + " " + destLines[2]).trim();
-                                
-                                // استخراج البلدية والولاية (السطر الرابع)
-                                let municipalityLine = destLines[3];
-                                
-                                // البحث عن أرقام الهاتف في هذا السطر أولاً
-                                const phonesInMunLine = municipalityLine.match(/0[567]\d{8}/g) || [];
-                                
-                                // إزالة أرقام الهواتف من سطر البلدية
-                                phonesInMunLine.forEach(phone => {
-                                    municipalityLine = municipalityLine.replace(phone, "");
-                                });
-                                
-                                // تنظيف وتقسيم
-                                municipalityLine = municipalityLine.replace(/[,،]+/g, ",").trim();
-                                const parts = municipalityLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
-                                if (parts.length >= 1) parcel.municipality = parts[0];
-                                if (parts.length >= 2) parcel.wilaya = parts[1];
-                                
-                                // استخراج أرقام الهاتف
-                                // أولاً: من السطر الخامس إن وُجد
-                                if (destLines.length > 4) {
-                                    const phoneLine = destLines[4];
-                                    const phones = phoneLine.match(/0[567]\d{8}/g);
-                                    if (phones && phones.length > 0) {
-                                        parcel.phone = phones[0];
-                                        if (phones.length > 1) parcel.phone2 = phones[1];
-                                    }
-                                }
-                                
-                                // ثانياً: إذا لم نجد في السطر الخامس، نأخذ من سطر البلدية
-                                if (!parcel.phone && phonesInMunLine.length > 0) {
-                                    parcel.phone = phonesInMunLine[0];
-                                    if (phonesInMunLine.length > 1) parcel.phone2 = phonesInMunLine[1];
-                                }
-                                
-                                // ثالثاً: البحث في جميع الأسطر المتبقية
-                                if (!parcel.phone) {
-                                    for (let k = 4; k < destLines.length; k++) {
-                                        const phones = destLines[k].match(/0[567]\d{8}/g);
-                                        if (phones && phones.length > 0) {
-                                            parcel.phone = phones[0];
-                                            if (phones.length > 1) parcel.phone2 = phones[1];
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            // ===== حالات أخرى (احتياطي) =====
-                            else {
-                                // نحاول استخراج البيانات بطريقة مرنة
-                                // الاسم دائماً في السطر الأول
-                                if (destLines.length > 0) {
-                                    parcel.receiver = destLines[0].replace(/^\*+\s*|^\.\s*|^\s+/, "").trim();
-                                }
-                                
-                                // البلدية والولاية في السطر الذي يحتوي على فاصلة
-                                let municipalityLine = destLines[municipalityLineIdx];
-                                const phonesInMunLine = municipalityLine.match(/0[567]\d{8}/g) || [];
-                                phonesInMunLine.forEach(phone => {
-                                    municipalityLine = municipalityLine.replace(phone, "");
-                                });
-                                municipalityLine = municipalityLine.replace(/[,،]+/g, ",").trim();
-                                const parts = municipalityLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
-                                if (parts.length >= 1) parcel.municipality = parts[0];
-                                if (parts.length >= 2) parcel.wilaya = parts[1];
-                                
-                                // العنوان: كل الأسطر بين الاسم وسطر البلدية
-                                let addressParts = [];
-                                for (let j = 1; j < municipalityLineIdx; j++) {
-                                    addressParts.push(destLines[j]);
-                                }
-                                parcel.receiverAddress = addressParts.join(" ").trim();
-                                
-                                // أرقام الهاتف: البحث في جميع الأسطر بعد سطر البلدية
-                                for (let j = municipalityLineIdx; j < destLines.length; j++) {
-                                    const phones = destLines[j].match(/0[567]\d{8}/g);
-                                    if (phones && phones.length > 0) {
-                                        parcel.phone = phones[0];
-                                        if (phones.length > 1) parcel.phone2 = phones[1];
-                                        break;
-                                    }
-                                }
-                                
-                                // إذا لم نجد، نأخذ من سطر البلدية نفسه
-                                if (!parcel.phone && phonesInMunLine.length > 0) {
-                                    parcel.phone = phonesInMunLine[0];
-                                    if (phonesInMunLine.length > 1) parcel.phone2 = phonesInMunLine[1];
-                                }
-                            }
-                        } else {
-                            // ===== حالة عدم وجود فاصلة =====
-                            // الاسم في السطر الأول
-                            if (destLines.length > 0) {
-                                parcel.receiver = destLines[0].replace(/^\*+\s*|^\.\s*|^\s+/, "").trim();
-                            }
-                            
-                            // نبحث في جميع الأسطر عن رقم الهاتف
+
+                        // ── الخطوة 2: السطر الذي قبل الهاتف مباشرة = البلدية، الولاية ──
+                        // البلدية والولاية مفصولان بفاصلة: "Magrane, El Oued"
+                        let munLineIdx = -1;
+                        if (phoneLineIdx > 0) {
+                            munLineIdx = phoneLineIdx - 1;
+                            let munLine = destLines[munLineIdx];
+
+                            // إزالة أي هاتف قد يكون اختلط بالسطر
+                            munLine = munLine.replace(/\+213/g, "0").replace(/0[5-7]\d{8}/g, "").trim();
+                            munLine = munLine.replace(/[,،]+/g, ",");
+
+                            const parts = munLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
+                            if (parts.length >= 1) parcel.municipality = parts[0];
+                            if (parts.length >= 2) parcel.wilaya = parts[1];
+                        } else if (phoneLineIdx === 0) {
+                            // الهاتف في أول سطر — نبحث عن فاصلة في أسطر أخرى
                             for (let j = 0; j < destLines.length; j++) {
-                                const phones = destLines[j].match(/0[567]\d{8}/g);
-                                if (phones && phones.length > 0) {
-                                    parcel.phone = phones[0];
-                                    if (phones.length > 1) parcel.phone2 = phones[1];
-                                    
-                                    // العنوان هو كل ما قبل سطر الهاتف (بعد الاسم)
-                                    if (j > 1) {
-                                        let addressParts = [];
-                                        for (let k = 1; k < j; k++) {
-                                            addressParts.push(destLines[k]);
-                                        }
-                                        parcel.receiverAddress = addressParts.join(" ").trim();
-                                    }
-                                    
-                                    // محاولة استخراج البلدية من آخر سطر قبل الهاتف
-                                    if (j > 1) {
-                                        const lastLine = destLines[j - 1];
-                                        const words = lastLine.split(/\s+/).filter(w => w.length > 0);
-                                        if (words.length >= 2) {
-                                            parcel.municipality = words[0];
-                                            parcel.wilaya = words.slice(1).join(" ");
-                                        } else {
-                                            parcel.municipality = lastLine;
-                                        }
-                                    }
+                                if (destLines[j].includes(",") || destLines[j].includes("،")) {
+                                    let munLine = destLines[j].replace(/0[5-7]\d{8}/g, "").trim();
+                                    munLine = munLine.replace(/[,،]+/g, ",");
+                                    const parts = munLine.split(",").map(p => p.trim()).filter(p => p.length > 0);
+                                    if (parts.length >= 1) parcel.municipality = parts[0];
+                                    if (parts.length >= 2) parcel.wilaya = parts[1];
+                                    munLineIdx = j;
                                     break;
                                 }
                             }
                         }
-                    }
 
-                    // استخراج المحتوى والمبلغ من قسم Recouvrement
-                    const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
-                    if (recIdx !== -1 && recIdx + 1 < lines.length) {
-                        const contentLine = lines[recIdx + 1].text;
-                        
-                        // استخراج المبلغ
-                        const amountMatch = contentLine.match(/(\d+)\s*(?:DA|da|دج)/i) || 
-                                          contentLine.match(/(?:DA|da|دج)\s*(\d+)/i);
-                        if (amountMatch) {
-                            parcel.amount = amountMatch[1];
-                            // المحتوى هو الباقي بعد إزالة المبلغ
-                            parcel.content = contentLine.replace(amountMatch[0], "").trim();
-                        } else {
-                            // إذا لم نجد المبلغ في نفس السطر، المحتوى هو السطر كاملاً
-                            parcel.content = contentLine.trim();
+                        // ── الخطوة 3: السطر الأول = الاسم ──
+                        if (destLines.length > 0) {
+                            parcel.receiver = destLines[0].replace(/^\*+\s*|^\.\s*/, "").trim();
+                        }
+
+                        // ── الخطوة 4: ما بين الاسم وسطر البلدية = العنوان (اختياري) ──
+                        // نتجاهل الأسطر التي تبدو تفسيراً ثانوياً
+                        const addressEndIdx = munLineIdx > 0 ? munLineIdx : (phoneLineIdx > 0 ? phoneLineIdx : destLines.length);
+                        if (addressEndIdx > 1) {
+                            let addressParts = [];
+                            for (let j = 1; j < addressEndIdx; j++) {
+                                const line = destLines[j];
+                                // تجاهل أسطر التفسير الفرنسية الثانوية
+                                if (/Autorisation|ouverture|colis/i.test(line)) continue;
+                                // تجاهل السطر إذا كان نفس اسم المستلم بلغة أخرى
+                                if (line === parcel.municipality || line === parcel.wilaya) continue;
+                                addressParts.push(line);
+                            }
+                            parcel.receiverAddress = addressParts.join(" ").trim();
                         }
                     }
 
-                    // استخراج تاريخ الإنشاء
+                    // ============ استخراج المحتوى والمبلغ ============
+                    // نبحث عن "Recouvrement" في العناصر الخام للحصول على موقعه المكاني
+                    const recRawItem = textContent.items.find(it => it.str.trim() === "Recouvrement");
+                    const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
+
+                    if (recIdx !== -1) {
+                        // --- استخراج المحتوى (الوصف) ---
+                        // نجمع أسطر الوصف حتى نصل لـ Assurance أو نهاية البيانات
+                        let contentParts = [];
+                        for (let j = recIdx + 1; j < lines.length; j++) {
+                            const lt = lines[j].text.trim();
+                            if (
+                                lt.includes("Assurance") ||
+                                lt.includes("Utilisez") ||
+                                lt.includes("Taille") ||
+                                lt.includes("Moins de") ||
+                                lt.includes("Poids")
+                            ) break;
+                            if (lt.length === 0) continue;
+                            contentParts.push(lt);
+                        }
+
+                        // نزيل المبالغ المضمّنة في الوصف (مثل 5900DA أو DA 3300)
+                        let rawContent = contentParts.join(" ");
+                        rawContent = rawContent.replace(/\bDA\s*\d[\d\s]*/gi, "").trim();
+                        rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
+                        parcel.content = rawContent;
+
+                        // --- استخراج المبلغ من عمود Recouvrement بالموقع المكاني ---
+                        if (recRawItem) {
+                            const recX = recRawItem.transform[4];
+                            const recY = recRawItem.transform[5];
+
+                            // نجمع كل العناصر الواقعة أسفل "Recouvrement" وفي نفس العمود
+                            const candidateItems = textContent.items.filter(it => {
+                                const x = it.transform[4];
+                                const y = it.transform[5];
+                                const s = it.str.trim();
+                                return (
+                                    s.length > 0 &&
+                                    y < recY &&          // أسفل رأس العمود
+                                    y > recY - 200 &&    // ضمن نطاق الجدول
+                                    x >= recX - 20       // في عمود Recouvrement أو بعده
+                                );
+                            });
+
+                            const candidateText = candidateItems.map(it => it.str.trim()).join(" ");
+
+                            // نبحث عن مبلغ رقمي متبوع بـ DA أو مسبوق بـ DA
+                            const amountMatchAfter = candidateText.match(/(\d[\d\s]*)\s*DA/i);
+                            const amountMatchBefore = candidateText.match(/DA\s*(\d[\d\s]*)/i);
+
+                            if (amountMatchAfter) {
+                                parcel.amount = amountMatchAfter[1].replace(/\s/g, "");
+                            } else if (amountMatchBefore) {
+                                parcel.amount = amountMatchBefore[1].replace(/\s/g, "");
+                            }
+                        }
+
+                        // --- Fallback: إذا فشل البحث بالموقع ---
+                        if (!parcel.amount || parcel.amount === "0") {
+                            // نبحث في أسطر الوصف عن مبلغ
+                            // نأخذ آخر مبلغ في النص (الأقرب لعمود Recouvrement)
+                            const allContentText = contentParts.join(" ");
+                            const allAmounts = [...allContentText.matchAll(/(\d+)\s*DA|DA\s*(\d+)/gi)];
+                            if (allAmounts.length > 0) {
+                                const last = allAmounts[allAmounts.length - 1];
+                                parcel.amount = (last[1] || last[2]).replace(/\s/g, "");
+                            }
+                        }
+                    }
+
+                    // ============ استخراج تاريخ الإنشاء ============
                     const dateLineIdx = lines.findIndex(l => l.text.match(/le:\s*\d{2}-\d{2}-\d{4}/));
                     if (dateLineIdx !== -1) {
                         const dateMatch = lines[dateLineIdx].text.match(/(\d{2}-\d{2}-\d{4})/);
                         if (dateMatch) parcel.createdDate = dateMatch[1];
                     }
 
-                    // إضافة الطرد إلى القائمة إذا كان يحتوي على رقم تتبع
+                    // ============ إضافة الطرد إلى القائمة ============
                     if (parcel.tracking) {
                         extractedParcels.push({
                             id: Date.now() + Math.random(),
