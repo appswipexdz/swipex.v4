@@ -2312,6 +2312,19 @@ const appMethods = {
     this.drawerOpen = false;
   },
 
+  openArchive() {
+    this.currentView = 'archive';
+    this.archiveVisibleCount = 30;
+    this.archiveSearch = '';
+    this.archiveStatusFilter = '';
+    this.showTopMenu = false;
+    this.showSessionsView = false;
+    this.showDashboard = false;
+    this.$nextTick(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  },
+
   getDashboardStats() {
     const stats = {};
     this.allStatuses.forEach((s) => {
