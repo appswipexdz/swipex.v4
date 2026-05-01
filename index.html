@@ -293,7 +293,7 @@
 
         <!-- Filter Pills (ثابتة دائماً) -->
         <div class="sticky z-30 transition-all duration-300" :style="{ top: headerHidden ? '0' : '48px' }">
-            <div class="mx-3 mt-1 px-2 py-2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm" style="overflow: visible;">
+            <div class="mx-1 mt-1 px-0.5 py-0.2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm" style="overflow: visible;">
                 <div class="flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none;">
                     <button @click="hasActiveFilters ? clearFilters() : null" class="filter-clear-btn" :class="hasActiveFilters ? 'text-red-500 border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 glass-panel shadow-sm' : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 glass-panel'" :title="hasActiveFilters ? 'مسح الفلاتر' : 'لا يوجد فلتر مفعّل'">
                         <i class="fas text-xs" :class="hasActiveFilters ? 'fa-eraser' : 'fa-filter'"></i>
