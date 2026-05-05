@@ -277,9 +277,6 @@ const pdfFunctions = {
                     }
 
                     // ── المحتوى والمبلغ ──
-                    // نبحث عن "Recouvrement" في items الربع الحالي فقط (للموقع المكاني)
-                    // هذا يضمن عدم التداخل بين القسائم في نفس الصفحة
-                    const recRawItem = items.find(it => it.s === "Recouvrement");
                     const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
 
                     if (recIdx !== -1) {
@@ -304,31 +301,19 @@ const pdfFunctions = {
                         rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
                         parcel.content = rawContent;
 
-                        // ── استخراج المبلغ (البحث المكاني المُصحَّح) ──
-                        // في نظام إحداثيات PDF: Y أكبر = أعلى في الصفحة، Y أصغر = أسفل
-                        // المبلغ يقع أسفل رأس عمود Recouvrement أي Y أصغر من recY
-                        // نضيّق نطاق X وY لتجنب التقاط عناصر من أعمدة أو قسائم أخرى
-                        if (recRawItem) {
-                            const recX = recRawItem.x;
-                            const recY = recRawItem.y;
-
-                            const candidates = items.filter(it =>
-                                it.s.length > 0    &&
-                                it.y <  recY       &&   // أسفل رأس العمود (Y أصغر = أسفل في PDF)
-                                it.y >  recY - 100 &&   // نطاق Y مضيَّق (120 بدلاً من 200) لتجنب البُعد
-                                it.x >= recX - 30  &&   // يسار العمود مع هامش
-                                it.x <= recX + 150      // يمين العمود — يحصر البحث في العمود فقط
-                            );
-                            const candidateText = candidates.map(it => it.s).join(" ");
-
-                            const mAfter  = candidateText.match(/(\d[\d\s]*)\s*DA/i);
-                            const mBefore = candidateText.match(/DA\s*(\d[\d\s]*)/i);
+                        // ── استخراج المبلغ ──
+                        // نبحث مباشرة في items الربع عن العنصر الذي يحتوي رقماً متبوعاً بـ DA
+                        // هذا أدق من البحث المكاني لأن "Recouvrement" قد يكون مدموجاً في span أكبر
+                        // مما يجعل x المرجعي خاطئاً ويلتقط أرقاماً من عمود الوصف
+                        const amountItem = items.find(it => /\d[\d\s]*\s*DA|DA\s*\d[\d\s]*/i.test(it.s));
+                        if (amountItem) {
+                            const mAfter  = amountItem.s.match(/(\d[\d\s]*)\s*DA/i);
+                            const mBefore = amountItem.s.match(/DA\s*(\d[\d\s]*)/i);
                             if      (mAfter)  parcel.amount = mAfter[1].replace(/\s/g, "");
                             else if (mBefore) parcel.amount = mBefore[1].replace(/\s/g, "");
                         }
 
-                        // Fallback محسَّن: البحث في السطرين التاليين لـ Recouvrement مباشرة
-                        // (بدلاً من البحث في كامل contentParts الذي قد يحوي أرقاماً غير ذات صلة)
+                        // Fallback: البحث النصي في أسطر ما بعد Recouvrement مباشرة
                         if (!parcel.amount || parcel.amount === "0") {
                             for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
                                 const lt = lines[j].text;
@@ -339,6 +324,7 @@ const pdfFunctions = {
                             }
                         }
                     }
+
 
                     // ── تاريخ الإنشاء ──
                     const dateLine = lines.find(l => /le:\s*\d{2}-\d{2}-\d{4}/.test(l.text));
