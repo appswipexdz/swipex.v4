@@ -512,6 +512,10 @@ const appMethods = {
         notes: p.notes || "",
         tag: p.tag || null,
         lastUpdate: new Date().toISOString(),
+
+        // ✅ حفظ المبلغ داخل الأرشيف حتى يظهر في صفحة الأرشيف
+        amount: p.amount || 0,
+
         municipality: p.municipality || "",
         receiver: p.receiver || "",
         phone: p.phone || "",
