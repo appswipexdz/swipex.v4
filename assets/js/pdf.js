@@ -195,27 +195,13 @@ const pdfFunctions = {
 
                             if (!lt) continue;
 
-                            // تجاهل: أرقام الولايات (1-58)
+                            // تجاهل: أرقام الولايات (1-58)، أكواد الجهة (EOE1...)، أرقام كبيرة (3911...)
                             const isWilayaNum = /^\d{1,2}$/.test(lt) && +lt >= 1 && +lt <= 58;
-
-                            // تجاهل: سطر يتكوّن فقط من أكواد الجهة (EOE1, OES1, BEM1...)
-                            // نستثني السطور التي تحتوي نصاً عربياً أو لاتينياً حقيقياً بجانب الكود
-                            const isZoneCode = /^([A-Z]{2,4}\d{1,2}\s*)+$/.test(lt);
-
-                            // تجاهل: أرقام كبيرة (3911...) لكن ليست أرقام هاتف (0[5-7]XXXXXXXX)
-                            const isPhone  = /^0[5-7]\d{8}$/.test(lt);
-                            const isBigNum = /^\d{4,}$/.test(lt) && !isPhone;
-
+                            const isZoneCode  = /^[A-Z]{2,4}\d{1,2}$/.test(lt);
+                            const isBigNum    = /^\d{4,}$/.test(lt);
                             if (isWilayaNum || isZoneCode || isBigNum) continue;
 
-                            // تنظيف: إزالة أكواد الجهة المدمجة مع النص (مثل "EOE1 غمرة الوسطى")
-                            const cleaned = lt
-                                .replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "")
-                                .replace(/\s{2,}/g, " ")
-                                .trim();
-
-                            if (!cleaned) continue;
-                            destLines.push(cleaned);
+                            destLines.push(lt);
                         }
 
                         // الخطوة 1: الهاتف — دائماً آخر سطر من الأسفل
@@ -304,20 +290,17 @@ const pdfFunctions = {
                         rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
                         parcel.content = rawContent;
 
-                        // ── استخراج المبلغ (البحث المكاني المُصحَّح) ──
-                        // في نظام إحداثيات PDF: Y أكبر = أعلى في الصفحة، Y أصغر = أسفل
-                        // المبلغ يقع أسفل رأس عمود Recouvrement أي Y أصغر من recY
-                        // نضيّق نطاق X وY لتجنب التقاط عناصر من أعمدة أو قسائم أخرى
+                        // استخراج المبلغ من عمود Recouvrement بالموقع المكاني (X)
+                        // نستخدم items الربع الحالي فقط — لا تداخل بين القسائم في الصفحة
                         if (recRawItem) {
                             const recX = recRawItem.x;
                             const recY = recRawItem.y;
 
                             const candidates = items.filter(it =>
                                 it.s.length > 0    &&
-                                it.y <  recY       &&   // أسفل رأس العمود (Y أصغر = أسفل في PDF)
-                                it.y >  recY - 120 &&   // نطاق Y مضيَّق (120 بدلاً من 200) لتجنب البُعد
-                                it.x >= recX - 30  &&   // يسار العمود مع هامش
-                                it.x <= recX + 150      // يمين العمود — يحصر البحث في العمود فقط
+                                it.y <  recY       &&  // أسفل رأس العمود
+                                it.y >  recY - 200 &&  // ضمن نطاق الجدول
+                                it.x >= recX - 20      // في عمود Recouvrement أو بعده
                             );
                             const candidateText = candidates.map(it => it.s).join(" ");
 
@@ -327,15 +310,14 @@ const pdfFunctions = {
                             else if (mBefore) parcel.amount = mBefore[1].replace(/\s/g, "");
                         }
 
-                        // Fallback محسَّن: البحث في السطرين التاليين لـ Recouvrement مباشرة
-                        // (بدلاً من البحث في كامل contentParts الذي قد يحوي أرقاماً غير ذات صلة)
+                        // Fallback: إذا فشل البحث المكاني، نأخذ آخر مبلغ في الوصف
                         if (!parcel.amount || parcel.amount === "0") {
-                            for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
-                                const lt = lines[j].text;
-                                const mA = lt.match(/(\d+)\s*DA/i);
-                                const mB = lt.match(/DA\s*(\d+)/i);
-                                if (mA) { parcel.amount = mA[1]; break; }
-                                if (mB) { parcel.amount = mB[1]; break; }
+                            const allAmounts = [
+                                ...contentParts.join(" ").matchAll(/(\d+)\s*DA|DA\s*(\d+)/gi)
+                            ];
+                            if (allAmounts.length > 0) {
+                                const last = allAmounts[allAmounts.length - 1];
+                                parcel.amount = (last[1] || last[2]).replace(/\s/g, "");
                             }
                         }
                     }
