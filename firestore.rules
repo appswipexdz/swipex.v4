@@ -1,109 +1,113 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // قواعد بيانات المستخدمين الأساسية
+    // بيانات المستخدمين الأساسية
     // ═══════════════════════════════════════════════════════════════
-    
-    // السماح للمستخدمين المسجلين فقط بقراءة/كتابة بياناتهم الخاصة
     match /users/{userId}/data/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // قواعد نظام الجلسات التعاونية (Collaborative Sessions)
+    // نظام الجلسات التعاونية (Sessions)
     // ═══════════════════════════════════════════════════════════════
-    
     match /sessions/{sessionId} {
-      
-      // دوال مساعدة
+
       function isAuthenticated() {
         return request.auth != null;
       }
-      
+
       function isParticipant() {
-        return isAuthenticated() && 
-               exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+        return isAuthenticated() &&
+          exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
       }
-      
+
       function getParticipantRole() {
         return get(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid)).data.role;
       }
-      
+
       function isOwner() {
-        return isAuthenticated() && 
-               resource.data.createdByUid == request.auth.uid;
+        return isAuthenticated() &&
+          resource.data.createdByUid == request.auth.uid;
       }
-      
+
       function hasRole(roles) {
-        return isParticipant() && getParticipantRole() in roles;
+        return isParticipant() && (getParticipantRole() in roles);
       }
-      
-      // قواعد الجلسة الرئيسية
-      // السماح بالقراءة للمشاركين فقط
+
+      // الجلسة: قراءة للمشاركين فقط
       allow read: if isParticipant();
-      
-      // السماح بإنشاء جلسة لأي مستخدم مسجل
+
+      // إنشاء جلسة لأي مستخدم مسجل
       allow create: if isAuthenticated();
-      
-      // السماح بالتحديث والحذف للمالك فقط
+
+      // تعديل/حذف للمالك فقط
       allow update, delete: if isOwner();
-      
+
       // ═══════════════════════════════════════════════════════════════
-      // المشاركون (Participants)
+      // المشاركون
       // ═══════════════════════════════════════════════════════════════
-      
       match /participants/{userId} {
-        // السماح بالقراءة لجميع المشاركين
         allow read: if isParticipant();
-        
-        // السماح بإنشاء مشارك جديد
         allow create: if isAuthenticated();
-        
-        // السماح بالتحديث والحذف للمالك والمدير أو للمستخدم نفسه
-        allow update, delete: if isAuthenticated() && 
+
+        allow update, delete: if isAuthenticated() &&
           (request.auth.uid == userId || hasRole(['owner', 'admin']));
       }
-      
+
       // ═══════════════════════════════════════════════════════════════
-      // الطرود (Parcels)
+      // الطرود داخل الجلسة
       // ═══════════════════════════════════════════════════════════════
-      
       match /parcels/{parcelId} {
-        // السماح بالقراءة لجميع المشاركين
         allow read: if isParticipant();
-        
-        // السماح بالكتابة للمالك والمدير والمحرر فقط
-        allow write: if hasRole(['owner', 'admin', 'editor']);
+        allow write: if isAuthenticated() &&
+          (hasRole(['owner', 'admin', 'editor']));
       }
-      
+
       // ═══════════════════════════════════════════════════════════════
-      // سجل النشاطات (Activity Log)
+      // سجل النشاطات (ثابت)
       // ═══════════════════════════════════════════════════════════════
-      
       match /activity/{activityId} {
-        // السماح بالقراءة لجميع المشاركين
         allow read: if isParticipant();
-        
-        // السماح بإنشاء نشاط جديد لأي مشارك
         allow create: if isParticipant();
-        
-        // منع التعديل والحذف (سجل ثابت)
+
         allow update, delete: if false;
       }
-      
-      // ═══════════════════════════════════════════════════════════════
-      // الدعوات (Invites)
-      // ═══════════════════════════════════════════════════════════════
-      
-      match /invites/{inviteId} {
-        // السماح بالقراءة لأي مستخدم مسجل (للتحقق من الدعوات)
-        allow read: if isAuthenticated();
-        
-        // السماح بالكتابة للمالك والمدير فقط
-        allow write: if hasRole(['owner', 'admin']);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // الدعوات (Invites) — collection عامة مستقلة
+    // التطبيق يكتب: doc(db, 'invites', inviteId)
+    // ═══════════════════════════════════════════════════════════════
+    match /invites/{inviteId} {
+      function isAuthenticated() {
+        return request.auth != null;
       }
+
+      // ملاحظة: token.email عادةً متوفر إذا المستخدم سجّل عبر Google.
+      function isInvitee() {
+        return isAuthenticated() &&
+          request.auth.token.email.toLowerCase() == resource.data.email;
+      }
+
+      function inviterIsOwnerOrAdmin() {
+        return isAuthenticated() &&
+          exists(/databases/$(database)/documents/sessions/$(resource.data.sessionId)/participants/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)/participants/$(request.auth.uid)).data.role in ['owner', 'admin'];
+      }
+
+      // قراءة: المدعو أو المُرسِل
+      allow read: if isAuthenticated() && (isInvitee() || request.auth.uid == resource.data.invitedByUid);
+
+      // إنشاء الدعوة: فقط owner/admin في الجلسة
+      allow create: if inviterIsOwnerOrAdmin();
+
+      // قبول/رفض: فقط المدعو
+      allow update: if isInvitee();
+
+      // حذف ممنوع افتراضيًا
+      allow delete: if false;
     }
   }
 }

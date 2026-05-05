@@ -299,7 +299,7 @@ const pdfFunctions = {
                             const candidates = items.filter(it =>
                                 it.s.length > 0    &&
                                 it.y <  recY       &&  // أسفل رأس العمود
-                                it.y >  recY - 200 &&  // ضمن نطاق الجدول
+                                it.y >  recY - 120 &&  // ضمن نطاق الجدول
                                 it.x >= recX - 20      // في عمود Recouvrement أو بعده
                             );
                             const candidateText = candidates.map(it => it.s).join(" ");

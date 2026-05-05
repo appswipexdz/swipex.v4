@@ -54,6 +54,24 @@ const arrayUnion = (...elements) => firebase.firestore.FieldValue.arrayUnion(...
 const arrayRemove = (...elements) => firebase.firestore.FieldValue.arrayRemove(...elements);
 const Timestamp = firebase.firestore.Timestamp;
 
+/**
+ * توحيد أسماء الحالات داخل نظام الجلسات
+ * (لدعم البيانات القديمة التي كانت تستخدم رموز مثل ✓ / ✗ / ☎ / 🔒 / ⚠)
+ */
+function normalizeSessionStatus(status) {
+  if (!status) return status;
+
+  const map = {
+    'تم التسليم ✓': 'تم التسليم',
+    'إلغاء الطلبية ✗': 'إلغاء الطلبية',
+    'لا يرد ☎': 'لا يرد',
+    'مغلق 🔒': 'مغلق',
+    'رقم خاطئ ⚠': 'رقم خاطئ',
+  };
+
+  return map[status] || status;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 🔧 متغيرات عامة
 // ═══════════════════════════════════════════════════════════════
