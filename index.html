@@ -1419,7 +1419,7 @@
                             </div>
                             <div>
                                 <h3 class="font-bold text-gray-800 dark:text-white">معلومات التطبيق</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">الإصدار v2.5</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">الإصدار v4.0</p>
                             </div>
                         </div>
                         <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" :class="{ 'rotate-180': settingsExpanded.info }"></i>
@@ -1428,11 +1428,11 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                                 <span class="text-gray-500 dark:text-gray-400">الإصدار</span>
-                                <span class="font-bold text-gray-800 dark:text-white">v2.5</span>
+                                <span class="font-bold text-gray-800 dark:text-white">v4.0</span>
                             </div>
                             <div class="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                                 <span class="text-gray-500 dark:text-gray-400">عدد الطرود</span>
-                                <span class="font-bold text-gray-800 dark:text-white">{{ parcels.length }}</span>
+                                <span class="font-bold text-gray-800 dark:text-white">{{ parcels.length + Object.keys(archive || {}).length }}</span>
                             </div>
                             <div class="flex justify-between py-2">
                                 <span class="text-gray-500 dark:text-gray-400">المطور</span>
