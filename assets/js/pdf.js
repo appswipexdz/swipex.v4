@@ -290,17 +290,20 @@ const pdfFunctions = {
                         rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
                         parcel.content = rawContent;
 
-                        // استخراج المبلغ من عمود Recouvrement بالموقع المكاني (X)
-                        // نستخدم items الربع الحالي فقط — لا تداخل بين القسائم في الصفحة
+                        // ── استخراج المبلغ (البحث المكاني المُصحَّح) ──
+                        // في نظام إحداثيات PDF: Y أكبر = أعلى في الصفحة، Y أصغر = أسفل
+                        // المبلغ يقع أسفل رأس عمود Recouvrement أي Y أصغر من recY
+                        // نضيّق نطاق X وY لتجنب التقاط عناصر من أعمدة أو قسائم أخرى
                         if (recRawItem) {
                             const recX = recRawItem.x;
                             const recY = recRawItem.y;
 
                             const candidates = items.filter(it =>
                                 it.s.length > 0    &&
-                                it.y <  recY       &&  // أسفل رأس العمود
-                                it.y >  recY - 120 &&  // ضمن نطاق الجدول
-                                it.x >= recX - 20      // في عمود Recouvrement أو بعده
+                                it.y <  recY       &&   // أسفل رأس العمود (Y أصغر = أسفل في PDF)
+                                it.y >  recY - 120 &&   // نطاق Y مضيَّق (120 بدلاً من 200) لتجنب البُعد
+                                it.x >= recX - 30  &&   // يسار العمود مع هامش
+                                it.x <= recX + 150      // يمين العمود — يحصر البحث في العمود فقط
                             );
                             const candidateText = candidates.map(it => it.s).join(" ");
 
@@ -310,14 +313,15 @@ const pdfFunctions = {
                             else if (mBefore) parcel.amount = mBefore[1].replace(/\s/g, "");
                         }
 
-                        // Fallback: إذا فشل البحث المكاني، نأخذ آخر مبلغ في الوصف
+                        // Fallback محسَّن: البحث في السطرين التاليين لـ Recouvrement مباشرة
+                        // (بدلاً من البحث في كامل contentParts الذي قد يحوي أرقاماً غير ذات صلة)
                         if (!parcel.amount || parcel.amount === "0") {
-                            const allAmounts = [
-                                ...contentParts.join(" ").matchAll(/(\d+)\s*DA|DA\s*(\d+)/gi)
-                            ];
-                            if (allAmounts.length > 0) {
-                                const last = allAmounts[allAmounts.length - 1];
-                                parcel.amount = (last[1] || last[2]).replace(/\s/g, "");
+                            for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
+                                const lt = lines[j].text;
+                                const mA = lt.match(/(\d+)\s*DA/i);
+                                const mB = lt.match(/DA\s*(\d+)/i);
+                                if (mA) { parcel.amount = mA[1]; break; }
+                                if (mB) { parcel.amount = mB[1]; break; }
                             }
                         }
                     }
