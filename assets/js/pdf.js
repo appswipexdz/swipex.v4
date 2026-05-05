@@ -195,13 +195,27 @@ const pdfFunctions = {
 
                             if (!lt) continue;
 
-                            // تجاهل: أرقام الولايات (1-58)، أكواد الجهة (EOE1...)، أرقام كبيرة (3911...)
+                            // تجاهل: أرقام الولايات (1-58)
                             const isWilayaNum = /^\d{1,2}$/.test(lt) && +lt >= 1 && +lt <= 58;
-                            const isZoneCode  = /^[A-Z]{2,4}\d{1,2}$/.test(lt);
-                            const isBigNum    = /^\d{4,}$/.test(lt);
+
+                            // تجاهل: سطر يتكوّن فقط من أكواد الجهة (EOE1, OES1, BEM1...)
+                            // نستثني السطور التي تحتوي نصاً عربياً أو لاتينياً حقيقياً بجانب الكود
+                            const isZoneCode = /^([A-Z]{2,4}\d{1,2}\s*)+$/.test(lt);
+
+                            // تجاهل: أرقام كبيرة (3911...) لكن ليست أرقام هاتف (0[5-7]XXXXXXXX)
+                            const isPhone  = /^0[5-7]\d{8}$/.test(lt);
+                            const isBigNum = /^\d{4,}$/.test(lt) && !isPhone;
+
                             if (isWilayaNum || isZoneCode || isBigNum) continue;
 
-                            destLines.push(lt);
+                            // تنظيف: إزالة أكواد الجهة المدمجة مع النص (مثل "EOE1 غمرة الوسطى")
+                            const cleaned = lt
+                                .replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "")
+                                .replace(/\s{2,}/g, " ")
+                                .trim();
+
+                            if (!cleaned) continue;
+                            destLines.push(cleaned);
                         }
 
                         // الخطوة 1: الهاتف — دائماً آخر سطر من الأسفل
