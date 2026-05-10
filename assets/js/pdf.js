@@ -15,6 +15,7 @@ const pdfFunctions = {
                 this.archive[p.tracking] = {
                     status: p.status,
                     notes: p.notes,
+                    location: this.normalizeLocation(p.location),
                     lastUpdate: new Date().toISOString()
                 };
             });

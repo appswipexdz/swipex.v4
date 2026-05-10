@@ -95,6 +95,162 @@ const appMethods = {
     return date + 'T' + time;
   },
 
+  createEmptyLocation() {
+    return {
+      label: "",
+      address: "",
+      lat: null,
+      lng: null,
+      mapsUrl: "",
+      source: "manual",
+      updatedAt: "",
+    };
+  },
+
+  _normalizeCoord(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  },
+
+  _isAbsoluteUrl(value) {
+    return /^https?:\/\//i.test((value || "").trim());
+  },
+
+  normalizeLocation(location) {
+    const base = this.createEmptyLocation();
+    if (!location) return base;
+
+    if (typeof location === "string") {
+      const text = location.trim();
+      if (!text) return base;
+      return {
+        ...base,
+        address: this._isAbsoluteUrl(text) ? "" : text,
+        mapsUrl: this._isAbsoluteUrl(text)
+          ? text
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text)}`,
+      };
+    }
+
+    const normalized = {
+      ...base,
+      ...location,
+      label: (location.label || "").trim(),
+      address: (location.address || "").trim(),
+      mapsUrl: (location.mapsUrl || "").trim(),
+      source: (location.source || "manual").trim() || "manual",
+      updatedAt: location.updatedAt || "",
+      lat: this._normalizeCoord(location.lat),
+      lng: this._normalizeCoord(location.lng),
+    };
+
+    if (!normalized.mapsUrl) {
+      if (normalized.lat !== null && normalized.lng !== null) {
+        normalized.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${normalized.lat},${normalized.lng}`;
+      } else if (this._isAbsoluteUrl(normalized.address)) {
+        normalized.mapsUrl = normalized.address;
+        normalized.address = "";
+      } else if (normalized.address) {
+        normalized.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(normalized.address)}`;
+      }
+    }
+
+    if (!normalized.updatedAt && (normalized.label || normalized.address || normalized.mapsUrl || normalized.lat !== null || normalized.lng !== null)) {
+      normalized.updatedAt = new Date().toISOString();
+    }
+
+    return normalized;
+  },
+
+  normalizeArchiveEntry(entry) {
+    if (!entry || typeof entry !== "object") return { location: this.createEmptyLocation() };
+    return {
+      ...entry,
+      location: this.normalizeLocation(entry.location),
+    };
+  },
+
+  normalizeArchiveMap(archiveMap) {
+    const normalized = {};
+    Object.entries(archiveMap || {}).forEach(([tracking, entry]) => {
+      normalized[tracking] = this.normalizeArchiveEntry(entry);
+    });
+    return normalized;
+  },
+
+  normalizeParcelRecord(parcel) {
+    if (!parcel || typeof parcel !== "object") return parcel;
+    const normalized = {
+      ...parcel,
+      location: this.normalizeLocation(parcel.location),
+    };
+    if (parcel.history && typeof parcel.history === "object") {
+      normalized.history = this.normalizeArchiveEntry(parcel.history);
+    }
+    return normalized;
+  },
+
+  hasParcelLocation(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    return !!(
+      location.label ||
+      location.address ||
+      location.mapsUrl ||
+      (location.lat !== null && location.lng !== null)
+    );
+  },
+
+  canOpenParcelLocation(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    return !!location.mapsUrl;
+  },
+
+  getLocationDisplay(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    return location.label || location.address || "بدون وصف";
+  },
+
+  getLocationMeta(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    if (location.lat !== null && location.lng !== null) {
+      return `${location.lat}, ${location.lng}`;
+    }
+    return location.address || "";
+  },
+
+  getLocationSearchText(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    return [location.label, location.address, location.mapsUrl]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  },
+
+  touchParcelLocation(parcel) {
+    if (!parcel) return;
+    parcel.location = this.normalizeLocation(parcel.location);
+    parcel.location.updatedAt = new Date().toISOString();
+    parcel.updatedAt = new Date().toISOString();
+    this.debouncedSaveData();
+  },
+
+  clearParcelLocation(parcel) {
+    if (!parcel) return;
+    parcel.location = this.createEmptyLocation();
+    parcel.updatedAt = new Date().toISOString();
+    this.saveData();
+  },
+
+  openParcelLocation(target) {
+    const location = this.normalizeLocation(target?.location || target);
+    if (!this.hasParcelLocation(location) || !location.mapsUrl) {
+      this.showToast("لا يوجد موقع محفوظ لهذا الطرد", "info");
+      return;
+    }
+    window.open(location.mapsUrl, "_blank");
+  },
+
   saveData() {
     // حفظ محلي فوري
     localStorage.setItem(
@@ -150,8 +306,10 @@ const appMethods = {
       try {
         const data = JSON.parse(saved);
         // تحميل البيانات المحلية كبيانات مؤقتة
-        this.parcels = data.parcels || [];
-        this.archive = data.archive || {};
+        this.parcels = (data.parcels || []).map((parcel) =>
+          this.normalizeParcelRecord(parcel),
+        );
+        this.archive = this.normalizeArchiveMap(data.archive || {});
         this.sessionDate = data.sessionDate || null;
         const savedSettings = data.settings || {};
         if (
@@ -248,7 +406,9 @@ const appMethods = {
           ? this.selectLatestVersion(localData, { parcels: cloud.parcels }, cloudMetadata, 'parcels').parcels
           : cloud.parcels;
         if (selectedParcels && selectedParcels.length > 0) {
-          this.parcels = selectedParcels;
+          this.parcels = selectedParcels.map((parcel) =>
+            this.normalizeParcelRecord(parcel),
+          );
           loaded = true;
           console.log("✓ تم تطبيق الطرود الأحدثة:", selectedParcels.length);
         }
@@ -273,7 +433,7 @@ const appMethods = {
           ? this.selectLatestVersion(localData, { archive: cloud.archive }, cloudMetadata, 'archive').archive
           : cloud.archive;
         if (selectedArchive) {
-          this.archive = selectedArchive;
+          this.archive = this.normalizeArchiveMap(selectedArchive);
           console.log("✓ تم تطبيق الأرشيف الأحدث");
         }
       }
@@ -511,6 +671,7 @@ const appMethods = {
         status: p.status,
         notes: p.notes || "",
         tag: p.tag || null,
+        location: this.normalizeLocation(p.location),
         lastUpdate: new Date().toISOString(),
 
         // ✅ حفظ المبلغ داخل الأرشيف حتى يظهر في صفحة الأرشيف
@@ -573,24 +734,30 @@ const appMethods = {
 
       // هل له سجل في الأرشيف؟
       const archivedData = this.archive[tracking];
+      const normalizedArchivedData = archivedData
+        ? this.normalizeArchiveEntry(archivedData)
+        : null;
       const hasImportedStatus =
         newParcel.status && newParcel.status !== "دون إجراء";
       const hasImportedNotes = newParcel.notes && newParcel.notes.trim() !== "";
 
-      if (archivedData) {
+      if (normalizedArchivedData) {
         const merged = {
           ...newParcel,
           expanded: false,
           isUpdated: true,
-          history: archivedData,
-          smsSent: archivedData.smsSent || false,
-          senderSmsSent: archivedData.senderSmsSent || false,
+          history: normalizedArchivedData,
+          smsSent: normalizedArchivedData.smsSent || false,
+          senderSmsSent: normalizedArchivedData.senderSmsSent || false,
           insertedAt: this._nowTimestamp(),
           status: hasImportedStatus ? newParcel.status : "دون إجراء",
           notes: hasImportedNotes ? newParcel.notes : "",
+          location: this.normalizeLocation(
+            newParcel.location || normalizedArchivedData.location,
+          ),
         };
         merged.updatedAt = new Date().toISOString();
-        processedParcels.push(merged);
+        processedParcels.push(this.normalizeParcelRecord(merged));
         stats.updated++;
       } else {
         const created = {
@@ -601,16 +768,19 @@ const appMethods = {
           insertedAt: this._nowTimestamp(),
           status: hasImportedStatus ? newParcel.status : "دون إجراء",
           notes: hasImportedNotes ? newParcel.notes : "",
+          location: this.normalizeLocation(newParcel.location),
         };
         created.updatedAt = new Date().toISOString();
-        processedParcels.push(created);
+        processedParcels.push(this.normalizeParcelRecord(created));
         stats.new++;
       }
 
       existingMap.set(tracking, newParcel);
     });
 
-    this.parcels = processedParcels;
+    this.parcels = processedParcels.map((parcel) =>
+      this.normalizeParcelRecord(parcel),
+    );
     this.detectDuplicates();
 
     const phoneCount = {};
@@ -638,10 +808,11 @@ const appMethods = {
   _buildArchivePhoneMap() {
     const map = {};
     for (const [tracking, data] of Object.entries(this.archive)) {
+      const normalizedData = this.normalizeArchiveEntry(data);
       const phones = [data.phone, data.phone2].filter(Boolean);
       phones.forEach(ph => {
         if (!map[ph]) map[ph] = [];
-        map[ph].push({ tracking, ...data });
+        map[ph].push({ tracking, ...normalizedData });
       });
     }
     for (const key in map) {
@@ -1171,6 +1342,7 @@ const appMethods = {
     this.parcels.unshift({
       id: Date.now(),
       ...this.newParcel,
+      location: this.normalizeLocation(this.newParcel.location),
       status: "دون إجراء",
       expanded: true,
       isUpdated: false,
@@ -1195,6 +1367,7 @@ const appMethods = {
       sender: "",
       senderPhone: "",
       senderAddress: "",
+      location: this.createEmptyLocation(),
     };
     // إعادة تهيئة Sortable بعد إضافة طرد جديد
     this.$nextTick(() => {
@@ -1461,7 +1634,8 @@ const appMethods = {
         (p.phone && p.phone.includes(query)) ||
         (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
-        (p.notes && p.notes.toLowerCase().includes(query));
+        (p.notes && p.notes.toLowerCase().includes(query)) ||
+        this.getLocationSearchText(p).includes(query);
       const matchesMuni =
         !this.filters.municipality ||
         p.municipality === this.filters.municipality;
@@ -1485,7 +1659,8 @@ const appMethods = {
         (p.phone && p.phone.includes(query)) ||
         (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
-        (p.notes && p.notes.toLowerCase().includes(query))
+        (p.notes && p.notes.toLowerCase().includes(query)) ||
+        this.getLocationSearchText(p).includes(query)
       );
     }
     return this.parcels.filter((p) => {

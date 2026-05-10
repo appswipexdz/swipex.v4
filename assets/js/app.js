@@ -41,7 +41,7 @@ createApp({
         archiveList() {
             return Object.entries(this.archive).map(([tracking, data]) => ({
                 tracking,
-                ...data
+                ...appMethods.normalizeArchiveEntry.call(this, data)
             })).sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
         },
         filteredArchive() {
@@ -58,7 +58,8 @@ createApp({
                     (item.phone2 || '').includes(q) ||
                     (item.notes || '').toLowerCase().includes(q) ||
                     (item.tag || '').toLowerCase().includes(q) ||
-                    (item.municipality || '').toLowerCase().includes(q)
+                    (item.municipality || '').toLowerCase().includes(q) ||
+                    appMethods.getLocationSearchText.call(this, item).includes(q)
                 );
             }
             return list;
