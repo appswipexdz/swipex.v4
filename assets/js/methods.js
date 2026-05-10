@@ -208,7 +208,7 @@ const appMethods = {
 
   getLocationDisplay(target) {
     const location = this.normalizeLocation(target?.location || target);
-    return location.label || location.address || "بدون وصف";
+    return location.address || location.mapsUrl || "بدون رابط";
   },
 
   getLocationMeta(target) {
