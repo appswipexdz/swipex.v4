@@ -15,7 +15,6 @@ const pdfFunctions = {
                 this.archive[p.tracking] = {
                     status: p.status,
                     notes: p.notes,
-                    location: this.normalizeLocation(p.location),
                     lastUpdate: new Date().toISOString()
                 };
             });
@@ -303,25 +302,28 @@ const pdfFunctions = {
                         parcel.content = rawContent;
 
                         // ── استخراج المبلغ ──
-                        // نبحث مباشرة في items الربع عن العنصر الذي يحتوي رقماً متبوعاً بـ DA
-                        // هذا أدق من البحث المكاني لأن "Recouvrement" قد يكون مدموجاً في span أكبر
-                        // مما يجعل x المرجعي خاطئاً ويلتقط أرقاماً من عمود الوصف
-                        const amountItem = items.find(it => /\d[\d\s]*\s*DA|DA\s*\d[\d\s]*/i.test(it.s));
-                        if (amountItem) {
-                            const mAfter  = amountItem.s.match(/(\d[\d\s]*)\s*DA/i);
-                            const mBefore = amountItem.s.match(/DA\s*(\d[\d\s]*)/i);
-                            if      (mAfter)  parcel.amount = mAfter[1].replace(/\s/g, "");
-                            else if (mBefore) parcel.amount = mBefore[1].replace(/\s/g, "");
+                        // الاستراتيجية المزدوجة:
+                        // 1) البحث في lines المدموجة أولاً — لأن pdf.js أحياناً يفصل الرقم عن DA
+                        //    في span-ين منفصلين، لكن الدمج يعيد تجميعهما في سطر واحد
+                        // 2) البحث في items كـ fallback — مع regex يستثني DA المدمجة في كلمات
+                        //    مثل DA في رقم التتبع YAL-DA95BL الذي يعطي 95 خطأً
+
+                        // الـ regex الآمن: رقم 3+ أرقام قبل DA أو بعدها، مع استثناء DA المدمجة في كلمات
+                        const amountRegex = /(?<![A-Z])(\d{3,}[\d\s]*)\s*DA/i;
+
+                        // الأولوية: البحث في أسطر ما بعد Recouvrement (lines مدموجة)
+                        for (let j = recIdx + 1; j < Math.min(recIdx + 5, lines.length); j++) {
+                            const lt = lines[j].text;
+                            const m = lt.match(amountRegex);
+                            if (m) { parcel.amount = m[1].replace(/\s/g, ""); break; }
                         }
 
-                        // Fallback: البحث النصي في أسطر ما بعد Recouvrement مباشرة
+                        // Fallback: البحث في items إذا لم يُعثر على مبلغ في lines
                         if (!parcel.amount || parcel.amount === "0") {
-                            for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
-                                const lt = lines[j].text;
-                                const mA = lt.match(/(\d+)\s*DA/i);
-                                const mB = lt.match(/DA\s*(\d+)/i);
-                                if (mA) { parcel.amount = mA[1]; break; }
-                                if (mB) { parcel.amount = mB[1]; break; }
+                            const amountItem = items.find(it => amountRegex.test(it.s));
+                            if (amountItem) {
+                                const m = amountItem.s.match(amountRegex);
+                                if (m) parcel.amount = m[1].replace(/\s/g, "");
                             }
                         }
                     }
