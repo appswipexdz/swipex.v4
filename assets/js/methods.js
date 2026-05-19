@@ -1328,6 +1328,16 @@ const appMethods = {
     });
   },
 
+  closeEditModal(parcelId = null) {
+    this.showEditModal = false;
+    this.editParcel = null;
+    this.editParcelId = null;
+    this.smartTagSortingPaused = false;
+    this.showPriceConfirmModal = false;
+    this.pendingPriceChange = null;
+    if (parcelId) this.scrollParcelIntoView(parcelId);
+  },
+
   // إلغاء تغيير السعر
   cancelPriceChange() {
     this.showPriceConfirmModal = false;
