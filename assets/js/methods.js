@@ -267,10 +267,13 @@ const appMethods = {
     // حفظ في Firestore فوري (بدون تأخير)
     if (firestoreSync.isAvailable()) {
       this.syncStatus = "syncing";
+      const settingsToSave = JSON.parse(
+        JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
+      );
       firestoreSync
         .saveAll({
           parcels: this.parcels,
-          settings: { ...this.settings, _sessionDate: this.sessionDate },
+          settings: settingsToSave,
           archive: this.archive,
           tasks: this.tasks,
         })

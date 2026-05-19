@@ -356,12 +356,15 @@ createApp({
                                     
                                     // تحديث الإعدادات
                                     if (doc.id === 'settings') {
-                                        const remoteSettings = data.data ? JSON.parse(data.data) : null;
-                                        if (remoteSettings && JSON.stringify(remoteSettings) !== JSON.stringify(this.settings)) {
-                                            console.log('🔄 تحديث الإعدادات من Firestore');
-                                            this.settings = { ...this.settings, ...remoteSettings };
-                                            this.applyTheme();
-                                            updated = true;
+                                        const rawSettings = data.data ? JSON.parse(data.data) : null;
+                                        if (rawSettings) {
+                                            const { _sessionDate, ...remoteSettings } = rawSettings;
+                                            if (JSON.stringify(remoteSettings) !== JSON.stringify(this.settings)) {
+                                                console.log('🔄 تحديث الإعدادات من Firestore');
+                                                this.settings = { ...this.settings, ...remoteSettings };
+                                                this.applyTheme();
+                                                updated = true;
+                                            }
                                         }
                                     }
                                     

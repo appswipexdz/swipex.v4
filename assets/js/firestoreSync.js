@@ -82,17 +82,23 @@ const firestoreSync = {
     },
 
     async saveSettings(settings) {
+        this.updateSyncStatus('syncing');
         try {
             const ref = this._docRef('settings');
-            if (!ref) return false;
+            if (!ref) {
+                this.updateSyncStatus('error');
+                return false;
+            }
             await ref.set({
                 data: JSON.stringify(settings),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             await this.updateMetadata(['settings']);
+            this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             return true;
         } catch (e) {
             console.error('firestoreSync.saveSettings:', e);
+            this.updateSyncStatus('error');
             return false;
         }
     },
@@ -314,7 +320,7 @@ const firestoreSync = {
                 updateData.tasksUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
             }
             
-            await metadataRef.update(updateData);
+            await metadataRef.set(updateData, { merge: true });
             return true;
         } catch (e) {
             console.error('خطأ في تحديث metadata:', e);
