@@ -2296,7 +2296,10 @@ const appMethods = {
   },
 
   getUsedTags() {
-    const tags = new Set(this.settings.tags || []);
+    const tags = new Set();
+    if (this.filters.tag) {
+      tags.add(this.filters.tag);
+    }
     this.parcels
       .filter((p) => !this.filters.municipality || p.municipality === this.filters.municipality)
       .forEach((p) => {
