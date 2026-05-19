@@ -293,6 +293,7 @@ const appMethods = {
       "showAddModal",
       "showImportSummary",
       "showHistoryModal",
+      "showClearDataConfirm",
     ];
     tempKeys.forEach((key) => {
       if (localStorage.getItem(key)) {
@@ -339,6 +340,7 @@ const appMethods = {
     console.log("⏳ تحميل البيانات من السحابة...");
     await this.loadFromCloud();
 
+    this.showClearDataConfirm = false;
     this.$nextTick(() => {
       this.showAddModal = false;
       this.showImportSummary = false;
@@ -454,6 +456,7 @@ const appMethods = {
       this.syncLocalStorage();
       this.applyTheme();
       this.detectDuplicates();
+      this.showClearDataConfirm = false;
       console.log("✓ اكتملت عملية تحميل البيانات من السحابة");
     }
     return loaded;
