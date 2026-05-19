@@ -355,13 +355,13 @@
                 </div>
 
                 <!-- Tags Dropdown -->
-                < v-show="showTagsDropdown" class="absolute right-3 top-14 w-56 max-h-72 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
+                <div v-show="showTagsDropdown" class="absolute right-3 top-14 w-56 max-h-72 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
                     <button @click="filters.tag = ''; filters.status = ''; showTagsDropdown = false" class="w-full text-right px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition font-bold flex items-center gap-2">
                         <span class="text-purple-500 font-bold">@</span>
                         دون تحديد
                     </button>
                     <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-                    <!-- <p v-if="settings.smartTagSortingEnabled" class="px-4 text-xs text-gray-500 dark:text-gray-400 mb-2">اسحب التمييزات لإعادة ترتيب أولويات العرض</p> -->
+                    <p v-if="settings.smartTagSortingEnabled" class="px-4 text-xs text-gray-500 dark:text-gray-400 mb-2">اسحب التمييزات لإعادة ترتيب أولويات العرض</p>
                     <div id="tag-order-list" class="space-y-2">
                         <button v-for="tag in getUsedTags()" :key="tag" :data-tag="tag" @click="filters.tag = tag; filters.status = ''; showTagsDropdown = false" class="tag-order-item w-full text-right px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition flex items-center gap-2">
                             <span v-if="settings.smartTagSortingEnabled" class="tag-drag-handle flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 cursor-grab hover:bg-gray-200 dark:hover:bg-gray-600 transition">
