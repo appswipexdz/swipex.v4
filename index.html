@@ -290,7 +290,6 @@
                 </div>
             </div>
         </div>
-
         <!-- Filter Pills (ثابتة دائماً) -->
         <div class="sticky z-30 transition-all duration-300" :style="{ top: headerHidden ? '0' : '48px' }">
             <div class="mx-1 mt-1 px-0.5 py-0.2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm" style="overflow: visible;">
@@ -356,16 +355,22 @@
                 </div>
 
                 <!-- Tags Dropdown -->
-                <div v-show="showTagsDropdown" class="absolute right-3 top-14 w-52 max-h-64 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
+                <div v-show="showTagsDropdown" class="absolute right-3 top-14 w-56 max-h-72 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
                     <button @click="filters.tag = ''; filters.status = ''; showTagsDropdown = false" class="w-full text-right px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition font-bold flex items-center gap-2">
                         <span class="text-purple-500 font-bold">@</span>
                         دون تحديد
                     </button>
                     <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-                    <button v-for="tag in getUsedTags()" :key="tag" @click="filters.tag = tag; filters.status = ''; showTagsDropdown = false" class="w-full text-right px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition flex items-center gap-2">
-                        <span class="text-purple-400 text-xs font-bold">@</span>
-                        {{ tag }}
-                    </button>
+                    <p v-if="settings.smartTagSortingEnabled" class="px-4 text-xs text-gray-500 dark:text-gray-400 mb-2">اسحب التمييزات لإعادة ترتيب أولويات العرض</p>
+                    <div id="tag-order-list" class="space-y-2">
+                        <button v-for="tag in getUsedTags()" :key="tag" :data-tag="tag" @click="filters.tag = tag; filters.status = ''; showTagsDropdown = false" class="tag-order-item w-full text-right px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition flex items-center gap-2">
+                            <span v-if="settings.smartTagSortingEnabled" class="tag-drag-handle flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 cursor-grab hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                <i class="fas fa-grip-lines"></i>
+                            </span>
+                            <span class="text-purple-400 text-xs font-bold">@</span>
+                            <span class="flex-1 text-right">{{ tag }}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1215,6 +1220,16 @@
                                 <button @click="addTag" class="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition">
                                     <i class="fas fa-plus"></i>
                                 </button>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-700 dark:text-gray-300">فرز ذكي حسب ترتيب التمييز</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">يفرز الطرود تلقائياً حسب ترتيب التمييزات بعد إعادة ترتيب القائمة.</p>
+                                </div>
+                                <label class="relative inline-block w-14 h-8" dir="ltr" @click.stop>
+                                    <input type="checkbox" v-model="settings.smartTagSortingEnabled" @change="saveSettings" class="sr-only peer" />
+                                    <div class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-purple-600"></div>
+                                </label>
                             </div>
                             <div v-if="settings.tags.length > 0" class="flex flex-wrap gap-2">
                                 <span v-for="tag in settings.tags" :key="tag" class="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-2">

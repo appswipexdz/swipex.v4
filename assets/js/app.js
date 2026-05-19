@@ -114,6 +114,13 @@ createApp({
         'filters.tag'() {
             this.saveFilters();
         },
+        'showTagsDropdown'() {
+            this.$nextTick(() => {
+                if (this.showTagsDropdown) {
+                    this.initTagSortable();
+                }
+            });
+        },
         // إعادة تهيئة Sortable عند تغيير البيانات المفلترة
         filteredParcels() {
             this.$nextTick(() => {

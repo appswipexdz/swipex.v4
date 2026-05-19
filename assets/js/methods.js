@@ -1653,8 +1653,9 @@ const appMethods = {
 
   filteredParcels() {
     const query = this.filters.search.toLowerCase();
+    let list = [];
     if (query) {
-      return this.parcels.filter((p) =>
+      list = this.parcels.filter((p) =>
         (p.receiver && p.receiver.toLowerCase().includes(query)) ||
         (p.phone && p.phone.includes(query)) ||
         (p.phone2 && p.phone2.includes(query)) ||
@@ -1662,17 +1663,37 @@ const appMethods = {
         (p.notes && p.notes.toLowerCase().includes(query)) ||
         this.getLocationSearchText(p).includes(query)
       );
+    } else {
+      list = this.parcels.filter((p) => {
+        const matchesMuni =
+          !this.filters.municipality ||
+          p.municipality === this.filters.municipality;
+        const matchesStatus =
+          !this.filters.status || p.status === this.filters.status;
+        const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
+        const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
+        return matchesMuni && matchesStatus && matchesTag && matchesFav;
+      });
     }
-    return this.parcels.filter((p) => {
-      const matchesMuni =
-        !this.filters.municipality ||
-        p.municipality === this.filters.municipality;
-      const matchesStatus =
-        !this.filters.status || p.status === this.filters.status;
-      const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
-      const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
-      return matchesMuni && matchesStatus && matchesTag && matchesFav;
-    });
+
+    const order = Array.isArray(this.settings.tagOrder) && this.settings.tagOrder.length > 0
+      ? this.settings.tagOrder
+      : this.settings.tags || [];
+
+    if (this.settings.smartTagSortingEnabled && order.length > 0) {
+      return [...list].sort((a, b) => {
+        const indexA = a.tag ? order.indexOf(a.tag) : order.length;
+        const indexB = b.tag ? order.indexOf(b.tag) : order.length;
+        const normalizedA = indexA === -1 ? order.length : indexA;
+        const normalizedB = indexB === -1 ? order.length : indexB;
+        if (normalizedA !== normalizedB) {
+          return normalizedA - normalizedB;
+        }
+        return 0;
+      });
+    }
+
+    return list;
   },
 
   totalCash() {
@@ -2125,8 +2146,14 @@ const appMethods = {
     // التحقق من عدم التكرار
     if (!this.settings.tags.includes(tagName)) {
       this.settings.tags.push(tagName);
-      this.saveSettings();
     }
+    if (!Array.isArray(this.settings.tagOrder)) {
+      this.settings.tagOrder = [];
+    }
+    if (!this.settings.tagOrder.includes(tagName)) {
+      this.settings.tagOrder.push(tagName);
+    }
+    this.saveSettings();
     this.newTagInput = "";
   },
 
@@ -2204,6 +2231,7 @@ const appMethods = {
 
   removeTag(tagName) {
     this.settings.tags = this.settings.tags.filter((t) => t !== tagName);
+    this.settings.tagOrder = (this.settings.tagOrder || []).filter((t) => t !== tagName);
     // إزالة التمييز من الطرود التي تستخدمه
     this.parcels.forEach((p) => {
       if (p.tag === tagName) {
@@ -2231,8 +2259,14 @@ const appMethods = {
     // إضافة التمييز للإعدادات إذا لم يكن موجوداً
     if (!this.settings.tags.includes(tagName)) {
       this.settings.tags.push(tagName);
-      this.saveSettings();
     }
+    if (!Array.isArray(this.settings.tagOrder)) {
+      this.settings.tagOrder = [];
+    }
+    if (!this.settings.tagOrder.includes(tagName)) {
+      this.settings.tagOrder.push(tagName);
+    }
+    this.saveSettings();
 
     // تعيين التمييز للطرد مباشرة
     this.selectTagForParcel(tagName);
@@ -2262,13 +2296,55 @@ const appMethods = {
   },
 
   getUsedTags() {
-    const usedTags = new Set();
+    const tags = new Set(this.settings.tags || []);
     this.parcels
       .filter((p) => !this.filters.municipality || p.municipality === this.filters.municipality)
       .forEach((p) => {
-        if (p.tag) usedTags.add(p.tag);
+        if (p.tag) tags.add(p.tag);
       });
-    return Array.from(usedTags);
+
+    const orderedTags = Array.from(tags);
+    const order = this.settings.tagOrder || [];
+    return orderedTags.sort((a, b) => {
+      const indexA = order.indexOf(a);
+      const indexB = order.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  },
+
+  initTagSortable() {
+    if (!this.settings.smartTagSortingEnabled) return;
+    const el = document.getElementById("tag-order-list");
+    if (!el) return;
+    if (this.tagSortInstance) {
+      this.tagSortInstance.destroy();
+      this.tagSortInstance = null;
+    }
+    this.tagSortInstance = Sortable.create(el, {
+      animation: 160,
+      handle: '.tag-drag-handle',
+      ghostClass: 'opacity-50',
+      onEnd: () => {
+        this.updateTagOrder();
+      },
+    });
+  },
+
+  updateTagOrder() {
+    const el = document.getElementById("tag-order-list");
+    if (!el) return;
+    const orderedTags = Array.from(el.querySelectorAll('[data-tag]'))
+      .map((item) => item.getAttribute('data-tag'))
+      .filter(Boolean);
+    if (orderedTags.length > 0) {
+      const existing = Array.isArray(this.settings.tagOrder) ? this.settings.tagOrder : [];
+      const remaining = existing.filter((tag) => !orderedTags.includes(tag));
+      this.settings.tagOrder = [...orderedTags, ...remaining];
+      this.saveSettings();
+    }
   },
 
   filterByTag(tagName) {
