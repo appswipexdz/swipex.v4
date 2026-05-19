@@ -579,6 +579,7 @@ const appMethods = {
   },
 
   openNoteModal(parcel) {
+    this.smartTagSortingPaused = true;
     this.noteModalParcel = parcel;
     this.showNoteModal = true;
   },
@@ -587,6 +588,7 @@ const appMethods = {
     this.saveData();
     this.showNoteModal = false;
     this.noteModalParcel = null;
+    this.resumeSmartTagSorting();
   },
 
   addFavoritePhone() {
@@ -1233,6 +1235,7 @@ const appMethods = {
 
   // ========== Edit Parcel Methods ==========
   openEditModal(parcel) {
+    this.smartTagSortingPaused = true;
     this.editParcelId = parcel.id;
     this.editParcel = {
       receiver: parcel.receiver || "",
@@ -1282,6 +1285,8 @@ const appMethods = {
     this.showEditModal = false;
     this.editParcel = null;
     this.editParcelId = null;
+    this.resumeSmartTagSorting();
+    this.scrollParcelIntoView(parcel.id);
     // إعادة تهيئة Sortable بعد التعديل
     this.$nextTick(() => {
       this.initSortable();
@@ -1312,9 +1317,8 @@ const appMethods = {
     }
     this.showPriceConfirmModal = false;
     this.pendingPriceChange = null;
-    this.showEditModal = false;
-    this.editParcel = null;
-    this.editParcelId = null;
+    this.closeEditModal(parcel.id);
+    this.scrollParcelIntoView(parcel.id);
     // إعادة تهيئة Sortable بعد التعديل
     this.$nextTick(() => {
       this.initSortable();
@@ -1680,7 +1684,7 @@ const appMethods = {
       ? this.settings.tagOrder
       : this.settings.tags || [];
 
-    if (this.settings.smartTagSortingEnabled && order.length > 0) {
+    if (!this.smartTagSortingPaused && this.settings.smartTagSortingEnabled && order.length > 0) {
       return [...list].sort((a, b) => {
         const indexA = a.tag ? order.indexOf(a.tag) : order.length;
         const indexB = b.tag ? order.indexOf(b.tag) : order.length;
@@ -2276,10 +2280,11 @@ const appMethods = {
   selectTagForParcel(tagName) {
     const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
     if (parcel) {
+      this.pauseSmartTagSorting();
       parcel.tag = tagName;
-
       parcel.updatedAt = new Date().toISOString();
       this.saveData();
+      this.scrollParcelIntoView(parcel.id);
     }
     this.showTagPicker = false;
     this.tagPickerParcelId = null;
@@ -2288,10 +2293,11 @@ const appMethods = {
   removeParcelTag(parcelId) {
     const parcel = this.parcels.find((p) => p.id === parcelId);
     if (parcel) {
+      this.pauseSmartTagSorting();
       parcel.tag = null;
-
       parcel.updatedAt = new Date().toISOString();
       this.saveData();
+      this.scrollParcelIntoView(parcel.id);
     }
   },
 
@@ -2348,6 +2354,35 @@ const appMethods = {
       this.settings.tagOrder = [...orderedTags, ...remaining];
       this.saveSettings();
     }
+  },
+
+  pauseSmartTagSorting(duration = 400) {
+    if (!this.settings.smartTagSortingEnabled) return;
+    this.smartTagSortingPaused = true;
+    if (this._smartTagSortingTimer) {
+      clearTimeout(this._smartTagSortingTimer);
+    }
+    this._smartTagSortingTimer = setTimeout(() => {
+      this.smartTagSortingPaused = false;
+      this._smartTagSortingTimer = null;
+    }, duration);
+  },
+
+  resumeSmartTagSorting() {
+    if (this._smartTagSortingTimer) {
+      clearTimeout(this._smartTagSortingTimer);
+      this._smartTagSortingTimer = null;
+    }
+    this.smartTagSortingPaused = false;
+  },
+
+  scrollParcelIntoView(parcelId) {
+    this.$nextTick(() => {
+      const el = document.getElementById('parcel-card-' + parcelId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
   },
 
   filterByTag(tagName) {

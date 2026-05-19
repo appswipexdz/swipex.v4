@@ -355,13 +355,13 @@
                 </div>
 
                 <!-- Tags Dropdown -->
-                <div v-show="showTagsDropdown" class="absolute right-3 top-14 w-56 max-h-72 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
+                < v-show="showTagsDropdown" class="absolute right-3 top-14 w-56 max-h-72 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
                     <button @click="filters.tag = ''; filters.status = ''; showTagsDropdown = false" class="w-full text-right px-4 py-3 text-sm text-gray-800 dark:text-gray-100 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition font-bold flex items-center gap-2">
                         <span class="text-purple-500 font-bold">@</span>
                         دون تحديد
                     </button>
                     <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-                    <p v-if="settings.smartTagSortingEnabled" class="px-4 text-xs text-gray-500 dark:text-gray-400 mb-2">اسحب التمييزات لإعادة ترتيب أولويات العرض</p>
+                    <!-- <p v-if="settings.smartTagSortingEnabled" class="px-4 text-xs text-gray-500 dark:text-gray-400 mb-2">اسحب التمييزات لإعادة ترتيب أولويات العرض</p> -->
                     <div id="tag-order-list" class="space-y-2">
                         <button v-for="tag in getUsedTags()" :key="tag" :data-tag="tag" @click="filters.tag = tag; filters.status = ''; showTagsDropdown = false" class="tag-order-item w-full text-right px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition flex items-center gap-2">
                             <span v-if="settings.smartTagSortingEnabled" class="tag-drag-handle flex items-center justify-center w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 cursor-grab hover:bg-gray-200 dark:hover:bg-gray-600 transition">
@@ -406,7 +406,7 @@
             </div>
 
             <div id="sortable-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-10">
-                <div v-for="parcel in filteredParcels" :key="parcel.id" class="relative group select-none">
+                <div v-for="parcel in filteredParcels" :key="parcel.id" :id="'parcel-card-' + parcel.id" class="relative group select-none">
                     <button v-if="settings.showDuplicates && parcel.duplicateCount > 1" @click.stop="filterByPhone(parcel.phone)" class="badge-duplicate cursor-pointer hover:scale-110 transition-transform">
                         {{ parcel.duplicateCount }}
                     </button>
@@ -2111,7 +2111,7 @@
         </div>
 
         <!-- Edit Parcel Modal -->
-        <div v-if="showEditModal && editParcel" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @mousedown.self="showEditModal = false">
+        <div v-if="showEditModal && editParcel" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @mousedown.self="closeEditModal()">
             <div class="modal-glass rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
                 <h2 class="text-xl font-bold mb-4 text-blue-600 dark:text-blue-400 flex items-center gap-2">
                     <i class="fas fa-edit"></i>
@@ -2153,7 +2153,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
-                    <button @click="showEditModal = false" class="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
+                    <button @click="closeEditModal()" class="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
                         إلغاء
                     </button>
                     <button @click="saveEditParcel" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 font-bold transition">
