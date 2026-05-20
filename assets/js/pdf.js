@@ -25,7 +25,6 @@ const pdfFunctions = {
 
             // ================================================================
             // دالة مساعدة: استخراج أرقام الهاتف من نص
-            // تتعامل مع: +213، فاصلة، شرطة مائلة، مسافة بين رقمين
             // ================================================================
             const extractPhones = (text) => {
                 const normalized = text.replace(/\+213/g, "0");
@@ -41,70 +40,62 @@ const pdfFunctions = {
 
             // ================================================================
             // دالة مساعدة: تنظيف سطر البلدية/الولاية
-            // تزيل: أرقام الهاتف، أكواد الجهة (EOE1...)، أرقام الولايات (1-58)
             // ================================================================
             const cleanMunLine = (text) => {
                 let t = text.replace(/\+213/g, "0");
-                // إزالة أرقام الهاتف أولاً
                 const segs = t.split(/[\s/،,|]+/);
                 for (const seg of segs) {
                     const c = seg.replace(/[^\d]/g, "");
                     if (/^0[5-7]\d{8}$/.test(c)) t = t.replace(seg, "");
                 }
-                // إزالة أكواد الجهة مثل EOE1, OES1, BEM1
                 t = t.replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "");
-                // إزالة أرقام الولايات المنفردة (1-58)
                 t = t.replace(/\b([1-9]|[1-4]\d|5[0-8])\b/g, "");
-                // توحيد الفواصل
                 t = t.replace(/[,،]+/g, ",");
                 return t.trim();
             };
 
             // ================================================================
-            // دالة مساعدة: استخراج المبلغ بالإحداثيات
-            // تستهدف الرقم الذي يقع أسفل خلية Recouvrement مباشرةً في الجدول
-            // الهامش الضيق (20px) يضمن البحث في عمود Recouvrement فقط
-            // ويستبعد تلقائياً أرقام عمود المحتوى الأيسر (مقاسات، كميات...)
+            // دالة مساعدة: استخراج المبلغ بالإحداثيات الثابتة
+            //
+            // من تحليل ملفات Yalidine/Guepex الحقيقية تبيّن:
+            //   - عمود Recouvrement في الأرباع اليسرى دائماً عند x ≈ 221
+            //   - عمود Recouvrement في الأرباع اليمنى دائماً عند x ≈ 516
+            //
+            // المشكلة: أحياناً يكون رقم من المحتوى (مثل "26") في نفس السطر
+            // عند x قريب من x المبلغ (مثل "6950 DA" عند x=221 و"26" عند x=207)
+            //
+            // الحل: عند وجود أكثر من item في نفس السطر داخل نطاق العمود،
+            // نأخذ الـ item الأكبر x (الأيمن) لأن المبلغ دائماً أيمن من رقم المحتوى
             // ================================================================
-            const extractAmountByCoords = (items, recItem) => {
-                const recX = recItem.x;
-                const recY = recItem.y;
+            const extractAmountByCoords = (items, recY, isRightQuad) => {
+                // x الثابت لعمود Recouvrement حسب الربع
+                const recX = isRightQuad ? 516 : 221;
+                const colTolerance = 15;
 
-                // هامش ضيق: فقط العناصر في عمود Recouvrement أو أيمن منه
-                // العناصر الأيسر (محتوى الطرد) تُستبعد تلقائياً
-                const colTolerance = 20;
+                // جمع كل items في نطاق العمود وأسفل Recouvrement مباشرة
+                const candidates = items.filter(it =>
+                    it.y < recY &&
+                    it.y > recY - 80 &&
+                    it.x >= recX - colTolerance
+                );
 
-                // البحث عن item يحتوي رقماً فقط (بدون DA) في نفس العمود وأسفل Recouvrement
-                const numericCandidate = items
-                    .filter(it =>
-                        it.y < recY &&                        // أسفل Recouvrement
-                        it.y > recY - 80 &&                   // لكن ليس بعيداً جداً (80px كحد أقصى)
-                        it.x >= recX - colTolerance &&        // في عمود Recouvrement أو أيمن منه
-                        /^\d[\d\s]*$/.test(it.s.trim())       // رقم فقط (لا يحتوي حروف)
-                    )
-                    .sort((a, b) => b.y - a.y)               // الأقرب لـ Recouvrement أولاً
-                [0];
+                if (candidates.length === 0) return null;
 
-                if (numericCandidate) {
-                    return numericCandidate.s.replace(/\s/g, "");
-                }
+                // السطر الأقرب لـ Recouvrement من حيث y
+                const closestY = candidates.reduce((a, b) =>
+                    Math.abs(a.y - recY) < Math.abs(b.y - recY) ? a : b
+                ).y;
 
-                // Fallback: البحث عن "XXXX DA" أو "DA XXXX" في نفس العمود
-                const daCandidate = items
-                    .filter(it =>
-                        it.y < recY &&
-                        it.y > recY - 80 &&
-                        it.x >= recX - colTolerance &&
-                        /\b\d+\s*DA\b|\bDA\s*\d+\b/i.test(it.s)
-                    )
-                    .sort((a, b) => b.y - a.y)[0];
+                // كل items في نفس السطر (y قريب من closestY)
+                const sameLine = candidates.filter(it => Math.abs(it.y - closestY) < 3);
 
-                if (daCandidate) {
-                    const m = daCandidate.s.match(/\d[\d\s]*/);
-                    if (m) return m[0].replace(/\s/g, "");
-                }
+                // نأخذ الأيمن (أكبر x) — هو المبلغ دائماً
+                const target = sameLine.sort((a, b) => b.x - a.x)[0];
+                if (!target) return null;
 
-                return null;
+                // استخراج الرقم من النص (يتعامل مع "6950 DA" و "DA 4000" و "6950")
+                const m = target.s.match(/\d[\d\s]*/);
+                return m ? m[0].replace(/\s/g, "") : null;
             };
 
             // ================================================================
@@ -140,6 +131,8 @@ const pdfFunctions = {
                 // معالجة كل ربع (قسيمة) على حدة
                 // ============================================================
                 for (const key in qData) {
+                    const isRightQuad = key === "TR" || key === "BR";
+
                     // ترتيب العناصر: من الأعلى للأسفل، ومن اليسار لليمين
                     const items = qData[key].sort((a, b) =>
                         b.y !== a.y ? b.y - a.y : a.x - b.x
@@ -310,10 +303,8 @@ const pdfFunctions = {
                         }
                     }
 
-                    // ── المحتوى والمبلغ ──
-                    const recIdx  = lines.findIndex(l => l.text.includes("Recouvrement"));
-                    // إيجاد item "Recouvrement" في المصفوفة الأصلية للإحداثيات
-                    const recItem = items.find(it => it.s.includes("Recouvrement"));
+                    // ── المحتوى ──
+                    const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
 
                     if (recIdx !== -1) {
                         // جمع أسطر الوصف (ما بعد Recouvrement حتى Assurance/Taille/Poids...)
@@ -331,32 +322,28 @@ const pdfFunctions = {
                             contentParts.push(lt);
                         }
 
-                        // تنظيف الوصف: إزالة المبالغ المضمّنة (5900DA أو DA 3300)
+                        // تنظيف الوصف: إزالة المبالغ المضمّنة
                         let rawContent = contentParts.join(" ");
                         rawContent = rawContent.replace(/\bDA\s*\d[\d\s]*/gi, "").trim();
                         rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
                         parcel.content = rawContent;
 
-                        // ── استخراج المبلغ بالإحداثيات ──
-                        // المنهج: نستهدف الرقم الذي يقع في عمود Recouvrement مباشرةً
-                        // هذا يتجنب التقاط أرقام من عمود محتوى الطرد (عمود أيسر مختلف)
-                        if (recItem) {
-                            const coordAmount = extractAmountByCoords(items, recItem);
-                            if (coordAmount) {
-                                parcel.amount = coordAmount;
-                            }
+                        // ── استخراج المبلغ بالإحداثيات الثابتة ──
+                        // recY = y الخاص بسطر Recouvrement في lines المدمجة
+                        const recLineY = lines[recIdx].y;
+                        const coordAmount = extractAmountByCoords(items, recLineY, isRightQuad);
+                        if (coordAmount !== null) {
+                            parcel.amount = coordAmount;
                         }
 
-                        // Fallback نهائي: إذا فشل كل شيء، ابحث في أسطر lines المدمجة
-                        // لكن مع تقييد صارم: السطر يجب أن يكون رقماً + DA فقط (بدون نص آخر)
+                        // Fallback نهائي: سطر يحتوي رقماً + DA فقط بدون نص آخر
                         if (!parcel.amount || parcel.amount === "0") {
                             for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
                                 const lt = lines[j].text.trim();
-                                // يجب أن يكون السطر رقماً + DA فقط — لا نص آخر
-                                const strictMatch = lt.match(/^(DA\s*)?([\d\s]{3,})(\s*DA)?$/i);
+                                const strictMatch = lt.match(/^(DA\s*)?([\d\s]{1,})(\s*DA)?$/i);
                                 if (strictMatch) {
                                     const val = (strictMatch[2] || "").replace(/\s/g, "");
-                                    if (val.length >= 3) {
+                                    if (val.length >= 1) {
                                         parcel.amount = val;
                                         break;
                                     }
