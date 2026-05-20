@@ -1748,6 +1748,14 @@ const appMethods = {
     ).length;
   },
 
+  getStatsForSettings() {
+    const total = this.parcels.length;
+    const delivered = this.parcels.filter((p) => p.status === "تم التسليم").length;
+    const cancelled = this.parcels.filter((p) => p.status === "إلغاء الطلبية").length;
+    const remaining = this.remainingCount();
+    return { total, delivered, cancelled, remaining };
+  },
+
   // ========== Notifications & Reminders ==========
   initNotifications() {
     this.loadNotificationsData();

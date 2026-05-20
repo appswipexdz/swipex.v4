@@ -35,6 +35,9 @@ createApp({
         remainingCount() {
             return appMethods.remainingCount.call(this);
         },
+        getStatsForSettings() {
+            return appMethods.getStatsForSettings.call(this);
+        },
         editMunicipalitySuggestions() {
             return appMethods.editMunicipalitySuggestions.call(this);
         },
