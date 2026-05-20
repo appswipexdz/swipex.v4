@@ -439,8 +439,8 @@
                                     </button>
                                 </div>
 
-                                <div class="flex items-center justify-between mb-2 pr-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
+                                <div class="flex items-center justify-between gap-2 mb-2 pr-1">
+                                    <div class="flex items-center gap-2 min-w-0">
                                         <span :class="{
                                             'type-ecommerce': parcel.type === 'E-COMMERCE',
                                             'type-particulier': parcel.type === 'PARTICULIER',
@@ -449,19 +449,18 @@
                                             'type-classique': parcel.type === 'CLASSIQUE',
                                             'type-accuse': parcel.type === 'AVEC ACCUSÉ',
                                             'type-default': !parcel.type || parcel.type === 'غير محدد'
-                                        }" class="text-white w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shadow-md" v-if="parcel.type">
+                                        }" class="text-white w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shadow-md flex-shrink-0" v-if="parcel.type">
                                             {{ parcel.type ? parcel.type.charAt(0) : '?' }}
                                         </span>
-                                        <span @click.stop="copyTracking(parcel.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-1 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95">
+                                        <span @click.stop="copyTracking(parcel.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-1 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95 whitespace-nowrap flex-shrink-0">
                                             <i class="fas fa-copy text-[10px] ml-1 opacity-60"></i>
                                             {{ parcel.tracking }}
                                         </span>
-                                        
-                                        <span class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg text-xs font-bold truncate max-w-xs">
+                                        <span class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg text-xs font-bold truncate overflow-hidden whitespace-nowrap flex-1 min-w-0">
                                             {{ parcel.municipality }}
                                         </span>
                                     </div>
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1 flex-shrink-0">
                                         <div v-if="canOpenParcelLocation(parcel)" @click.stop="openParcelLocation(parcel)" class="w-7 h-7 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition">
                                             <i class="fas fa-map-marker-alt text-xs"></i>
                                         </div>
