@@ -407,7 +407,7 @@
 
             <div id="sortable-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 pb-10">
                 <div v-for="parcel in filteredParcels" :key="parcel.id" :id="'parcel-card-' + parcel.id" class="relative group select-none">
-                    <button v-if="settings.showDuplicates && parcel.duplicateCount > 1" @click.stop="filterByPhone(parcel.phone)" class="badge-duplicate cursor-pointer hover:scale-110 transition-transform">
+                    <button v-if="settings.showDuplicates && parcel.duplicateCount > 1" @click.stop="filterByPhone(parcel.duplicatePhone || parcel.phone || parcel.phone2)" class="badge-duplicate cursor-pointer hover:scale-110 transition-transform">
                         {{ parcel.duplicateCount }}
                     </button>
 

@@ -652,10 +652,26 @@ const appMethods = {
   detectDuplicates() {
     const phoneCount = {};
     this.parcels.forEach((p) => {
-      if (p.phone) phoneCount[p.phone] = (phoneCount[p.phone] || 0) + 1;
+      const phones = [p.phone, p.phone2].filter(Boolean);
+      const uniquePhones = [...new Set(phones)];
+      uniquePhones.forEach((phone) => {
+        phoneCount[phone] = (phoneCount[phone] || 0) + 1;
+      });
     });
     this.parcels.forEach((p) => {
-      p.duplicateCount = phoneCount[p.phone] || 0;
+      const phones = [p.phone, p.phone2].filter(Boolean);
+      const uniquePhones = [...new Set(phones)];
+      let bestCount = 0;
+      let bestPhone = "";
+      uniquePhones.forEach((phone) => {
+        const count = phoneCount[phone] || 0;
+        if (count > bestCount) {
+          bestCount = count;
+          bestPhone = phone;
+        }
+      });
+      p.duplicateCount = bestCount;
+      p.duplicatePhone = bestPhone;
     });
   },
 
@@ -792,9 +808,13 @@ const appMethods = {
     this.detectDuplicates();
 
     const phoneCount = {};
-    this.parcels.forEach(
-      (p) => (phoneCount[p.phone] = (phoneCount[p.phone] || 0) + 1),
-    );
+    this.parcels.forEach((p) => {
+      const phones = [p.phone, p.phone2].filter(Boolean);
+      const uniquePhones = [...new Set(phones)];
+      uniquePhones.forEach((phone) => {
+        phoneCount[phone] = (phoneCount[phone] || 0) + 1;
+      });
+    });
     stats.duplicates += Object.values(phoneCount).filter(
       (count) => count > 1,
     ).length;
