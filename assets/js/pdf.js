@@ -61,6 +61,51 @@ const pdfFunctions = {
             };
 
             // ================================================================
+            // دالة مساعدة: استخراج المبلغ بالإحداثيات
+            // تستهدف الرقم الذي يقع أسفل خلية Recouvrement مباشرةً في الجدول
+            // هذا يتجنب التقاط أرقام من محتوى الطرد التي تكون في عمود مختلف
+            // ================================================================
+            const extractAmountByCoords = (items, recItem) => {
+                const recX = recItem.x;
+                const recY = recItem.y;
+
+                // هامش أفقي للتسامح مع اختلافات طفيفة في محاذاة العمود
+                const colTolerance = 80;
+
+                // البحث عن item يحتوي رقماً فقط (بدون DA) في نفس العمود وأسفل Recouvrement
+                const numericCandidate = items
+                    .filter(it =>
+                        it.y < recY &&                        // أسفل Recouvrement
+                        it.y > recY - 80 &&                   // لكن ليس بعيداً جداً (80px كحد أقصى)
+                        it.x >= recX - colTolerance &&        // في نطاق العمود الأيمن
+                        /^\d[\d\s]*$/.test(it.s.trim())       // رقم فقط (لا يحتوي حروف)
+                    )
+                    .sort((a, b) => b.y - a.y)               // الأقرب لـ Recouvrement أولاً
+                [0];
+
+                if (numericCandidate) {
+                    return numericCandidate.s.replace(/\s/g, "");
+                }
+
+                // Fallback: البحث عن "XXXX DA" أو "DA XXXX" في نفس العمود
+                const daCandidate = items
+                    .filter(it =>
+                        it.y < recY &&
+                        it.y > recY - 80 &&
+                        it.x >= recX - colTolerance &&
+                        /\b\d{3,}\s*DA\b|\bDA\s*\d{3,}\b/i.test(it.s)
+                    )
+                    .sort((a, b) => b.y - a.y)[0];
+
+                if (daCandidate) {
+                    const m = daCandidate.s.match(/\d[\d\s]*/);
+                    if (m) return m[0].replace(/\s/g, "");
+                }
+
+                return null;
+            };
+
+            // ================================================================
             // معالجة كل صفحة
             // ================================================================
             for (let i = 1; i <= pdf.numPages; i++) {
@@ -91,7 +136,6 @@ const pdfFunctions = {
 
                 // ============================================================
                 // معالجة كل ربع (قسيمة) على حدة
-                // جميع العمليات تعتمد على items وlines الخاصة بالربع فقط
                 // ============================================================
                 for (const key in qData) {
                     // ترتيب العناصر: من الأعلى للأسفل، ومن اليسار لليمين
@@ -112,7 +156,7 @@ const pdfFunctions = {
                     });
 
                     // ----------------------------------------------------------
-                    // كائن الطرد — كل الحقول تُملأ من عناصر هذا الربع فقط
+                    // كائن الطرد
                     // ----------------------------------------------------------
                     const parcel = {
                         tracking:        "",
@@ -176,15 +220,12 @@ const pdfFunctions = {
                     }
 
                     // ── بيانات المستلم (Destinataire) ──
-                    // المنهج: من الأسفل للأعلى — الهاتف أولاً، ثم البلدية/الولاية، ثم الاسم
                     const destIdx = lines.findIndex(l => l.text.includes("Destinataire"));
                     if (destIdx !== -1) {
-                        // جمع أسطر المستلم مع تصفية العناصر غير المرغوبة
                         const destLines = [];
                         for (let j = destIdx + 1; j < Math.min(destIdx + 11, lines.length); j++) {
                             const lt = lines[j].text.trim();
 
-                            // توقف عند بداية القسم التالي
                             if (
                                 lt.includes("Description") ||
                                 lt.includes("Recouvrement") ||
@@ -195,20 +236,13 @@ const pdfFunctions = {
 
                             if (!lt) continue;
 
-                            // تجاهل: أرقام الولايات (1-58)
                             const isWilayaNum = /^\d{1,2}$/.test(lt) && +lt >= 1 && +lt <= 58;
-
-                            // تجاهل: سطر يتكوّن فقط من أكواد الجهة (EOE1, OES1, BEM1...)
-                            // نستثني السطور التي تحتوي نصاً عربياً أو لاتينياً حقيقياً بجانب الكود
-                            const isZoneCode = /^([A-Z]{2,4}\d{1,2}\s*)+$/.test(lt);
-
-                            // تجاهل: أرقام كبيرة (3911...) لكن ليست أرقام هاتف (0[5-7]XXXXXXXX)
-                            const isPhone  = /^0[5-7]\d{8}$/.test(lt);
-                            const isBigNum = /^\d{4,}$/.test(lt) && !isPhone;
+                            const isZoneCode  = /^([A-Z]{2,4}\d{1,2}\s*)+$/.test(lt);
+                            const isPhone     = /^0[5-7]\d{8}$/.test(lt);
+                            const isBigNum    = /^\d{4,}$/.test(lt) && !isPhone;
 
                             if (isWilayaNum || isZoneCode || isBigNum) continue;
 
-                            // تنظيف: إزالة أكواد الجهة المدمجة مع النص (مثل "EOE1 غمرة الوسطى")
                             const cleaned = lt
                                 .replace(/\b[A-Z]{2,4}\d{1,2}\b/g, "")
                                 .replace(/\s{2,}/g, " ")
@@ -239,7 +273,6 @@ const pdfFunctions = {
                             if (parts.length >= 1) parcel.municipality = parts[0];
                             if (parts.length >= 2) parcel.wilaya       = parts[1];
                         } else if (phoneLineIdx === 0) {
-                            // حالة نادرة: الهاتف في أول سطر — نبحث عن سطر يحتوي فاصلة
                             for (let j = 0; j < destLines.length; j++) {
                                 if (destLines[j].includes(",") || destLines[j].includes("،")) {
                                     const cleaned = cleanMunLine(destLines[j]);
@@ -267,7 +300,6 @@ const pdfFunctions = {
                             const addrParts = [];
                             for (let j = 1; j < addrEnd; j++) {
                                 const ln = destLines[j];
-                                // تجاهل أسطر التفسير الثانوية
                                 if (/Autorisation|ouverture|colis/i.test(ln)) continue;
                                 if (ln === parcel.municipality || ln === parcel.wilaya) continue;
                                 addrParts.push(ln);
@@ -277,7 +309,9 @@ const pdfFunctions = {
                     }
 
                     // ── المحتوى والمبلغ ──
-                    const recIdx = lines.findIndex(l => l.text.includes("Recouvrement"));
+                    const recIdx  = lines.findIndex(l => l.text.includes("Recouvrement"));
+                    // إيجاد item "Recouvrement" في المصفوفة الأصلية للإحداثيات
+                    const recItem = items.find(it => it.s.includes("Recouvrement"));
 
                     if (recIdx !== -1) {
                         // جمع أسطر الوصف (ما بعد Recouvrement حتى Assurance/Taille/Poids...)
@@ -301,37 +335,33 @@ const pdfFunctions = {
                         rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
                         parcel.content = rawContent;
 
-                        // ── استخراج المبلغ ──
-                        // الاستراتيجية المزدوجة:
-                        // 1) البحث في lines المدموجة أولاً — لأن pdf.js أحياناً يفصل الرقم عن DA
-                        //    في span-ين منفصلين، لكن الدمج يعيد تجميعهما في سطر واحد
-                        // 2) البحث في items كـ fallback — مع regex يستثني DA المدمجة في كلمات
-                        //    مثل DA في رقم التتبع YAL-DA95BL الذي يعطي 95 خطأً
-
-                        // الـ regex الآمن: رقم 3+ أرقام قبل DA أو بعدها، مع استثناء DA المدمجة في كلمات
-                        const amountRegex = /\b(?:DA\s*([\d\s]{3,})|([\d\s]{3,})\s*DA)\b/i;
-                        const parseAmount = (text) => {
-                            const m = text.match(amountRegex);
-                            if (!m) return null;
-                            return (m[1] || m[2]).replace(/\s/g, "");
-                        };
-
-                        // الأولوية: البحث في أسطر ما بعد Recouvrement (lines مدموجة)
-                        for (let j = recIdx + 1; j < Math.min(recIdx + 5, lines.length); j++) {
-                            const lt = lines[j].text;
-                            const value = parseAmount(lt);
-                            if (value) { parcel.amount = value; break; }
+                        // ── استخراج المبلغ بالإحداثيات ──
+                        // المنهج: نستهدف الرقم الذي يقع في عمود Recouvrement مباشرةً
+                        // هذا يتجنب التقاط أرقام من عمود محتوى الطرد (عمود أيسر مختلف)
+                        if (recItem) {
+                            const coordAmount = extractAmountByCoords(items, recItem);
+                            if (coordAmount) {
+                                parcel.amount = coordAmount;
+                            }
                         }
 
-                        // Fallback: البحث في items إذا لم يُعثر على مبلغ في lines
+                        // Fallback نهائي: إذا فشل كل شيء، ابحث في أسطر lines المدمجة
+                        // لكن مع تقييد صارم: السطر يجب أن يكون رقماً + DA فقط (بدون نص آخر)
                         if (!parcel.amount || parcel.amount === "0") {
-                            const amountItem = items.find(it => parseAmount(it.s));
-                            if (amountItem) {
-                                parcel.amount = parseAmount(amountItem.s);
+                            for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
+                                const lt = lines[j].text.trim();
+                                // يجب أن يكون السطر رقماً + DA فقط — لا نص آخر
+                                const strictMatch = lt.match(/^(DA\s*)?([\d\s]{3,})(\s*DA)?$/i);
+                                if (strictMatch) {
+                                    const val = (strictMatch[2] || "").replace(/\s/g, "");
+                                    if (val.length >= 3) {
+                                        parcel.amount = val;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
-
 
                     // ── تاريخ الإنشاء ──
                     const dateLine = lines.find(l => /le:\s*\d{2}-\d{2}-\d{4}/.test(l.text));
