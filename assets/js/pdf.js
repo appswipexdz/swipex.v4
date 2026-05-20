@@ -63,21 +63,23 @@ const pdfFunctions = {
             // ================================================================
             // دالة مساعدة: استخراج المبلغ بالإحداثيات
             // تستهدف الرقم الذي يقع أسفل خلية Recouvrement مباشرةً في الجدول
-            // هذا يتجنب التقاط أرقام من محتوى الطرد التي تكون في عمود مختلف
+            // الهامش الضيق (20px) يضمن البحث في عمود Recouvrement فقط
+            // ويستبعد تلقائياً أرقام عمود المحتوى الأيسر (مقاسات، كميات...)
             // ================================================================
             const extractAmountByCoords = (items, recItem) => {
                 const recX = recItem.x;
                 const recY = recItem.y;
 
-                // هامش أفقي للتسامح مع اختلافات طفيفة في محاذاة العمود
-                const colTolerance = 80;
+                // هامش ضيق: فقط العناصر في عمود Recouvrement أو أيمن منه
+                // العناصر الأيسر (محتوى الطرد) تُستبعد تلقائياً
+                const colTolerance = 20;
 
                 // البحث عن item يحتوي رقماً فقط (بدون DA) في نفس العمود وأسفل Recouvrement
                 const numericCandidate = items
                     .filter(it =>
                         it.y < recY &&                        // أسفل Recouvrement
                         it.y > recY - 80 &&                   // لكن ليس بعيداً جداً (80px كحد أقصى)
-                        it.x >= recX - colTolerance &&        // في نطاق العمود الأيمن
+                        it.x >= recX - colTolerance &&        // في عمود Recouvrement أو أيمن منه
                         /^\d[\d\s]*$/.test(it.s.trim())       // رقم فقط (لا يحتوي حروف)
                     )
                     .sort((a, b) => b.y - a.y)               // الأقرب لـ Recouvrement أولاً
@@ -93,7 +95,7 @@ const pdfFunctions = {
                         it.y < recY &&
                         it.y > recY - 80 &&
                         it.x >= recX - colTolerance &&
-                        /\b\d{3,}\s*DA\b|\bDA\s*\d{3,}\b/i.test(it.s)
+                        /\b\d+\s*DA\b|\bDA\s*\d+\b/i.test(it.s)
                     )
                     .sort((a, b) => b.y - a.y)[0];
 
