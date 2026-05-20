@@ -1752,7 +1752,7 @@ const appMethods = {
     const total = this.parcels.length;
     const delivered = this.parcels.filter((p) => p.status === "تم التسليم").length;
     const cancelled = this.parcels.filter((p) => p.status === "إلغاء الطلبية").length;
-    const remaining = this.remainingCount();
+    const remaining = this.parcels.filter((p) => !["تم التسليم", "إلغاء الطلبية", "استرجاع"].includes(p.status)).length;
     return { total, delivered, cancelled, remaining };
   },
 

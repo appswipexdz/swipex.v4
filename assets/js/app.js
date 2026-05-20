@@ -38,6 +38,9 @@ createApp({
         getStatsForSettings() {
             return appMethods.getStatsForSettings.call(this);
         },
+        settingsStats() {
+            return appMethods.getStatsForSettings.call(this);
+        },
         editMunicipalitySuggestions() {
             return appMethods.editMunicipalitySuggestions.call(this);
         },
