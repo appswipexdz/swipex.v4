@@ -309,21 +309,25 @@ const pdfFunctions = {
                         //    مثل DA في رقم التتبع YAL-DA95BL الذي يعطي 95 خطأً
 
                         // الـ regex الآمن: رقم 3+ أرقام قبل DA أو بعدها، مع استثناء DA المدمجة في كلمات
-                        const amountRegex = /(?<![A-Z])(\d{3,}[\d\s]*)\s*DA/i;
+                        const amountRegex = /\b(?:DA\s*([\d\s]{3,})|([\d\s]{3,})\s*DA)\b/i;
+                        const parseAmount = (text) => {
+                            const m = text.match(amountRegex);
+                            if (!m) return null;
+                            return (m[1] || m[2]).replace(/\s/g, "");
+                        };
 
                         // الأولوية: البحث في أسطر ما بعد Recouvrement (lines مدموجة)
                         for (let j = recIdx + 1; j < Math.min(recIdx + 5, lines.length); j++) {
                             const lt = lines[j].text;
-                            const m = lt.match(amountRegex);
-                            if (m) { parcel.amount = m[1].replace(/\s/g, ""); break; }
+                            const value = parseAmount(lt);
+                            if (value) { parcel.amount = value; break; }
                         }
 
                         // Fallback: البحث في items إذا لم يُعثر على مبلغ في lines
                         if (!parcel.amount || parcel.amount === "0") {
-                            const amountItem = items.find(it => amountRegex.test(it.s));
+                            const amountItem = items.find(it => parseAmount(it.s));
                             if (amountItem) {
-                                const m = amountItem.s.match(amountRegex);
-                                if (m) parcel.amount = m[1].replace(/\s/g, "");
+                                parcel.amount = parseAmount(amountItem.s);
                             }
                         }
                     }
