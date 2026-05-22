@@ -1150,6 +1150,7 @@ const appMethods = {
   },
 
   changeStatus(parcel, newStatus) {
+    const actionEnabled = this.isStatusActionEnabled(newStatus);
     // هل هذه الحالة مفعّلة لإرسال SMS؟
     const statusSmsEnabled =
       (newStatus === "مغلق" && this.settings.smsOnStatusClosed) ||
@@ -1157,7 +1158,7 @@ const appMethods = {
       (newStatus === "رقم خاطئ" && this.settings.smsOnStatusWrongNumber);
 
     if (statusSmsEnabled) {
-      // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسلته
+      // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسله
       const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
         parcel.status = newStatus;
@@ -1165,6 +1166,7 @@ const appMethods = {
         this.statusModalParcel = null;
         this.saveData();
         if (newStatus === "تم التسليم") this.triggerConfetti();
+        if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) this.openYalidine(parcel.tracking);
         return;
       }
       this.statusSmsConfirmParcel = parcel;
@@ -1181,6 +1183,9 @@ const appMethods = {
 
     if (newStatus === "تم التسليم") {
       this.triggerConfetti();
+    }
+    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) {
+      this.openYalidine(parcel.tracking);
     }
   },
 
@@ -1216,6 +1221,7 @@ const appMethods = {
 
     const parcel = this.statusSmsConfirmParcel;
     const newStatus = this.statusSmsConfirmStatus;
+    const actionEnabled = this.isStatusActionEnabled(newStatus);
 
     // تغيير الحالة
     parcel.status = newStatus;
@@ -1224,6 +1230,10 @@ const appMethods = {
 
     if (newStatus === "تم التسليم") {
       this.triggerConfetti();
+    }
+
+    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) {
+      this.openYalidine(parcel.tracking);
     }
 
     // إنشاء رسالة SMS
@@ -1249,12 +1259,18 @@ const appMethods = {
   confirmStatusChangeOnly() {
     if (!this.statusSmsConfirmParcel) return;
 
+    const actionEnabled = this.isStatusActionEnabled(this.statusSmsConfirmStatus);
+
     this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
     this.statusSmsConfirmParcel.updatedAt = new Date().toISOString();
     this.saveData();
 
     if (this.statusSmsConfirmStatus === "تم التسليم") {
       this.triggerConfetti();
+    }
+
+    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(this.statusSmsConfirmStatus)) {
+      this.openYalidine(this.statusSmsConfirmParcel.tracking);
     }
 
     this.closeStatusSmsConfirm();
@@ -1519,6 +1535,24 @@ const appMethods = {
       `https://yalidine.app/app/livraison/livrer_un_colis.php?tracking=${tracking}`,
       "_blank",
     );
+  },
+
+  isStatusActionEnabled(statusName) {
+    if (!this.settings.statusActionEnabled) {
+      this.settings.statusActionEnabled = {};
+    }
+    if (typeof this.settings.statusActionEnabled[statusName] === "undefined") {
+      this.settings.statusActionEnabled[statusName] = true;
+    }
+    return this.settings.statusActionEnabled[statusName];
+  },
+
+  toggleStatusActionEnabled(statusName, enabled) {
+    if (!this.settings.statusActionEnabled) {
+      this.settings.statusActionEnabled = {};
+    }
+    this.settings.statusActionEnabled[statusName] = enabled;
+    this.saveSettings();
   },
 
   getSmsLink(parcel) {
@@ -2278,6 +2312,10 @@ const appMethods = {
       icon: this.newCustomStatus.icon,
       hex: this.newCustomStatus.color,
     });
+    if (!this.settings.statusActionEnabled) {
+      this.settings.statusActionEnabled = {};
+    }
+    this.settings.statusActionEnabled[name] = true;
     this.newCustomStatus = { name: "", color: "#9ca3af", icon: "fa-tag" };
     this.saveSettings();
   },

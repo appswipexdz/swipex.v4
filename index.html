@@ -1835,12 +1835,24 @@
                  </div>
 
                 <div class="p-3 space-y-2">
-                    <div v-for="status in allStatuses" :key="status.name" @click="changeStatus(statusModalParcel, status.name)" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="status.dot">
-                            <i class="fas text-white text-sm" :class="status.icon"></i>
+                    <div v-for="status in allStatuses" :key="status.name" class="flex items-center gap-3 p-3 rounded-xl transition-all" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'">
+                        <div class="flex-1 flex items-center gap-3 cursor-pointer" @click="changeStatus(statusModalParcel, status.name)">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="status.dot">
+                                <i class="fas text-white text-sm" :class="status.icon"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-gray-800 dark:text-white truncate">{{ status.name }}</div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">انقر لتغيير الحالة</p>
+                            </div>
                         </div>
-                        <span class="font-bold text-gray-800 dark:text-white flex-1">{{ status.name }}</span>
-                        <i v-if="statusModalParcel.status === status.name" class="fas fa-check-circle text-red-600 text-lg"></i>
+                        <div v-if="!['دون إجراء','في الإنتظار'].includes(status.name)" class="flex items-center" @click.stop>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" :checked="isStatusActionEnabled(status.name)" @change="toggleStatusActionEnabled(status.name, $event.target.checked)" class="sr-only peer" />
+                                <div class="w-12 h-7 rounded-full bg-gray-300 peer-checked:bg-orange-500 transition-all relative overflow-hidden">
+                                    <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all" :class="isStatusActionEnabled(status.name) ? 'left-1' : 'right-1'"></span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
