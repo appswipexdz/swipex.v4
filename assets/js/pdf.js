@@ -10,15 +10,6 @@ const pdfFunctions = {
         this.pdfProgress = "جاري البدء...";
 
         try {
-            // أرشفة الطرود الحالية قبل الاستيراد
-            this.parcels.forEach(p => {
-                this.archive[p.tracking] = {
-                    status: p.status,
-                    notes: p.notes,
-                    lastUpdate: new Date().toISOString()
-                };
-            });
-
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
             const extractedParcels = [];

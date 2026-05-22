@@ -52,14 +52,6 @@ const importExcelFunctions = {
                 };
             });
 
-            this.parcels.forEach(p => {
-                this.archive[p.tracking] = {
-                    status: p.status,
-                    notes: p.notes,
-                    lastUpdate: new Date().toISOString()
-                };
-            });
-
             this.findAndMerge(newParcels);
             this.saveData();
             this.$nextTick(() => {
