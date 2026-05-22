@@ -208,7 +208,7 @@ const appMethods = {
 
   getLocationDisplay(target) {
     const location = this.normalizeLocation(target?.location || target);
-    return location.address || location.mapsUrl || "بدون رابط";
+    return location.label || location.address || location.mapsUrl || "بدون رابط";
   },
 
   getLocationMeta(target) {
@@ -233,6 +233,54 @@ const appMethods = {
     parcel.location.updatedAt = new Date().toISOString();
     parcel.updatedAt = new Date().toISOString();
     this.debouncedSaveData();
+  },
+
+  async saveParcelCurrentLocation(parcel) {
+    if (!parcel) return;
+
+    if (!navigator.geolocation) {
+      this.showToast("متصفحك لا يدعم تحديد الموقع الجغرافي.", "error");
+      return;
+    }
+
+    const getPosition = () =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000,
+          },
+        );
+      });
+
+    try {
+      const position = await getPosition();
+      const { latitude, longitude } = position.coords;
+      parcel.location = this.normalizeLocation({
+        lat: latitude,
+        lng: longitude,
+        address: "",
+        label: "الموقع الحالي",
+        source: "device",
+        updatedAt: new Date().toISOString(),
+      });
+      parcel.updatedAt = new Date().toISOString();
+      this.saveData();
+      this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
+    } catch (error) {
+      let message = "تعذر الحصول على الموقع. تأكد من سماح المتصفح بالوصول إلى الموقع.";
+      if (error && error.code === 1) {
+        message = "تم رفض إذن الموقع. يرجى السماح بالوصول إلى الموقع.";
+      } else if (error && error.code === 2) {
+        message = "تعذر تحديد الموقع. حاول مرة أخرى أو تأكد من تشغيل GPS.";
+      } else if (error && error.code === 3) {
+        message = "انتهت مهلة طلب الموقع. حاول مرة أخرى.";
+      }
+      this.showToast(message, "error", 5000);
+    }
   },
 
   clearParcelLocation(parcel) {
