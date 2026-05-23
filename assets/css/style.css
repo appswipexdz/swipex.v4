@@ -923,8 +923,9 @@ select {
 
 /* ========== Filter bar always-visible clear button ========== */
 .filter-clear-btn {
-    width: 34px;
-    height: 34px;
+    min-width: 44px;
+    min-height: 36px;
+    padding: 0 12px;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -935,10 +936,21 @@ select {
     cursor: pointer;
     background: none;
     -webkit-tap-highlight-color: transparent;
+    font-size: 0.75rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    white-space: nowrap;
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* 📋 أنماط نظام الجلسات التعاونية (Collaborative Sessions) */
+.filter-clear-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.filter-clear-btn:not(:disabled):hover {
+    transform: scale(1.05);
+    transition: all 0.2s;
+}
 /* ═══════════════════════════════════════════════════════════════ */
 
 /* بطاقات الجلسات */
