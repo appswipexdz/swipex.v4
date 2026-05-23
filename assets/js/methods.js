@@ -1232,10 +1232,6 @@ const appMethods = {
       this.triggerConfetti();
     }
 
-    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) {
-      this.openYalidine(parcel.tracking);
-    }
-
     // إنشاء رسالة SMS
     const message = this.buildSmsMessage(parcel, newStatus);
 
@@ -1250,7 +1246,15 @@ const appMethods = {
     }
     parcel.updatedAt = new Date().toISOString();
     this.saveData();
+    const shouldOpenYalidine =
+      actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus);
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+
+    if (shouldOpenYalidine) {
+      setTimeout(() => {
+        this.openYalidine(parcel.tracking);
+      }, 800);
+    }
 
     this.closeStatusSmsConfirm();
   },
