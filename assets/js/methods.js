@@ -759,6 +759,87 @@ const appMethods = {
     });
   },
 
+  exportArchive() {
+    const archiveCount = Object.keys(this.archive || {}).length;
+    if (!archiveCount) {
+      this.showToast("لا يوجد أرشيف للتصدير", "info");
+      return;
+    }
+
+    const payload = {
+      app: "SwiPex",
+      type: "archive",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: archiveCount,
+      archive: this.archive,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `SwiPex_Archive_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    this.showToast(`تم تصدير ${archiveCount} طرد من الأرشيف`, "success");
+  },
+
+  openArchiveImport() {
+    if (this.$refs.archiveImportInput) {
+      this.$refs.archiveImportInput.click();
+    }
+  },
+
+  handleArchiveImport(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const importedArchive = parsed?.archive || parsed;
+
+        if (!importedArchive || typeof importedArchive !== "object" || Array.isArray(importedArchive)) {
+          throw new Error("invalid_archive");
+        }
+
+        const normalizedArchive = this.normalizeArchiveMap(importedArchive);
+        let added = 0;
+        let updated = 0;
+
+        Object.entries(normalizedArchive).forEach(([tracking, data]) => {
+          const cleanTracking = (tracking || "").trim();
+          if (!cleanTracking) return;
+          if (this.archive[cleanTracking]) {
+            updated += 1;
+          } else {
+            added += 1;
+          }
+          this.archive[cleanTracking] = data;
+        });
+
+        this.archiveVisibleCount = 30;
+        this.saveData();
+        this.showToast(`تم استيراد الأرشيف: ${added} جديد، ${updated} محدث`, "success");
+      } catch (error) {
+        console.error("Archive import failed:", error);
+        this.showToast("تعذر استيراد الأرشيف. تأكد من اختيار ملف JSON صحيح.", "error");
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.onerror = () => {
+      this.showToast("تعذر قراءة ملف الأرشيف", "error");
+      event.target.value = "";
+    };
+    reader.readAsText(file);
+  },
+
   findAndMerge(newParcels) {
     let stats = {
       total: newParcels.length,
