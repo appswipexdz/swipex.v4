@@ -147,7 +147,7 @@ const appMethods = {
 
     if (!normalized.mapsUrl) {
       if (normalized.lat !== null && normalized.lng !== null) {
-        normalized.mapsUrl = `https://www.openstreetmap.org/?mlat=${normalized.lat}&mlon=${normalized.lng}#map=18/${normalized.lat}/${normalized.lng}`;
+        normalized.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${normalized.lat},${normalized.lng}`;
       } else if (this._isAbsoluteUrl(normalized.address)) {
         normalized.mapsUrl = normalized.address;
         normalized.address = "";
