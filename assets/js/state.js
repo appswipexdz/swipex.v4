@@ -205,6 +205,7 @@ showYalidineMenu: false,
     showCustomerHistory: false,
     customerHistoryParcel: null,
     customerHistoryData: [],
+    customerHistoryPhoneSuggestions: [],
     // ═══════════════════════════════════════════════════════════════
     // 📋 نظام الجلسات التعاونية (Collaborative Sessions)
     // ═══════════════════════════════════════════════════════════════

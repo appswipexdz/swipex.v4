@@ -1814,6 +1814,12 @@
                     <div v-if="customerHistoryParcel" class="mt-2 text-sm opacity-90">
                         <div class="font-bold">{{ customerHistoryParcel.receiver }}</div>
                         <div class="font-mono text-xs opacity-75">{{ customerHistoryParcel.phone }}<span v-if="customerHistoryParcel.phone2"> | {{ customerHistoryParcel.phone2 }}</span></div>
+                        <div v-if="customerHistoryPhoneSuggestions.length > 0" class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                            <div class="font-semibold text-gray-700 dark:text-gray-200">اقتراح أرقام من الطرود القديمة</div>
+                            <div class="flex flex-wrap gap-2">
+                                <a v-for="(suggestedPhone, idx) in customerHistoryPhoneSuggestions" :key="idx" :href="`tel:${suggestedPhone}`" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-[11px] font-mono hover:bg-gray-200 dark:hover:bg-gray-700 transition">{{ suggestedPhone }}</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

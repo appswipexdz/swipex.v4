@@ -1225,8 +1225,18 @@ const appMethods = {
       });
     });
     results.sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+
+    const currentPhones = new Set([parcel.phone, parcel.phone2].filter(Boolean));
+    const phoneSuggestions = new Set();
+    results.forEach(item => {
+      [item.phone, item.phone2].filter(Boolean).forEach(ph => {
+        if (!currentPhones.has(ph)) phoneSuggestions.add(ph);
+      });
+    });
+
     this.customerHistoryParcel = parcel;
     this.customerHistoryData = results;
+    this.customerHistoryPhoneSuggestions = Array.from(phoneSuggestions).sort();
     this.showCustomerHistory = true;
   },
 
