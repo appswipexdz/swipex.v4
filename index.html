@@ -1715,16 +1715,16 @@
                     <div class="text-sm text-gray-700 dark:text-gray-300">
                         إحداثيات: <span class="font-semibold">{{ locationPickerLat?.toFixed(6) || '...' }}, {{ locationPickerLng?.toFixed(6) || '...' }}</span>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button @click="centerLocationPickerToDeviceLocation()" class="px-4 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold hover:bg-blue-200 dark:hover:bg-blue-800/40 transition">
+                    <div class="flex flex-nowrap gap-2">
+                        <button @click="centerLocationPickerToDeviceLocation()" class="px-3 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold text-xs whitespace-nowrap hover:bg-blue-200 dark:hover:bg-blue-800/40 transition">
                             <i class="fas fa-location-arrow"></i>
                             الموقع الحالي
                         </button>
-                        <button @click="selectParcelLocationFromMap()" class="px-4 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition">
+                        <button @click="selectParcelLocationFromMap()" class="px-3 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs whitespace-nowrap hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition">
                             <i class="fas fa-save"></i>
                             حفظ الموقع
                         </button>
-                        <button @click="closeLocationPicker" class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-900/30 transition">
+                        <button @click="closeLocationPicker" class="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold text-xs whitespace-nowrap hover:bg-gray-200 dark:hover:bg-gray-900/30 transition">
                             إغلاق
                         </button>
                     </div>
