@@ -220,17 +220,7 @@ const appMethods = {
     return normalized;
   },
 
-  // افتح موقع Yalidine للتحقق من الصندوق
-  openYalidine() {
-    try {
-      const url = 'https://yalidine.app/app/recolte/a-recolter.php';
-      window.open(url, '_blank');
-    } catch (e) {
-      this.showToast('تعذر فتح الموقع', 'error');
-    }
-  },
-
-  // تنظيف سلسلة رقم الهاتف وإعادتها في صيغة محلية: 0xx... (10 أرقام)
+    // تنظيف سلسلة رقم الهاتف وإعادتها في صيغة محلية: 0xx... (10 أرقام)
   cleanPhoneNumberString(raw) {
     if (!raw) return '';
     let digits = String(raw).replace(/\D+/g, '');
