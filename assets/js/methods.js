@@ -191,6 +191,63 @@ const appMethods = {
     return normalized;
   },
 
+  // افتح موقع Yalidine للتحقق من الصندوق
+  openYalidine() {
+    try {
+      const url = 'https://yalidine.app/app/recolte/a-recolter.php';
+      window.open(url, '_blank');
+    } catch (e) {
+      this.showToast('تعذر فتح الموقع', 'error');
+    }
+  },
+
+  // تنظيف سلسلة رقم الهاتف وإعادتها في صيغة محلية: 0xx... (10 أرقام)
+  cleanPhoneNumberString(raw) {
+    if (!raw) return '';
+    let digits = String(raw).replace(/\D+/g, '');
+
+    // إزالة بادئات الصفر الدولي مثل 00 أو + (قد تكون قد حُذفت بعملية الإزالة أعلاه)
+    // التعامل مع رمز الدولة 213 (الجزائر)
+    if (/^0+/.test(digits)) {
+      // إزالة بداية متعددة من الأصفار التي قد تم إدخالها عن طريق الخطأ
+      digits = digits.replace(/^0+/, '');
+    }
+
+    if (digits.startsWith('213')) {
+      digits = '0' + digits.slice(3);
+    }
+
+    // إذا كان المستخدم لصق رقم محلي بدون صفر (9 أرقام)، أضف الصفر
+    if (/^[567]\d{8}$/.test(digits)) {
+      digits = '0' + digits;
+    }
+
+    // إذا كان لدينا سلسلة أطول، حاول اقتطاع آخر 10 أرقام
+    if (digits.length > 10) {
+      const last10 = digits.slice(-10);
+      if (/^0[567]\d{8}$/.test(last10)) digits = last10;
+    }
+
+    // تحقق من النمط المطلوب: يبدأ بـ0 ثم 5/6/7 ويحتوي على 10 أرقام
+    if (!/^0[567]\d{8}$/.test(digits)) {
+      return '';
+    }
+    return digits;
+  },
+
+  // تنظيف حقل رقم هاتف في نموذج التعديل (مثال: 'phone' أو 'phone2')
+  cleanPhoneModel(fieldName) {
+    if (!this.editParcel || !fieldName) return;
+    const raw = this.editParcel[fieldName] || '';
+    const cleaned = this.cleanPhoneNumberString(raw);
+    if (cleaned) {
+      this.editParcel[fieldName] = cleaned;
+      this.showToast('تم تنظيف رقم الهاتف', 'success');
+    } else {
+      this.showToast('لم يتم تحويل الرقم إلى صيغة صحيحة', 'error');
+    }
+  },
+
   hasParcelLocation(target) {
     const location = this.normalizeLocation(target?.location || target);
     return !!(
