@@ -129,7 +129,7 @@ const appMethods = {
         address: this._isAbsoluteUrl(text) ? "" : text,
         mapsUrl: this._isAbsoluteUrl(text)
           ? text
-          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text)}`,
+          : `https://www.openstreetmap.org/search?query=${encodeURIComponent(text)}`,
       };
     }
 
@@ -147,12 +147,12 @@ const appMethods = {
 
     if (!normalized.mapsUrl) {
       if (normalized.lat !== null && normalized.lng !== null) {
-        normalized.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${normalized.lat},${normalized.lng}`;
+        normalized.mapsUrl = `https://www.openstreetmap.org/?mlat=${normalized.lat}&mlon=${normalized.lng}#map=18/${normalized.lat}/${normalized.lng}`;
       } else if (this._isAbsoluteUrl(normalized.address)) {
         normalized.mapsUrl = normalized.address;
         normalized.address = "";
       } else if (normalized.address) {
-        normalized.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(normalized.address)}`;
+        normalized.mapsUrl = `https://www.openstreetmap.org/search?query=${encodeURIComponent(normalized.address)}`;
       }
     }
 
@@ -356,6 +356,137 @@ const appMethods = {
         message = "انتهت مهلة طلب الموقع. حاول مرة أخرى.";
       }
       this.showToast(message, "error", 5000);
+    }
+  },
+
+  openParcelLocationPicker(parcel) {
+    if (!parcel) return;
+    this.locationPickerParcel = parcel;
+    this.locationPickerLat = this.normalizeLocation(parcel.location).lat;
+    this.locationPickerLng = this.normalizeLocation(parcel.location).lng;
+    this.showLocationPickerModal = true;
+    this.$nextTick(() => {
+      setTimeout(() => this.initLocationPickerMap(), 50);
+    });
+  },
+
+  initLocationPickerMap() {
+    if (typeof L === 'undefined') {
+      this.showToast('لم يتم تحميل مكتبة الخرائط.', 'error');
+      return;
+    }
+
+    const mapElement = document.getElementById('location-picker-map');
+    if (!mapElement) return;
+
+    if (this.locationPickerMap) {
+      this.locationPickerMap.remove();
+      this.locationPickerMap = null;
+    }
+
+    let center = { lat: 36.7538, lng: 3.0588 };
+    if (this.locationPickerLat !== null && this.locationPickerLng !== null) {
+      center = { lat: this.locationPickerLat, lng: this.locationPickerLng };
+    } else if (this.locationPickerParcel && this.locationPickerParcel.location) {
+      const normalized = this.normalizeLocation(this.locationPickerParcel.location);
+      if (normalized.lat !== null && normalized.lng !== null) {
+        center = { lat: normalized.lat, lng: normalized.lng };
+        this.locationPickerLat = normalized.lat;
+        this.locationPickerLng = normalized.lng;
+      }
+    }
+
+    this.locationPickerMap = L.map(mapElement, {
+      center,
+      zoom: 14,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(this.locationPickerMap);
+
+    this.locationPickerMap.on('moveend', () => {
+      const centerLatLng = this.locationPickerMap.getCenter();
+      this.locationPickerLat = Number(centerLatLng.lat.toFixed(6));
+      this.locationPickerLng = Number(centerLatLng.lng.toFixed(6));
+    });
+
+    this.locationPickerMap.invalidateSize();
+    this.locationPickerMap.setView(center);
+  },
+
+  async centerLocationPickerToDeviceLocation() {
+    if (!navigator.geolocation) {
+      this.showToast('متصفحك لا يدعم تحديد الموقع الجغرافي.', 'error');
+      return;
+    }
+
+    const getPosition = () =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000,
+          },
+        );
+      });
+
+    try {
+      const position = await getPosition();
+      const { latitude, longitude } = position.coords;
+      this.locationPickerLat = Number(latitude.toFixed(6));
+      this.locationPickerLng = Number(longitude.toFixed(6));
+      if (this.locationPickerMap) {
+        this.locationPickerMap.setView([latitude, longitude], this.locationPickerMap.getZoom() || 14);
+      }
+      this.showToast('تم الانتقال إلى الموقع الحالي.', 'success');
+    } catch (error) {
+      let message = 'تعذر الحصول على الموقع. تأكد من سماح المتصفح بالوصول إلى الموقع.';
+      if (error && error.code === 1) {
+        message = 'تم رفض إذن الموقع. يرجى السماح بالوصول إلى الموقع.';
+      } else if (error && error.code === 2) {
+        message = 'تعذر تحديد الموقع. حاول مرة أخرى أو تأكد من تشغيل GPS.';
+      } else if (error && error.code === 3) {
+        message = 'انتهت مهلة طلب الموقع. حاول مرة أخرى.';
+      }
+      this.showToast(message, 'error', 5000);
+    }
+  },
+
+  selectParcelLocationFromMap() {
+    if (!this.locationPickerParcel) return;
+    if (this.locationPickerLat === null || this.locationPickerLng === null) {
+      this.showToast('لم يتم تحديد موقع صالح.', 'error');
+      return;
+    }
+
+    this.locationPickerParcel.location = this.normalizeLocation({
+      lat: this.locationPickerLat,
+      lng: this.locationPickerLng,
+      label: 'موقع الخريطة',
+      address: '',
+      source: 'map',
+      updatedAt: new Date().toISOString(),
+    });
+    this.locationPickerParcel.updatedAt = new Date().toISOString();
+    this.saveData();
+    this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
+    this.closeLocationPicker();
+  },
+
+  closeLocationPicker() {
+    this.showLocationPickerModal = false;
+    this.locationPickerParcel = null;
+    this.locationPickerLat = null;
+    this.locationPickerLng = null;
+    if (this.locationPickerMap) {
+      this.locationPickerMap.remove();
+      this.locationPickerMap = null;
     }
   },
 

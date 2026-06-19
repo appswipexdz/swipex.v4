@@ -25,6 +25,7 @@
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdf.worker.min.js";</script>
     <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
     <link href="assets/libs/cairo-font.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
@@ -578,8 +579,12 @@
                                                     <i class="fas fa-location-arrow"></i>
                                                     احفظ الموقع الحالي
                                                 </button>
+                                                <button @click="openParcelLocationPicker(parcel)" class="w-full sm:w-auto px-3 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold hover:bg-blue-200 dark:hover:bg-blue-800/40 transition flex items-center justify-center gap-2">
+                                                    <i class="fas fa-map-pin"></i>
+                                                    حدد موقع على الخريطة
+                                                </button>
                                                 <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                                                    اضغط الزر لحفظ موقع الجهاز الحالي ثم افتح الموقع في الخرائط عند الحاجة.
+                                                    اختر موقعاً يدوياً على الخريطة أو استخدم موقع الجهاز الحالي.
                                                 </div>
                                                 <div class="flex flex-wrap items-center gap-2 text-xs">
                                                     <button v-if="canOpenParcelLocation(parcel)" @click="openParcelLocation(parcel)" class="px-3 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition flex items-center gap-2">
@@ -1677,6 +1682,52 @@
                         </div>
                         <i class="fas fa-chevron-left text-gray-400"></i>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Picker Modal -->
+        <div v-if="showLocationPickerModal && locationPickerParcel" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click="closeLocationPicker">
+            <div class="modal-glass rounded-2xl w-full max-w-4xl h-[80vh] p-5 flex flex-col" @click.stop>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-map-marker-alt text-emerald-600"></i>
+                            اختيار موقع الطرد
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            حرك الخريطة ليكون الدبوس في وسط الشاشة ثم اضغط حفظ.
+                        </p>
+                    </div>
+                    <button @click="closeLocationPicker" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="relative flex-1 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+                    <div id="location-picker-map" class="w-full h-full"></div>
+                    <div class="pointer-events-none absolute inset-x-0 top-1/2 flex justify-center -translate-y-1/2">
+                        <div class="bg-white/90 dark:bg-slate-900/80 border border-gray-200 dark:border-gray-700 rounded-full p-2 shadow-xl">
+                            <i class="fas fa-map-pin text-red-500 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="text-sm text-gray-700 dark:text-gray-300">
+                        إحداثيات: <span class="font-semibold">{{ locationPickerLat?.toFixed(6) || '...' }}, {{ locationPickerLng?.toFixed(6) || '...' }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="centerLocationPickerToDeviceLocation()" class="px-4 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold hover:bg-blue-200 dark:hover:bg-blue-800/40 transition">
+                            <i class="fas fa-location-arrow"></i>
+                            الموقع الحالي
+                        </button>
+                        <button @click="selectParcelLocationFromMap()" class="px-4 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition">
+                            <i class="fas fa-save"></i>
+                            حفظ الموقع
+                        </button>
+                        <button @click="closeLocationPicker" class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-900/30 transition">
+                            إغلاق
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3808,6 +3859,7 @@
     <script src="assets/js/scanner.js"></script>
     <script src="assets/js/pdf.js"></script>
     <script src="assets/js/importExcel.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="assets/js/methods.js"></script>
     <script src="assets/js/app.js"></script>
     
