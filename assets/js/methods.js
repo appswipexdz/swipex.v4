@@ -2562,6 +2562,7 @@ const appMethods = {
   },
 
   openTagPicker(parcelId) {
+    this.pauseSmartTagSorting(1000);
     this.tagPickerParcelId = parcelId;
     this.quickTagInput = "";
     this.showTagPicker = true;
@@ -2596,12 +2597,17 @@ const appMethods = {
   selectTagForParcel(tagName) {
     const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
     if (parcel) {
-      this.pauseSmartTagSorting();
+      this.pauseSmartTagSorting(500);
       parcel.tag = tagName;
       parcel.updatedAt = new Date().toISOString();
       this.saveData();
-      this.scrollParcelIntoView(parcel.id);
+      this.resumeSmartTagSorting();
+      this.showTagPicker = false;
+      this.tagPickerParcelId = null;
+      this.scrollParcelIntoViewAfterUpdate(parcel.id);
+      return;
     }
+
     this.showTagPicker = false;
     this.tagPickerParcelId = null;
   },
@@ -2609,11 +2615,12 @@ const appMethods = {
   removeParcelTag(parcelId) {
     const parcel = this.parcels.find((p) => p.id === parcelId);
     if (parcel) {
-      this.pauseSmartTagSorting();
+      this.pauseSmartTagSorting(500);
       parcel.tag = null;
       parcel.updatedAt = new Date().toISOString();
       this.saveData();
-      this.scrollParcelIntoView(parcel.id);
+      this.resumeSmartTagSorting();
+      this.scrollParcelIntoViewAfterUpdate(parcel.id);
     }
   },
 
@@ -2698,6 +2705,17 @@ const appMethods = {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+    });
+  },
+
+  scrollParcelIntoViewAfterUpdate(parcelId) {
+    this.$nextTick(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('parcel-card-' + parcelId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
     });
   },
 
