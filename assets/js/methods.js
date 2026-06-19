@@ -1336,6 +1336,11 @@ const appMethods = {
 
   // ========== Filters ==========
   toggleSearch() {
+    if (!this.showFilters && this.filters.search) {
+      this.clearSearchText();
+      return;
+    }
+
     this.showFilters = !this.showFilters;
     if (this.showFilters) {
       this.$nextTick(() => {
@@ -1343,9 +1348,12 @@ const appMethods = {
           this.$refs.searchInput.focus();
         }
       });
-    } else {
-      this.filters.search = "";
     }
+  },
+
+  clearSearchText() {
+    this.filters.search = "";
+    this.saveFilters();
   },
 
   clearFilters() {

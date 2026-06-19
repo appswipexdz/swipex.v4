@@ -241,6 +241,13 @@ createApp({
             }
         }, 3000);
         
+        // Close search before child click handlers can stop propagation.
+        document.addEventListener('pointerdown', (e) => {
+            if (this.showFilters && !e.target.closest('.search-wrapper') && !e.target.closest('.top-search-toggle')) {
+                this.showFilters = false;
+            }
+        }, true);
+
         // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
             if (this.showMunicipalityDropdown && !e.target.closest('.municipality-dropdown')) {
