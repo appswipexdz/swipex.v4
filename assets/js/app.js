@@ -18,37 +18,43 @@ createApp({
     
     computed: {
         uniqueMunicipalities() {
-            return appMethods.uniqueMunicipalities.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.uniqueMunicipalities) ? window.appMethods.uniqueMunicipalities.call(this) : [];
         },
         hasActiveFilters() {
-            return appMethods.hasActiveFilters.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.hasActiveFilters) ? window.appMethods.hasActiveFilters.call(this) : false;
         },
         visibleStatusFilters() {
-            return appMethods.visibleStatusFilters.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.visibleStatusFilters) ? window.appMethods.visibleStatusFilters.call(this) : [];
         },
         filteredParcels() {
-            return appMethods.filteredParcels.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.filteredParcels) ? window.appMethods.filteredParcels.call(this) : [];
         },
         totalCash() {
-            return appMethods.totalCash.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.totalCash) ? window.appMethods.totalCash.call(this) : 0;
         },
         remainingCount() {
-            return appMethods.remainingCount.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.remainingCount) ? window.appMethods.remainingCount.call(this) : 0;
         },
         getStatsForSettings() {
-            return appMethods.getStatsForSettings.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.getStatsForSettings) ? window.appMethods.getStatsForSettings.call(this) : {};
         },
         settingsStats() {
-            return appMethods.getStatsForSettings.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.getStatsForSettings) ? window.appMethods.getStatsForSettings.call(this) : {};
         },
         editMunicipalitySuggestions() {
-            return appMethods.editMunicipalitySuggestions.call(this);
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.editMunicipalitySuggestions) ? window.appMethods.editMunicipalitySuggestions.call(this) : [];
         },
         archiveList() {
-            return Object.entries(this.archive).map(([tracking, data]) => ({
-                tracking,
-                ...appMethods.normalizeArchiveEntry.call(this, data)
-            })).sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+            return Object.entries(this.archive).map(([tracking, data]) => {
+                const events = (typeof window.appMethods !== 'undefined' && window.appMethods.getArchiveEvents) ? window.appMethods.getArchiveEvents.call(this, data) : [];
+                const latest = events.length ? events[0] : {};
+                return {
+                    tracking,
+                    events,
+                    ...latest,
+                };
+            }).filter(item => item.latest !== undefined || item.events.length > 0)
+            .sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
         },
         filteredArchive() {
             let list = this.archiveList;
@@ -65,7 +71,7 @@ createApp({
                     (item.notes || '').toLowerCase().includes(q) ||
                     (item.tag || '').toLowerCase().includes(q) ||
                     (item.municipality || '').toLowerCase().includes(q) ||
-                    appMethods.getLocationSearchText.call(this, item).includes(q)
+                    ((typeof window.appMethods !== 'undefined' && window.appMethods.getLocationSearchText) ? window.appMethods.getLocationSearchText.call(this, item) : '').includes(q)
                 );
             }
             return list;
@@ -79,8 +85,8 @@ createApp({
         favInfoData() {
             if (!this.favInfoParcelId) return null;
             const parcel = this.parcels.find(p => p.id === this.favInfoParcelId);
-            if (!parcel) return null;
-            return appMethods.getFavoriteInfo.call(this, parcel);
+                if (!parcel) return null;
+            return (typeof window.appMethods !== 'undefined' && window.appMethods.getFavoriteInfo) ? window.appMethods.getFavoriteInfo.call(this, parcel) : null;
         },
         allStatuses() {
             const custom = (this.settings.customStatuses || []).map(s => ({
@@ -136,9 +142,33 @@ createApp({
     },
     
     mounted() {
+        // Merge global method packs (if any) into the instance so calls like loadCurrentUser work
+        const mergeGlobalMethods = (name) => {
+            try {
+                const src = (typeof window !== 'undefined' && window[name]) ? window[name] : null;
+                if (src && typeof src === 'object') {
+                    Object.keys(src).forEach(k => {
+                        if (typeof src[k] === 'function') {
+                            this[k] = src[k].bind(this);
+                        } else {
+                            this[k] = src[k];
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed merging methods:', name, e);
+            }
+        };
+        mergeGlobalMethods('appMethods');
+        mergeGlobalMethods('pdfFunctions');
+        mergeGlobalMethods('importExcelFunctions');
+        mergeGlobalMethods('scannerFunctions');
+
         // تحميل المستخدم أولاً (متزامن)
         console.log('🚀 بدء التطبيق...');
-        this.loadCurrentUser();
+        if (typeof this.loadCurrentUser === 'function') {
+            this.loadCurrentUser();
+        }
         
         // تحميل الفلاتر والثيم فوراً
         this.loadFilters();
@@ -277,10 +307,10 @@ createApp({
     },
     
     methods: {
-        ...appMethods,
-        ...pdfFunctions,
-        ...importExcelFunctions,
-        ...scannerFunctions,
+        ...(typeof window.appMethods !== 'undefined' ? window.appMethods : {}),
+        ...(typeof window.pdfFunctions !== 'undefined' ? window.pdfFunctions : {}),
+        ...(typeof window.importExcelFunctions !== 'undefined' ? window.importExcelFunctions : {}),
+        ...(typeof window.scannerFunctions !== 'undefined' ? window.scannerFunctions : {}),
         
         // تحديث حالة الإنترنت
         updateOnlineStatus() {

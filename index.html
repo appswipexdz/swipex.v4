@@ -953,12 +953,16 @@
                     <p class="text-sm mt-1">الطرود تُؤرشف تلقائياً عند استيراد ملف جديد في يوم جديد</p>
                 </div>
 
-                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4" :class="{
+                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4 relative" :class="{
                     'border-green-500': item.status === 'تم التسليم',
                     'border-red-500': item.status === 'إلغاء الطلبية',
                     'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
                     'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
                 }">
+                    <button v-if="item.events && item.events.length > 1" @click.stop="openArchiveHistory(item)" type="button" class="absolute top-3 left-3 w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition flex items-center justify-center shadow-sm">
+                        <i class="fas fa-history text-[11px]"></i>
+                        <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] text-white font-bold flex items-center justify-center">{{ item.events.length }}</span>
+                    </button>
                     <div class="flex items-center justify-between mb-3 gap-3">
                         <div class="flex items-center gap-2 min-w-0">
                             <span class="text-white w-8 h-8 rounded-2xl text-xs font-bold flex items-center justify-center shadow-md"
@@ -2263,73 +2267,39 @@
                 </div>
 
                 <!-- Content -->
-                <div v-if="currentHistory" class="p-4 space-y-3">
-                    <!-- الحالة السابقة -->
-                    <div class="glass-panel p-4 rounded-2xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-flag text-white text-sm"></i>
+                <div v-if="currentHistory && currentHistory.length" class="p-4 space-y-3">
+                    <div class="space-y-3">
+                        <template v-for="(event, index) in currentHistory" :key="index">
+                            <div class="glass-panel p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between gap-3 mb-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-flag text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">الحالة</div>
+                                            <div class="text-base font-bold text-gray-800 dark:text-white">{{ event.status }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-500 dark:text-gray-400">{{ formatDate(event.lastUpdate) }}</div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div v-if="event.tag" class="glass-panel p-3 rounded-2xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
+                                        <div class="text-[11px] font-semibold mb-1">التمييز</div>
+                                        <div class="font-bold">@{{ event.tag }}</div>
+                                    </div>
+                                    <div v-if="event.notes" class="glass-panel p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300">
+                                        <div class="text-[11px] font-semibold mb-1">الملاحظات</div>
+                                        <div class="text-sm leading-relaxed">{{ event.notes }}</div>
+                                    </div>
+                                </div>
+                                <div v-if="event.location && (event.location.address || event.location.mapsUrl)" class="mt-3 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
+                                    <div class="text-[11px] font-semibold mb-1">الموقع</div>
+                                    <div class="text-sm font-bold">{{ getLocationDisplay(event) }}</div>
+                                    <div v-if="getLocationMeta(event)" class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{{ getLocationMeta(event) }}</div>
+                                </div>
                             </div>
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">الحالة السابقة</div>
-                                <div class="text-base font-bold text-gray-800 dark:text-white">{{ currentHistory.status }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- التمييز السابق -->
-                    <div v-if="currentHistory.tag" class="glass-panel p-4 rounded-2xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-at text-white text-sm"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">التمييز السابق</div>
-                                <div class="text-base font-bold text-purple-600 dark:text-purple-400">@{{ currentHistory.tag }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- الملاحظات السابقة -->
-                    <div v-if="hasParcelLocation(currentHistory)" class="glass-panel p-4 rounded-2xl">
-                        <div class="flex items-start gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-map-marker-alt text-white text-sm"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">الموقع السابق</div>
-                                <div class="text-sm font-bold text-emerald-700 dark:text-emerald-300">{{ getLocationDisplay(currentHistory) }}</div>
-                                <div v-if="getLocationMeta(currentHistory)" class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ getLocationMeta(currentHistory) }}</div>
-                            </div>
-                            <button v-if="canOpenParcelLocation(currentHistory)" @click="openParcelLocation(currentHistory)" class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition flex items-center justify-center">
-                                <i class="fas fa-route"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div v-if="currentHistory.notes" class="glass-panel p-4 rounded-2xl">
-                        <div class="flex items-start gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-sticky-note text-white text-sm"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">الملاحظات السابقة</div>
-                                <div class="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">{{ currentHistory.notes }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- آخر تحديث -->
-                    <div class="glass-panel p-4 rounded-2xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-clock text-white text-sm"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">آخر تحديث</div>
-                                <div class="text-sm font-mono text-gray-700 dark:text-gray-200">{{ formatDate(currentHistory.lastUpdate) }}</div>
-                            </div>
-                        </div>
+                        </template>
                     </div>
                 </div>
 

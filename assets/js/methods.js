@@ -174,9 +174,34 @@ const appMethods = {
   normalizeArchiveMap(archiveMap) {
     const normalized = {};
     Object.entries(archiveMap || {}).forEach(([tracking, entry]) => {
-      normalized[tracking] = this.normalizeArchiveEntry(entry);
+      if (!entry) return;
+      const events = this.getArchiveEvents(entry);
+      if (events.length === 0) return;
+      normalized[tracking] = {
+        events,
+        latest: events[0],
+      };
     });
     return normalized;
+  },
+
+  getArchiveEvents(archiveEntry) {
+    if (!archiveEntry) return [];
+    let events = [];
+    if (Array.isArray(archiveEntry)) {
+      events = archiveEntry.map((event) => this.normalizeArchiveEntry(event));
+    } else if (archiveEntry.events && Array.isArray(archiveEntry.events)) {
+      events = archiveEntry.events.map((event) => this.normalizeArchiveEntry(event));
+    } else {
+      events = [this.normalizeArchiveEntry(archiveEntry)];
+    }
+    events = events.filter(Boolean).sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+    return events;
+  },
+
+  getArchiveLatestEntry(archiveEntry) {
+    const events = this.getArchiveEvents(archiveEntry);
+    return events.length ? events[0] : null;
   },
 
   normalizeParcelRecord(parcel) {
@@ -186,7 +211,11 @@ const appMethods = {
       location: this.normalizeLocation(parcel.location),
     };
     if (parcel.history && typeof parcel.history === "object") {
-      normalized.history = this.normalizeArchiveEntry(parcel.history);
+      if (Array.isArray(parcel.history)) {
+        normalized.history = parcel.history.map((event) => this.normalizeArchiveEntry(event));
+      } else {
+        normalized.history = [this.normalizeArchiveEntry(parcel.history)];
+      }
     }
     return normalized;
   },
@@ -796,16 +825,13 @@ const appMethods = {
     this.parcels.forEach((p) => {
       const tracking = (p.tracking || "").trim();
       if (!tracking) return;
-      this.archive[tracking] = {
+      const event = {
         status: p.status,
         notes: p.notes || "",
         tag: p.tag || null,
         location: this.normalizeLocation(p.location),
         lastUpdate: new Date().toISOString(),
-
-        // ✅ حفظ المبلغ داخل الأرشيف حتى يظهر في صفحة الأرشيف
         amount: p.amount || 0,
-
         municipality: p.municipality || "",
         receiver: p.receiver || "",
         phone: p.phone || "",
@@ -813,6 +839,21 @@ const appMethods = {
         smsSent: p.smsSent || false,
         senderSmsSent: p.senderSmsSent || false,
       };
+
+      const existing = this.archive[tracking];
+      if (existing) {
+        const events = this.getArchiveEvents(existing);
+        events.unshift(event);
+        this.archive[tracking] = {
+          events,
+          latest: event,
+        };
+      } else {
+        this.archive[tracking] = {
+          events: [event],
+          latest: event,
+        };
+      }
     });
   },
 
@@ -944,26 +985,25 @@ const appMethods = {
 
       // هل له سجل في الأرشيف؟
       const archivedData = this.archive[tracking];
-      const normalizedArchivedData = archivedData
-        ? this.normalizeArchiveEntry(archivedData)
-        : null;
+      const archiveEvents = archivedData ? this.getArchiveEvents(archivedData) : [];
+      const latestArchivedEvent = archiveEvents.length ? archiveEvents[0] : null;
       const hasImportedStatus =
         newParcel.status && newParcel.status !== "دون إجراء";
       const hasImportedNotes = newParcel.notes && newParcel.notes.trim() !== "";
 
-      if (normalizedArchivedData) {
+      if (latestArchivedEvent) {
         const merged = {
           ...newParcel,
           expanded: false,
           isUpdated: true,
-          history: normalizedArchivedData,
-          smsSent: normalizedArchivedData.smsSent || false,
-          senderSmsSent: normalizedArchivedData.senderSmsSent || false,
+          history: archiveEvents,
+          smsSent: latestArchivedEvent.smsSent || false,
+          senderSmsSent: latestArchivedEvent.senderSmsSent || false,
           insertedAt: this._nowTimestamp(),
           status: hasImportedStatus ? newParcel.status : "دون إجراء",
           notes: hasImportedNotes ? newParcel.notes : "",
           location: this.normalizeLocation(
-            newParcel.location || normalizedArchivedData.location,
+            newParcel.location || latestArchivedEvent.location,
           ),
         };
         merged.updatedAt = new Date().toISOString();
@@ -1022,11 +1062,13 @@ const appMethods = {
   _buildArchivePhoneMap() {
     const map = {};
     for (const [tracking, data] of Object.entries(this.archive)) {
-      const normalizedData = this.normalizeArchiveEntry(data);
-      const phones = [data.phone, data.phone2].filter(Boolean);
+      const events = this.getArchiveEvents(data);
+      const latest = events.length ? events[0] : null;
+      if (!latest) continue;
+      const phones = [latest.phone, latest.phone2].filter(Boolean);
       phones.forEach(ph => {
         if (!map[ph]) map[ph] = [];
-        map[ph].push({ tracking, ...normalizedData });
+        map[ph].push({ tracking, ...latest });
       });
     }
     for (const key in map) {
@@ -1068,8 +1110,20 @@ const appMethods = {
   },
 
   // ========== History ==========
+  openArchiveHistory(item) {
+    if (!item) return;
+    if (!item.events || !item.events.length) return;
+    this.currentHistory = this.getArchiveEvents(item);
+    this.showHistoryModal = true;
+  },
+
   showHistory(parcel) {
-    this.currentHistory = parcel.history;
+    if (!parcel || !parcel.history) return;
+    const historyEntries = Array.isArray(parcel.history) ? parcel.history : [parcel.history];
+    this.currentHistory = historyEntries
+      .map((event) => this.normalizeArchiveEntry(event))
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
     this.showHistoryModal = true;
   },
 
@@ -3776,3 +3830,6 @@ const appMethods = {
     return `منذ ${Math.floor(diff / 86400000)} يوم`;
   },
 };
+
+// Expose for older scripts that expect a global variable
+if (typeof window !== 'undefined') window.appMethods = appMethods;
