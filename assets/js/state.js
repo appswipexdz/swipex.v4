@@ -249,3 +249,5 @@ showYalidineMenu: false,
     showSessionNotification: false,
     currentSessionNotification: null
 };
+
+if (typeof window !== 'undefined') window.appState = appState;

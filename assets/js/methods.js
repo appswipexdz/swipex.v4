@@ -2942,18 +2942,43 @@ const appMethods = {
       if (firestoreSync.isAvailable()) {
         // تحميل أولاً ثم حفظ البيانات المدمجة
         console.log("📥 تحميل التحديثات من Firestore...");
-        const cloud = await firestoreSync.loadAll();
+
+        const cloud = await Promise.race([
+          firestoreSync.loadAll(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SYNC_LOAD_TIMEOUT")), 8000)
+          )
+        ]).catch(e => {
+          if (e.message === "SYNC_LOAD_TIMEOUT") {
+            console.log("⏳ تجاوزت مهلة التحميل - متابعة بالبيانات المحلية");
+            return null;
+          }
+          throw e;
+        });
+
         if (cloud) {
           this.applyCloudData(cloud);
         }
 
         // حفظ البيانات المدمجة
         console.log("💾 حفظ البيانات المدمجة...");
-        const saved = await firestoreSync.saveAll({
-          parcels: this.parcels,
-          settings: { ...this.settings, _sessionDate: this.sessionDate },
-          archive: this.archive,
-          tasks: this.tasks,
+
+        const saved = await Promise.race([
+          firestoreSync.saveAll({
+            parcels: this.parcels,
+            settings: { ...this.settings, _sessionDate: this.sessionDate },
+            archive: this.archive,
+            tasks: this.tasks,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SYNC_SAVE_TIMEOUT")), 8000)
+          )
+        ]).catch(e => {
+          if (e.message === "SYNC_SAVE_TIMEOUT") {
+            console.log("⏳ تجاوزت مهلة الحفظ");
+            return false;
+          }
+          throw e;
         });
 
         this.syncStatus = saved ? "synced" : "error";

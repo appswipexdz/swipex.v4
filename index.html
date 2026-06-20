@@ -90,7 +90,7 @@
             setTimeout(async () => {
                 try {
                     if (window.firestoreSync && window.appState && window.appState.parcels) {
-                        await window.firestoreSync.saveParcels(window.appState.parcels);
+                        await window.firestoreSync.saveParcels(window.appState.parcels, { silent: true });
                     }
                 } catch (e) {
                     console.error('فشل المزامنة عند استعادة الاتصال:', e);

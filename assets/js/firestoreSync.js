@@ -40,17 +40,17 @@ const firestoreSync = {
 
     // ============ Save Methods ============
 
-    async saveParcels(parcels) {
+    async saveParcels(parcels, { silent = false } = {}) {
         if (!this._initialLoadDone) {
             console.log('⏳ في انتظار اكتمال التحميل الأولي - تأجيل الحفظ');
             return false;
         }
-        this.updateSyncStatus('syncing');
+        if (!silent) this.updateSyncStatus('syncing');
         
         try {
             const ref = this._docRef('parcels');
             if (!ref) {
-                this.updateSyncStatus('error');
+                if (!silent) this.updateSyncStatus('error');
                 return false;
             }
             await ref.set({
@@ -62,19 +62,19 @@ const firestoreSync = {
             await this.updateMetadata(['parcels']);
             
             this._retryCount = 0;
-            this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
+            if (!silent) this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             console.log('✓ تم حفظ الطرود في Firestore بنجاح');
             return true;
         } catch (e) {
             console.error('❌ فشل حفظ الطرود:', e.message);
-            this.updateSyncStatus('error');
+            if (!silent) this.updateSyncStatus('error');
             
             if (navigator.onLine && this._retryCount < this._maxRetries) {
                 this._retryCount++;
                 console.log(`🔄 إعادة محاولة الحفظ (محاولة ${this._retryCount}/${this._maxRetries})...`);
                 setTimeout(() => {
                     const currentParcels = window.appState ? window.appState.parcels : parcels;
-                    this.saveParcels(currentParcels);
+                    this.saveParcels(currentParcels, { silent: true });
                 }, Math.min(this._retryCount * 2000, 10000));
             }
             return false;
@@ -337,3 +337,5 @@ const firestoreSync = {
         }, this._debounceMs);
     }
 };
+
+if (typeof window !== 'undefined') window.firestoreSync = firestoreSync;
