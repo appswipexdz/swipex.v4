@@ -128,3 +128,5 @@ const scannerFunctions = {
         });
     }
 };
+
+if (typeof window !== 'undefined') window.scannerFunctions = scannerFunctions;

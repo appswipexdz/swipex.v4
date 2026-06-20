@@ -396,3 +396,5 @@ const pdfFunctions = {
         }
     }
 };
+
+if (typeof window !== 'undefined') window.pdfFunctions = pdfFunctions;

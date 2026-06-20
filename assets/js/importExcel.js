@@ -213,3 +213,5 @@ const importExcelFunctions = {
         this.drawerOpen = false;
     }
 };
+
+if (typeof window !== 'undefined') window.importExcelFunctions = importExcelFunctions;
