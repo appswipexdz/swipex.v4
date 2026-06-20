@@ -763,6 +763,8 @@ const appMethods = {
           console.error("❌ خطأ في تحميل البيانات من Firestore:", e);
           this.syncStatus = "error";
         }
+        // السماح بالحفظ حتى لو فشل التحميل الأولي
+        firestoreSync._initialLoadDone = true;
       }
     }
   },

@@ -58,9 +58,6 @@ const firestoreSync = {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            // تحديث metadata
-            await this.updateMetadata(['parcels']);
-            
             this._retryCount = 0;
             if (!silent) this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             console.log('✓ تم حفظ الطرود في Firestore بنجاح');
@@ -93,7 +90,6 @@ const firestoreSync = {
                 data: JSON.stringify(settings),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            await this.updateMetadata(['settings']);
             this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             return true;
         } catch (e) {
@@ -111,7 +107,6 @@ const firestoreSync = {
                 data: JSON.stringify(archive),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            await this.updateMetadata(['archive']);
             return true;
         } catch (e) {
             console.error('firestoreSync.saveArchive:', e);
@@ -127,7 +122,6 @@ const firestoreSync = {
                 data: JSON.stringify(tasks),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            await this.updateMetadata(['tasks']);
             return true;
         } catch (e) {
             console.error('firestoreSync.saveTasks:', e);
@@ -238,7 +232,18 @@ const firestoreSync = {
                 data.archive !== undefined ? this.saveArchive(data.archive) : true,
                 data.tasks !== undefined ? this.saveTasks(data.tasks) : true
             ]);
-            return results.every(r => r);
+            const allOk = results.every(r => r);
+            if (allOk) {
+                const collections = [];
+                if (data.parcels !== undefined) collections.push('parcels');
+                if (data.settings !== undefined) collections.push('settings');
+                if (data.archive !== undefined) collections.push('archive');
+                if (data.tasks !== undefined) collections.push('tasks');
+                if (collections.length > 0) {
+                    await this.updateMetadata(collections);
+                }
+            }
+            return allOk;
         } catch (e) {
             console.error('firestoreSync.saveAll:', e);
             return false;
