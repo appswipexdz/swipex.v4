@@ -1006,25 +1006,40 @@ const appMethods = {
       return;
     }
 
-    const payload = {
-      app: "SwiPex",
-      type: "archive",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      count: archiveCount,
-      archive: this.archive,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json;charset=utf-8",
+    const rows = [];
+    Object.entries(this.archive).forEach(([tracking, data]) => {
+      const events = this.getArchiveEvents(data);
+      events.forEach((event, idx) => {
+        rows.push({
+          "رقم التتبع": tracking,
+          "الترتيب": idx + 1,
+          "آخر تحديث": event.lastUpdate || "",
+          "الحالة": event.status || "",
+          "ملاحظات": event.notes || "",
+          "التمييز": event.tag || "",
+          "المبلغ": event.amount || 0,
+          "البلدية": event.municipality || "",
+          "المستلم": event.receiver || "",
+          "الهاتف": event.phone || "",
+          "الهاتف 2": event.phone2 || "",
+          "SMS مستلم": event.smsSent ? "نعم" : "لا",
+          "SMS مرسل": event.senderSmsSent ? "نعم" : "لا",
+        });
+      });
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `SwiPex_Archive_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 8 },  { wch: 20 },
+      { wch: 15 }, { wch: 40 }, { wch: 15 },
+      { wch: 10 }, { wch: 15 }, { wch: 25 },
+      { wch: 15 }, { wch: 15 }, { wch: 12 },
+      { wch: 12 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "الأرشيف");
+    XLSX.writeFile(wb, `SwiPex_Archive_${new Date().toISOString().slice(0, 10)}.xlsx`);
     this.showToast(`تم تصدير ${archiveCount} طرد من الأرشيف`, "success");
   },
 
@@ -1041,26 +1056,43 @@ const appMethods = {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const parsed = JSON.parse(e.target.result);
-        const importedArchive = parsed?.archive || parsed;
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
 
-        if (!importedArchive || typeof importedArchive !== "object" || Array.isArray(importedArchive)) {
-          throw new Error("invalid_archive");
-        }
+        const archiveMap = {};
+        rows.forEach(row => {
+          const tracking = (row["رقم التتبع"] || "").toString().trim();
+          if (!tracking) return;
+          if (!archiveMap[tracking]) archiveMap[tracking] = [];
+          archiveMap[tracking].push({
+            status: row["الحالة"] || "",
+            notes: row["ملاحظات"] || "",
+            tag: row["التمييز"] || null,
+            lastUpdate: row["آخر تحديث"] || new Date().toISOString(),
+            amount: row["المبلغ"] || 0,
+            municipality: row["البلدية"] || "",
+            receiver: row["المستلم"] || "",
+            phone: row["الهاتف"] || "",
+            phone2: row["الهاتف 2"] || "",
+            smsSent: row["SMS مستلم"] === "نعم",
+            senderSmsSent: row["SMS مرسل"] === "نعم",
+          });
+        });
 
-        const normalizedArchive = this.normalizeArchiveMap(importedArchive);
         let added = 0;
         let updated = 0;
-
-        Object.entries(normalizedArchive).forEach(([tracking, data]) => {
-          const cleanTracking = (tracking || "").trim();
+        Object.entries(archiveMap).forEach(([tracking, rawEvents]) => {
+          const cleanTracking = tracking.trim();
           if (!cleanTracking) return;
+          rawEvents.sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
           if (this.archive[cleanTracking]) {
-            updated += 1;
+            updated++;
           } else {
-            added += 1;
+            added++;
           }
-          this.archive[cleanTracking] = data;
+          this.archive[cleanTracking] = { events: rawEvents, latest: rawEvents[0] };
         });
 
         this.archiveVisibleCount = 30;
@@ -1068,7 +1100,7 @@ const appMethods = {
         this.showToast(`تم استيراد الأرشيف: ${added} جديد، ${updated} محدث`, "success");
       } catch (error) {
         console.error("Archive import failed:", error);
-        this.showToast("تعذر استيراد الأرشيف. تأكد من اختيار ملف JSON صحيح.", "error");
+        this.showToast("تعذر استيراد الأرشيف. تأكد من اختيار ملف Excel صحيح.", "error");
       } finally {
         event.target.value = "";
       }
@@ -1077,7 +1109,7 @@ const appMethods = {
       this.showToast("تعذر قراءة ملف الأرشيف", "error");
       event.target.value = "";
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   },
 
   findAndMerge(newParcels) {
