@@ -991,12 +991,12 @@ const appMethods = {
       return;
     }
     const count = this.parcels.length;
-    console.log(\`📦 أرشفة يدوية: \${count} طرد...\`);
+    console.log("📦 أرشفة يدوية: " + count + " طرد...");
     this.archiveCurrentParcels();
     this.parcels = [];
     this.sessionDate = this.getTodayString();
     this.saveData();
-    this.showToast(\`تم أرشفة \${count} طرد بنجاح\`, "success");
+    this.showToast("تم أرشفة " + count + " طرد بنجاح", "success");
   },
 
   exportArchive() {
@@ -1096,14 +1096,14 @@ const appMethods = {
       this.sessionDate !== today &&
       this.parcels.length > 0
     ) {
-      console.log(\`📦 أرشفة \${this.parcels.length} طرد من يوم \${this.sessionDate}...\`);
+      console.log("📦 أرشفة " + this.parcels.length + " طرد من يوم " + this.sessionDate + "...");
       this.archiveCurrentParcels();
       stats.archived = this.parcels.length;
       this.parcels = [];
       this.sessionDate = today;
       // حفظ فوري للأرشيف قبل متابعة الاستيراد
       this.saveData();
-      console.log(\`✓ تم أرشفة \${stats.archived} طرد وحفظها\`);
+      console.log("✓ تم أرشفة " + stats.archived + " طرد وحفظها");
     }
 
     // تعيين تاريخ الجلسة إذا لم يكن موجوداً
