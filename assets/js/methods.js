@@ -681,7 +681,12 @@ const appMethods = {
           : cloud.settings;
         if (selectedSettings) {
           const { _sessionDate, ...restSettings } = selectedSettings;
-          if (_sessionDate) this.sessionDate = _sessionDate;
+          // استخدام أحدث sessionDate (لا نعيده لتاريخ أقدم مما هو مسجل محلياً)
+          if (_sessionDate) {
+            if (!this.sessionDate || new Date(_sessionDate) > new Date(this.sessionDate)) {
+              this.sessionDate = _sessionDate;
+            }
+          }
           this.settings = { ...this.settings, ...restSettings };
           console.log("✓ تم تطبيق الإعدادات الأحدثة");
         }
@@ -980,6 +985,20 @@ const appMethods = {
     });
   },
 
+  manualArchive() {
+    if (this.parcels.length === 0) {
+      this.showToast("لا توجد طرود لأرشفتها", "info");
+      return;
+    }
+    const count = this.parcels.length;
+    console.log(\`📦 أرشفة يدوية: \${count} طرد...\`);
+    this.archiveCurrentParcels();
+    this.parcels = [];
+    this.sessionDate = this.getTodayString();
+    this.saveData();
+    this.showToast(\`تم أرشفة \${count} طرد بنجاح\`, "success");
+  },
+
   exportArchive() {
     const archiveCount = Object.keys(this.archive || {}).length;
     if (!archiveCount) {
@@ -1077,10 +1096,14 @@ const appMethods = {
       this.sessionDate !== today &&
       this.parcels.length > 0
     ) {
+      console.log(\`📦 أرشفة \${this.parcels.length} طرد من يوم \${this.sessionDate}...\`);
       this.archiveCurrentParcels();
       stats.archived = this.parcels.length;
       this.parcels = [];
       this.sessionDate = today;
+      // حفظ فوري للأرشيف قبل متابعة الاستيراد
+      this.saveData();
+      console.log(\`✓ تم أرشفة \${stats.archived} طرد وحفظها\`);
     }
 
     // تعيين تاريخ الجلسة إذا لم يكن موجوداً
