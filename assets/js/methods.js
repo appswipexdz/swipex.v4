@@ -185,6 +185,33 @@ const appMethods = {
     return normalized;
   },
 
+  mergeArchiveEntries(localArchive, cloudArchive) {
+    const merged = {};
+    const allTrackings = new Set([
+      ...Object.keys(localArchive || {}),
+      ...Object.keys(cloudArchive || {}),
+    ]);
+    allTrackings.forEach((tracking) => {
+      const localEntry = localArchive ? localArchive[tracking] : null;
+      const cloudEntry = cloudArchive ? cloudArchive[tracking] : null;
+      const localEvents = localEntry ? this.getArchiveEvents(localEntry) : [];
+      const cloudEvents = cloudEntry ? this.getArchiveEvents(cloudEntry) : [];
+      const allEvents = [...localEvents];
+      cloudEvents.forEach((ce) => {
+        const exists = allEvents.some(
+          (le) => le.lastUpdate === ce.lastUpdate,
+        );
+        if (!exists) allEvents.push(ce);
+      });
+      if (allEvents.length === 0) return;
+      allEvents.sort(
+        (a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0),
+      );
+      merged[tracking] = { events: allEvents, latest: allEvents[0] };
+    });
+    return merged;
+  },
+
   getArchiveEvents(archiveEntry) {
     if (!archiveEntry) return [];
     let events = [];
@@ -692,14 +719,15 @@ const appMethods = {
         }
       }
       
-      // اختيار الأرشيف الأحدث
+      // اختيار الأرشيف الأحدث مع دمج على مستوى كل طرد
       if (cloud.archive && typeof cloud.archive === "object") {
-        const selectedArchive = localData?.archive
-          ? this.selectLatestVersion(localData, { archive: cloud.archive }, cloudMetadata, 'archive').archive
-          : cloud.archive;
-        if (selectedArchive) {
-          this.archive = this.normalizeArchiveMap(selectedArchive);
-          console.log("✓ تم تطبيق الأرشيف الأحدث");
+        if (localData?.archive) {
+          const merged = this.mergeArchiveEntries(localData.archive, cloud.archive);
+          this.archive = this.normalizeArchiveMap(merged);
+          console.log("✓ تم دمج الأرشيف (محلي + سحابي)");
+        } else {
+          this.archive = this.normalizeArchiveMap(cloud.archive);
+          console.log("✓ تم تطبيق الأرشيف من السحابة");
         }
       }
       
@@ -966,6 +994,12 @@ const appMethods = {
         phone2: p.phone2 || "",
         smsSent: p.smsSent || false,
         senderSmsSent: p.senderSmsSent || false,
+        sender: p.sender || "",
+        type: p.type || "",
+        content: p.content || "",
+        createdDate: p.createdDate || p.insertedAt || "",
+        senderPhone: p.senderPhone || "",
+        recipientAddress: p.recipientAddress || "",
       };
 
       const existing = this.archive[tracking];
@@ -1183,6 +1217,12 @@ const appMethods = {
           location: this.normalizeLocation(
             newParcel.location || latestArchivedEvent.location,
           ),
+          sender: newParcel.sender || latestArchivedEvent.sender || "",
+          type: newParcel.type || latestArchivedEvent.type || "",
+          content: newParcel.content || latestArchivedEvent.content || "",
+          createdDate: newParcel.createdDate || latestArchivedEvent.createdDate || "",
+          senderPhone: newParcel.senderPhone || latestArchivedEvent.senderPhone || "",
+          recipientAddress: newParcel.recipientAddress || latestArchivedEvent.recipientAddress || "",
         };
         merged.updatedAt = new Date().toISOString();
         processedParcels.push(this.normalizeParcelRecord(merged));
@@ -1306,13 +1346,28 @@ const appMethods = {
   },
 
   showHistory(parcel) {
-    if (!parcel || !parcel.history) return;
-    const historyEntries = Array.isArray(parcel.history) ? parcel.history : [parcel.history];
-    this.currentHistory = historyEntries
-      .map((event) => this.normalizeArchiveEntry(event))
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+    if (!parcel) return;
+    const tracking = (parcel.tracking || "").trim();
+    const archivedData = tracking ? this.archive[tracking] : null;
+    if (archivedData) {
+      this.currentHistory = this.getArchiveEvents(archivedData);
+    } else if (parcel.history) {
+      const historyEntries = Array.isArray(parcel.history) ? parcel.history : [parcel.history];
+      this.currentHistory = historyEntries
+        .map((event) => this.normalizeArchiveEntry(event))
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
+    } else {
+      return;
+    }
     this.showHistoryModal = true;
+  },
+
+  hasArchiveHistory(parcel) {
+    if (!parcel) return false;
+    if (parcel.history && Array.isArray(parcel.history) && parcel.history.length > 0) return true;
+    const tracking = (parcel.tracking || "").trim();
+    return !!(tracking && this.archive && this.archive[tracking]);
   },
 
   formatDate(isoString) {

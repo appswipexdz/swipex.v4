@@ -411,12 +411,13 @@ createApp({
                                         }
                                     }
                                     
-                                    // تحديث الأرشيف
+                                    // تحديث الأرشيف (دمج بدلاً من استبدال)
                                     if (doc.id === 'archive') {
                                         const remoteArchive = data.data ? JSON.parse(data.data) : null;
                                         if (remoteArchive && JSON.stringify(remoteArchive) !== JSON.stringify(this.archive)) {
-                                            console.log('🔄 تحديث الأرشيف من Firestore');
-                                            this.archive = remoteArchive;
+                                            console.log('🔄 دمج الأرشيف من Firestore مع المحلي');
+                                            const merged = this.mergeArchiveEntries(this.archive, remoteArchive);
+                                            this.archive = this.normalizeArchiveMap(merged);
                                             updated = true;
                                         }
                                     }

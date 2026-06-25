@@ -56,7 +56,7 @@ const firestoreSync = {
             await ref.set({
                 data: JSON.stringify(parcels),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
             
             this._retryCount = 0;
             if (!silent) this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
@@ -89,7 +89,7 @@ const firestoreSync = {
             await ref.set({
                 data: JSON.stringify(settings),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
             this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
             return true;
         } catch (e) {
@@ -106,7 +106,7 @@ const firestoreSync = {
             await ref.set({
                 data: JSON.stringify(archive),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
             return true;
         } catch (e) {
             console.error('firestoreSync.saveArchive:', e);
@@ -121,7 +121,7 @@ const firestoreSync = {
             await ref.set({
                 data: JSON.stringify(tasks),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
             return true;
         } catch (e) {
             console.error('firestoreSync.saveTasks:', e);
@@ -225,6 +225,10 @@ const firestoreSync = {
 
     async saveAll(data) {
         if (!this.isAvailable()) return false;
+        if (!this._initialLoadDone) {
+            console.log('⏳ في انتظار اكتمال التحميل الأولي - تأجيل الحفظ');
+            return false;
+        }
         try {
             const results = await Promise.all([
                 data.parcels !== undefined ? this.saveParcels(data.parcels) : true,
