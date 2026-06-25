@@ -994,9 +994,6 @@
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                            <div class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-xl text-lg font-bold whitespace-nowrap">
-                                {{ formatCurrency(item.amount) }}
-                            </div>
                             <div class="flex items-center gap-2 text-xs font-bold">
                                 <span class="w-2 h-2 rounded-full" :class="{
                                     'bg-green-500': item.status === 'تم التسليم',
@@ -1019,6 +1016,11 @@
                             </button>
                         </div>
                         <span class="text-[10px] text-gray-400">{{ formatDate(item.lastUpdate) }}</span>
+                    </div>
+                    <div v-if="item.amount > 0" class="mb-2">
+                        <div class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-xl text-base font-bold inline-block">
+                            {{ formatCurrency(item.amount) }}
+                        </div>
                     </div>
                     <div v-if="item.municipality" class="text-xs text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded-lg font-bold truncate max-w-full">
                         {{ item.municipality }}
