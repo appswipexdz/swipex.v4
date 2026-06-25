@@ -961,19 +961,33 @@
                     <p class="text-sm mt-1">الطرود تُؤرشف تلقائياً عند استيراد ملف جديد في يوم جديد</p>
                 </div>
 
-                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking" class="glass-panel rounded-xl p-3 border-r-4 relative" :class="{
+                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking" class="glass-panel rounded-xl p-4 border-r-4" :class="{
                     'border-green-500': item.status === 'تم التسليم',
                     'border-red-500': item.status === 'إلغاء الطلبية',
                     'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
                     'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
                 }">
-                    <button v-if="item.events && item.events.length > 1" @click.stop="openArchiveHistory(item)" type="button" class="absolute top-3 left-3 w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition flex items-center justify-center shadow-sm">
-                        <i class="fas fa-history text-[11px]"></i>
-                        <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] text-white font-bold flex items-center justify-center">{{ item.events.length }}</span>
-                    </button>
+                    <!-- السطر 1: رقم التتبع (يمين) | زر السجل (يسار) -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span @click.stop="copyTracking(item.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 transition">
+                                <i class="fas fa-copy text-[9px] ml-1 opacity-60"></i>
+                                {{ item.tracking }}
+                            </span>
+                            <button v-if="canOpenParcelLocation(item)" @click="openParcelLocation(item)" class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition flex items-center justify-center">
+                                <i class="fas fa-map-marker-alt text-xs"></i>
+                            </button>
+                        </div>
+                        <button v-if="item.events && item.events.length > 1" @click.stop="openArchiveHistory(item)" type="button" class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition flex items-center justify-center shadow-sm relative">
+                            <i class="fas fa-history text-[11px]"></i>
+                            <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] text-white font-bold flex items-center justify-center">{{ item.events.length }}</span>
+                        </button>
+                    </div>
+
+                    <!-- السطر 2: اسم المستلم + الهاتف (يمين) | الحالة (يسار) -->
                     <div class="flex items-center justify-between mb-3 gap-3">
                         <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-white w-8 h-8 rounded-2xl text-xs font-bold flex items-center justify-center shadow-md"
+                            <span class="text-white w-8 h-8 rounded-2xl text-xs font-bold flex items-center justify-center shadow-md flex-shrink-0"
                                 :class="{
                                     'type-ecommerce': item.type === 'E-COMMERCE',
                                     'type-particulier': item.type === 'PARTICULIER',
@@ -993,48 +1007,42 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                            <div class="flex items-center gap-2 text-xs font-bold">
-                                <span class="w-2 h-2 rounded-full" :class="{
-                                    'bg-green-500': item.status === 'تم التسليم',
-                                    'bg-red-500': item.status === 'إلغاء الطلبية',
-                                    'bg-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
-                                    'bg-gray-400': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
-                                }"></span>
-                                <span class="text-gray-600 dark:text-gray-300">{{ item.status }}</span>
-                            </div>
+                        <div class="flex items-center gap-2 text-xs font-bold flex-shrink-0">
+                            <span class="w-2 h-2 rounded-full" :class="{
+                                'bg-green-500': item.status === 'تم التسليم',
+                                'bg-red-500': item.status === 'إلغاء الطلبية',
+                                'bg-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                                'bg-gray-400': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                            }"></span>
+                            <span class="text-gray-600 dark:text-gray-300">{{ item.status }}</span>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between mb-3 gap-2">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span @click.stop="copyTracking(item.tracking)" class="bg-gray-800 dark:bg-gray-900 text-white px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer hover:bg-gray-700 transition">
-                                <i class="fas fa-copy text-[9px] ml-1 opacity-60"></i>
-                                {{ item.tracking }}
-                            </span>
-                            <button v-if="canOpenParcelLocation(item)" @click="openParcelLocation(item)" class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition flex items-center justify-center">
-                                <i class="fas fa-map-marker-alt text-xs"></i>
-                            </button>
+
+                    <!-- السطر 3: البلدية (يمين) | المبلغ (يسار) -->
+                    <div class="flex items-center justify-between mb-3 gap-3">
+                        <div v-if="item.municipality" class="text-xs text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-lg font-bold truncate min-w-0">
+                            {{ item.municipality }}
                         </div>
-                        <span class="text-[10px] text-gray-400">{{ formatDate(item.lastUpdate) }}</span>
-                    </div>
-                    <div v-if="item.amount > 0" class="mb-2">
-                        <div class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-xl text-base font-bold inline-block">
+                        <div v-else class="min-w-0"></div>
+                        <div v-if="item.amount > 0" class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-xl text-base font-bold whitespace-nowrap flex-shrink-0">
                             {{ formatCurrency(item.amount) }}
                         </div>
                     </div>
-                    <div v-if="item.municipality" class="text-xs text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 inline-block px-2 py-1 rounded-lg font-bold truncate max-w-full">
-                        {{ item.municipality }}
+
+                    <!-- السطر 4: التمييز + الملاحظة في سطر واحد -->
+                    <div v-if="item.tag || item.notes" class="flex items-center gap-2 mb-3 overflow-hidden">
+                        <div v-if="item.tag" class="text-xs text-purple-600 dark:text-purple-400 font-bold whitespace-nowrap flex-shrink-0">
+                            @{{ item.tag }}
+                        </div>
+                        <div v-if="item.notes" class="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg truncate min-w-0">
+                            <i class="fas fa-sticky-note text-[10px] ml-1"></i>
+                            {{ item.notes }}
+                        </div>
                     </div>
-                    <div v-if="hasParcelLocation(item)" class="mt-2 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded-lg truncate">
-                        <i class="fas fa-map-marker-alt text-[10px] ml-1"></i>
-                        {{ getLocationDisplay(item) }}
-                    </div>
-                    <div v-if="item.notes" class="mt-3 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-800 dark:text-amber-300">
-                        <i class="fas fa-sticky-note text-[10px] ml-1"></i>
-                        {{ item.notes }}
-                    </div>
-                    <div v-if="item.tag" class="mt-1 text-xs text-purple-600 dark:text-purple-400 font-bold">
-                        @{{ item.tag }}
+
+                    <!-- السطر 5: التاريخ والوقت (أسفل البطاقة) -->
+                    <div class="text-[11px] text-gray-400 text-left">
+                        {{ formatDate(item.lastUpdate) }}
                     </div>
                 </div>
 
