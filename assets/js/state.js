@@ -79,6 +79,12 @@ showYalidineMenu: false,
         municipality: ''
     },
     quickTagInput: '',
+    quickTagForm: {
+        name: '',
+        color: '#8b5cf6',
+        scope: 'global',
+        municipality: ''
+    },
     importStats: { total: 0, new: 0, updated: 0, duplicates: 0, favorites: 0 },
     // نظام الإشعارات والتذكيرات
     showNotificationsPanel: false,

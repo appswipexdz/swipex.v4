@@ -1318,7 +1318,10 @@
                                         <option value="global">عام</option>
                                         <option value="municipality">خاص ببلدية</option>
                                     </select>
-                                    <input v-if="newTagForm.scope === 'municipality'" v-model="newTagForm.municipality" placeholder="اسم البلدية" class="p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
+                                    <select v-if="newTagForm.scope === 'municipality'" v-model="newTagForm.municipality" class="p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                                        <option value="">-- اختر البلدية --</option>
+                                        <option v-for="muni in uniqueMunicipalities" :key="muni" :value="muni">{{ muni }}</option>
+                                    </select>
                                 </div>
                                 <button @click="addTag" class="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition">
                                     <i class="fas fa-plus ml-1"></i>
@@ -2568,10 +2571,23 @@
                     </button>
                 </div>
 
-                <div class="flex gap-2 mb-3">
-                    <input v-model="quickTagInput" @keyup.enter="addQuickTag" type="text" placeholder="@تمييز_جديد" dir="rtl" class="flex-1 bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                    <button @click="addQuickTag" :disabled="!quickTagInput.trim()" class="px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                        <i class="fas fa-plus"></i>
+                <div class="space-y-2 mb-3">
+                    <div class="flex gap-2">
+                        <input v-model="quickTagForm.name" @keyup.enter="addQuickTag" type="text" placeholder="@تمييز_جديد" dir="rtl" class="flex-1 bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <input v-model="quickTagForm.color" type="color" class="w-12 h-10 rounded-xl border-0 cursor-pointer bg-transparent" title="اختر لون التمييز" />
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                        <select v-model="quickTagForm.scope" class="w-full p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option value="global">عام</option>
+                            <option value="municipality">خاص ببلدية</option>
+                        </select>
+                        <div v-if="quickTagForm.scope === 'municipality'" class="text-xs text-gray-500 dark:text-gray-400 rounded-xl bg-gray-100 dark:bg-gray-700/50 px-3 py-2">
+                            البلدية: <span class="font-bold text-gray-700 dark:text-gray-200">{{ quickTagForm.municipality || 'غير محددة' }}</span>
+                        </div>
+                    </div>
+                    <button @click="addQuickTag" :disabled="!quickTagForm.name.trim()" class="w-full px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                        <i class="fas fa-plus ml-1"></i>
+                        إضافة التمييز
                     </button>
                 </div>
 

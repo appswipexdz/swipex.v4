@@ -2920,13 +2920,20 @@ const appMethods = {
     this.pauseSmartTagSorting(1000);
     this.tagPickerParcelId = parcelId;
     this.quickTagInput = "";
+    this.quickTagForm = {
+      name: "",
+      color: "#8b5cf6",
+      scope: "global",
+      municipality: this.parcels.find((p) => p.id === parcelId)?.municipality || "",
+    };
     this.showTagPicker = true;
   },
 
   addQuickTag() {
-    let tagName = this.quickTagInput.trim();
-    if (!tagName) return;
+    const name = String(this.quickTagForm?.name || "").trim();
+    if (!name) return;
 
+    let tagName = name;
     if (!tagName.startsWith("@")) {
       tagName = "@" + tagName;
     }
@@ -2941,17 +2948,26 @@ const appMethods = {
       this.settings.tagOrder.push(tagName);
     }
 
+    const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
+    const scope = this.quickTagForm?.scope === "municipality" ? "municipality" : "global";
+    const municipality = scope === "municipality" ? (parcel?.municipality || this.quickTagForm?.municipality || "") : "";
+
     this.settings.tagMetadata = this.settings.tagMetadata || {};
     this.settings.tagMetadata[tagName] = {
       name: tagName,
-      color: "#8b5cf6",
-      scope: "global",
-      municipality: "",
+      color: this.quickTagForm?.color || "#8b5cf6",
+      scope,
+      municipality,
     };
 
     this.saveSettings();
     this.selectTagForParcel(tagName);
-    this.quickTagInput = "";
+    this.quickTagForm = {
+      name: "",
+      color: "#8b5cf6",
+      scope: "global",
+      municipality: parcel?.municipality || "",
+    };
   },
 
   selectTagForParcel(tagName) {
