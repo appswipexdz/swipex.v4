@@ -605,6 +605,7 @@ const appMethods = {
           savedSettings.themeMode = savedSettings.darkMode ? "dark" : "light";
         }
         this.settings = { ...this.settings, ...savedSettings };
+        this.normalizeTagSettings();
         if (!this.settings.themeMode) this.settings.themeMode = "auto";
         console.log(
           "✓ تم تحميل البيانات المحلية (مؤقتة):",
@@ -715,6 +716,7 @@ const appMethods = {
             }
           }
           this.settings = { ...this.settings, ...restSettings };
+          this.normalizeTagSettings();
           console.log("✓ تم تطبيق الإعدادات الأحدثة");
         }
       }
@@ -816,7 +818,84 @@ const appMethods = {
     console.log("✓ تم حفظ البيانات في localStorage");
   },
 
+  normalizeTagSettings() {
+    if (!Array.isArray(this.settings.tags)) {
+      this.settings.tags = [];
+    }
+    if (!this.settings.tagMetadata || typeof this.settings.tagMetadata !== "object") {
+      this.settings.tagMetadata = {};
+    }
+
+    this.settings.tags.forEach((tag) => {
+      const tagName = String(tag || "").trim();
+      if (!tagName) return;
+      if (!this.settings.tagMetadata[tagName]) {
+        this.settings.tagMetadata[tagName] = {
+          name: tagName,
+          color: "#8b5cf6",
+          scope: "global",
+          municipality: "",
+        };
+      }
+    });
+
+    Object.keys(this.settings.tagMetadata || {}).forEach((tagName) => {
+      if (!this.settings.tags.includes(tagName)) {
+        delete this.settings.tagMetadata[tagName];
+      }
+    });
+  },
+
+  getTagNameForDisplay(tagName) {
+    return tagName?.startsWith("@") ? tagName : `@${tagName || ""}`;
+  },
+
+  getTagDefinition(tagName) {
+    const name = String(tagName || "").trim();
+    if (!name) return null;
+    const tagMetadata = this.settings.tagMetadata || {};
+    const fallback = { name, color: "#8b5cf6", scope: "global", municipality: "" };
+    return {
+      ...fallback,
+      ...(tagMetadata[name] || {}),
+      name,
+    };
+  },
+
+  getTagBadgeStyle(tagName) {
+    const tag = this.getTagDefinition(tagName);
+    const color = tag?.color || "#8b5cf6";
+    return {
+      backgroundColor: color,
+      color: "#ffffff",
+      borderColor: color,
+    };
+  },
+
+  getTagScopeLabel(tagName) {
+    const tag = this.getTagDefinition(tagName);
+    if (!tag) return "عام";
+    return tag.scope === "municipality" && tag.municipality ? `بلدية: ${tag.municipality}` : "عام";
+  },
+
+  isTagVisibleForMunicipality(tagName, municipality = "") {
+    const tag = this.getTagDefinition(tagName);
+    if (!tag) return false;
+    if (tag.scope !== "municipality") return true;
+    return !!municipality && tag.municipality === municipality;
+  },
+
+  getAvailableTagsForMunicipality(municipality = "") {
+    return (this.settings.tags || []).filter((tag) => this.isTagVisibleForMunicipality(tag, municipality));
+  },
+
+  getTagPickerOptions() {
+    const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
+    return this.getAvailableTagsForMunicipality(parcel?.municipality || "");
+  },
+
   saveSettings() {
+    this.normalizeTagSettings();
     this.saveData();
   },
 
@@ -2712,15 +2791,14 @@ const appMethods = {
 
   // ========== Tags (التمييز) ==========
   addTag() {
-    let tagName = this.newTagInput.trim();
-    if (!tagName) return;
+    const name = String(this.newTagForm?.name || "").trim();
+    if (!name) return;
 
-    // إضافة @ في البداية إذا لم تكن موجودة
+    let tagName = name;
     if (!tagName.startsWith("@")) {
       tagName = "@" + tagName;
     }
 
-    // التحقق من عدم التكرار
     if (!this.settings.tags.includes(tagName)) {
       this.settings.tags.push(tagName);
     }
@@ -2730,8 +2808,22 @@ const appMethods = {
     if (!this.settings.tagOrder.includes(tagName)) {
       this.settings.tagOrder.push(tagName);
     }
+
+    this.settings.tagMetadata = this.settings.tagMetadata || {};
+    this.settings.tagMetadata[tagName] = {
+      name: tagName,
+      color: this.newTagForm?.color || "#8b5cf6",
+      scope: this.newTagForm?.scope === "municipality" ? "municipality" : "global",
+      municipality: this.newTagForm?.scope === "municipality" ? String(this.newTagForm?.municipality || "").trim() : "",
+    };
+
     this.saveSettings();
-    this.newTagInput = "";
+    this.newTagForm = {
+      name: "",
+      color: "#8b5cf6",
+      scope: "global",
+      municipality: "",
+    };
   },
 
   // ========== Custom Statuses ==========
@@ -2813,7 +2905,9 @@ const appMethods = {
   removeTag(tagName) {
     this.settings.tags = this.settings.tags.filter((t) => t !== tagName);
     this.settings.tagOrder = (this.settings.tagOrder || []).filter((t) => t !== tagName);
-    // إزالة التمييز من الطرود التي تستخدمه
+    if (this.settings.tagMetadata) {
+      delete this.settings.tagMetadata[tagName];
+    }
     this.parcels.forEach((p) => {
       if (p.tag === tagName) {
         p.tag = null;
@@ -2833,12 +2927,10 @@ const appMethods = {
     let tagName = this.quickTagInput.trim();
     if (!tagName) return;
 
-    // إضافة @ في البداية إذا لم تكن موجودة
     if (!tagName.startsWith("@")) {
       tagName = "@" + tagName;
     }
 
-    // إضافة التمييز للإعدادات إذا لم يكن موجوداً
     if (!this.settings.tags.includes(tagName)) {
       this.settings.tags.push(tagName);
     }
@@ -2848,9 +2940,16 @@ const appMethods = {
     if (!this.settings.tagOrder.includes(tagName)) {
       this.settings.tagOrder.push(tagName);
     }
-    this.saveSettings();
 
-    // تعيين التمييز للطرد مباشرة
+    this.settings.tagMetadata = this.settings.tagMetadata || {};
+    this.settings.tagMetadata[tagName] = {
+      name: tagName,
+      color: "#8b5cf6",
+      scope: "global",
+      municipality: "",
+    };
+
+    this.saveSettings();
     this.selectTagForParcel(tagName);
     this.quickTagInput = "";
   },
@@ -2890,11 +2989,13 @@ const appMethods = {
     if (this.filters.tag) {
       tags.add(this.filters.tag);
     }
-    this.parcels
-      .filter((p) => !this.filters.municipality || p.municipality === this.filters.municipality)
-      .forEach((p) => {
-        if (p.tag) tags.add(p.tag);
-      });
+
+    const municipality = this.filters.municipality || "";
+    (this.settings.tags || []).forEach((tag) => {
+      if (this.isTagVisibleForMunicipality(tag, municipality)) {
+        tags.add(tag);
+      }
+    });
 
     const orderedTags = Array.from(tags);
     const order = this.settings.tagOrder || [];
