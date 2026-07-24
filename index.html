@@ -818,9 +818,9 @@
                                     <h3 class="font-bold text-gray-800 dark:text-white truncate">{{ session.name }}</h3>
                                     <p v-if="session.description" class="text-sm text-gray-600 dark:text-gray-400 truncate">{{ session.description }}</p>
                                     <div class="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        <span><i class="fas fa-box ml-1"></i>{{ session.stats?.totalParcels || 0 }} طرد</span>
-                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ session.stats?.deliveredParcels || 0 }}</span>
-                                        <span><i class="fas fa-users ml-1"></i>{{ session.stats?.participantsCount || 0 }} مشارك</span>
+                                        <span><i class="fas fa-box ml-1"></i>{{ (session.stats && session.stats.totalParcels) || 0 }} طرد</span>
+                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ (session.stats && session.stats.deliveredParcels) || 0 }}</span>
+                                        <span><i class="fas fa-users ml-1"></i>{{ (session.stats && session.stats.participantsCount) || 0 }} مشارك</span>
                                     </div>
                                     <div class="flex items-center gap-2 mt-2">
                                         <span class="px-2 py-1 rounded-lg text-xs font-bold" :class="getRoleColor(session.myRole)">
@@ -853,8 +853,8 @@
                                 <div class="flex-1 min-w-0">
                                     <h3 class="font-bold text-gray-800 dark:text-white truncate">{{ session.name }}</h3>
                                     <div class="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        <span><i class="fas fa-box ml-1"></i>{{ session.stats?.totalParcels || 0 }} طرد</span>
-                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ session.stats?.deliveredParcels || 0 }}</span>
+                                        <span><i class="fas fa-box ml-1"></i>{{ (session.stats && session.stats.totalParcels) || 0 }} طرد</span>
+                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ (session.stats && session.stats.deliveredParcels) || 0 }}</span>
                                     </div>
                                 </div>
                                 <button v-if="session.myRole === 'owner'" @click.stop="deleteSession(session.id)" 
@@ -1110,8 +1110,8 @@
                             </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-gray-800 dark:text-white truncate">{{ currentUser?.displayName || 'مستخدم' }}</h3>
-                            <p class="text-gray-500 dark:text-gray-400 text-xs truncate">{{ currentUser?.email }}</p>
+                            <h3 class="font-bold text-gray-800 dark:text-white truncate">{{ (currentUser && currentUser.displayName) || 'مستخدم' }}</h3>
+                            <p class="text-gray-500 dark:text-gray-400 text-xs truncate">{{ (currentUser && currentUser.email) || '' }}</p>
                             <div class="flex items-center gap-2 mt-1">
                                 <i class="fas fa-circle text-[6px]" :class="isOnline ? 'text-green-400' : 'text-gray-400'"></i>
                                 <span class="text-[10px] text-gray-400">{{ isOnline ? 'متصل' : 'غير متصل' }}</span>
@@ -1170,7 +1170,7 @@
                     <div v-show="settingsExpanded.password" class="px-4 pb-4 space-y-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
-                            <input :value="currentUser?.email || ''" type="email" disabled class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-slate-900 text-gray-700 dark:text-gray-300 outline-none" />
+                            <input :value="(currentUser && currentUser.email) || ''" type="email" disabled class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-slate-900 text-gray-700 dark:text-gray-300 outline-none" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">كلمة المرور الجديدة</label>
@@ -1341,7 +1341,7 @@
                             <div v-if="settings.tags.length > 0" class="flex flex-wrap gap-2">
                                 <span v-for="tag in settings.tags" :key="tag" class="px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-2 border" :style="getTagBadgeStyle(tag)">
                                     {{ getTagNameForDisplay(tag) }}
-                                    <span v-if="getTagDefinition(tag)?.scope === 'municipality'" class="text-[10px] opacity-80">{{ getTagDefinition(tag)?.municipality || 'بلدية' }}</span>
+                                    <span v-if="getTagDefinition(tag) && getTagDefinition(tag).scope === 'municipality'" class="text-[10px] opacity-80">{{ (getTagDefinition(tag) && getTagDefinition(tag).municipality) || 'بلدية' }}</span>
                                     <button @click="removeTag(tag)" class="opacity-80 hover:text-red-500 transition">
                                         <i class="fas fa-times text-xs"></i>
                                     </button>
@@ -1776,7 +1776,7 @@
                 </div>
                 <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
-                        إحداثيات: <span class="font-semibold">{{ locationPickerLat?.toFixed(6) || '...' }}, {{ locationPickerLng?.toFixed(6) || '...' }}</span>
+                        إحداثيات: <span class="font-semibold">{{ ((locationPickerLat !== undefined && locationPickerLat !== null) ? locationPickerLat.toFixed(6) : '...') }}, {{ ((locationPickerLng !== undefined && locationPickerLng !== null) ? locationPickerLng.toFixed(6) : '...') }}</span>
                     </div>
                     <div class="flex flex-nowrap gap-2">
                         <button @click="centerLocationPickerToDeviceLocation()" class="px-3 py-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold text-xs whitespace-nowrap hover:bg-blue-200 dark:hover:bg-blue-800/40 transition">
@@ -2354,8 +2354,8 @@
             <div class="modal-glass rounded-2xl w-full max-w-md p-6">
                 <h3 class="text-lg font-bold text-red-600 mb-3">تأكيد تغيير السعر</h3>
                 <div class="text-sm text-gray-700 dark:text-gray-200 space-y-2">
-                    <div>المبلغ الحالي: <span class="font-bold">{{ pendingPriceChange?.old || '-' }}</span> دج</div>
-                    <div>المبلغ الجديد: <span class="font-bold">{{ pendingPriceChange?.new || '-' }}</span> دج</div>
+                    <div>المبلغ الحالي: <span class="font-bold">{{ (pendingPriceChange && pendingPriceChange.old) || '-' }}</span> دج</div>
+                    <div>المبلغ الجديد: <span class="font-bold">{{ (pendingPriceChange && pendingPriceChange.new) || '-' }}</span> دج</div>
                     <div class="text-sm text-red-600 mt-2">تحذير: تغيير السعر سيؤثر على بيانات الطلبية وقد يتطلب موافقة إضافية.</div>
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
@@ -2571,35 +2571,41 @@
                     </button>
                 </div>
 
-                <div class="space-y-2 mb-3">
-                    <div class="flex gap-2">
-                        <input v-model="quickTagForm.name" @keyup.enter="addQuickTag" type="text" placeholder="@تمييز_جديد" dir="rtl" class="flex-1 bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        <input v-model="quickTagForm.color" type="color" class="w-12 h-10 rounded-xl border-0 cursor-pointer bg-transparent" title="اختر لون التمييز" />
-                    </div>
-                    <div class="grid grid-cols-1 gap-2">
-                        <select v-model="quickTagForm.scope" class="w-full p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <option value="global">عام</option>
-                            <option value="municipality">خاص ببلدية</option>
-                        </select>
-                        <div v-if="quickTagForm.scope === 'municipality'" class="text-xs text-gray-500 dark:text-gray-400 rounded-xl bg-gray-100 dark:bg-gray-700/50 px-3 py-2">
-                            البلدية: <span class="font-bold text-gray-700 dark:text-gray-200">{{ quickTagForm.municipality || 'غير محددة' }}</span>
-                        </div>
-                    </div>
-                    <button @click="addQuickTag" :disabled="!quickTagForm.name.trim()" class="w-full px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                        <i class="fas fa-plus ml-1"></i>
-                        إضافة التمييز
-                    </button>
-                </div>
-
-                <div v-if="getTagPickerOptions().length > 0" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                <div v-if="getTagPickerOptions().length > 0" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto mb-3">
                     <button v-for="tag in getTagPickerOptions()" :key="tag" @click="selectTagForParcel(tag)" class="px-4 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition border-2 border-transparent active:scale-95" :style="getTagBadgeStyle(tag)">
                         {{ getTagNameForDisplay(tag) }}
                     </button>
                 </div>
-
                 <div v-else class="text-center py-4 text-gray-400">
                     <i class="fas fa-at text-2xl"></i>
                     <p class="mt-2 text-sm">أضف تمييزاً جديداً</p>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+                    <button v-if="!showQuickTagForm" @click="showQuickTagForm = true" class="w-full px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm font-bold hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-600 transition">
+                        <i class="fas fa-plus ml-1"></i>
+                        إضافة تمييز جديد
+                    </button>
+
+                    <div v-else class="space-y-2">
+                        <div class="flex gap-2">
+                            <input v-model="quickTagForm.name" @keyup.enter="addQuickTag" type="text" placeholder="@تمييز_جديد" dir="rtl" class="flex-1 bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <input v-model="quickTagForm.color" type="color" class="w-12 h-10 rounded-xl border-0 cursor-pointer bg-transparent" title="اختر لون التمييز" />
+                        </div>
+                        <div class="grid grid-cols-1 gap-2">
+                            <select v-model="quickTagForm.scope" class="w-full p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                <option value="global">عام</option>
+                                <option value="municipality">خاص ببلدية</option>
+                            </select>
+                            <div v-if="quickTagForm.scope === 'municipality'" class="text-xs text-gray-500 dark:text-gray-400 rounded-xl bg-gray-100 dark:bg-gray-700/50 px-3 py-2">
+                                البلدية: <span class="font-bold text-gray-700 dark:text-gray-200">{{ quickTagForm.municipality || 'غير محددة' }}</span>
+                            </div>
+                        </div>
+                        <button @click="addQuickTag" :disabled="!quickTagForm.name.trim()" class="w-full px-4 py-2 bg-purple-500 text-white rounded-xl text-sm font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            <i class="fas fa-plus ml-1"></i>
+                            حفظ التمييز
+                        </button>
+                    </div>
                 </div>
 
                 <button @click="showTagPicker = false" class="w-full mt-4 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
@@ -3581,7 +3587,7 @@
                          class="flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel flex-shrink-0">
                         <div class="relative">
                             <div class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                                {{ participant.displayName?.charAt(0) || participant.email.charAt(0).toUpperCase() }}
+                                {{ ((participant.displayName && participant.displayName.charAt(0)) || participant.email.charAt(0).toUpperCase()) }}
                             </div>
                             <div v-if="participant.isOnline" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-900"></div>
                         </div>
@@ -3632,10 +3638,10 @@
                                 </span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span v-if="parcel.lockedBy && parcel.lockedBy !== currentUser?.uid" 
+                                <span v-if="parcel.lockedBy && parcel.lockedBy !== (currentUser && currentUser.uid)" 
                                       class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 text-[10px] font-bold">
                                     <i class="fas fa-lock ml-1"></i>
-                                    {{ parcel.lockedByEmail?.split('@')[0] }}
+                                    {{ (parcel.lockedByEmail && parcel.lockedByEmail.split('@')[0]) }}
                                 </span>
                                 <i class="fas" :class="parcel.expanded ? 'fa-chevron-up' : 'fa-chevron-down'" class="text-gray-400 text-xs"></i>
                             </div>
@@ -3791,7 +3797,7 @@
                                 <i class="fas fa-circle text-blue-500 text-xs"></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="font-bold text-gray-800 dark:text-white text-sm">{{ activity.userEmail?.split('@')[0] }}</div>
+                                <div class="font-bold text-gray-800 dark:text-white text-sm">{{ (activity.userEmail && activity.userEmail.split('@')[0]) }}</div>
                                 <div class="text-xs text-gray-600 dark:text-gray-400">{{ activity.type }}</div>
                                 <div class="text-xs text-gray-400 mt-1">{{ formatActivityTime(activity.timestamp) }}</div>
                             </div>
@@ -3841,13 +3847,13 @@
                             <div v-for="participant in sessionStats.participantsStats" :key="participant.email" 
                                  class="glass-panel p-3 rounded-xl flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold">
-                                    {{ participant.displayName?.charAt(0) || participant.email.charAt(0).toUpperCase() }}
+                                    {{ ((participant.displayName && participant.displayName.charAt(0)) || participant.email.charAt(0).toUpperCase()) }}
                                 </div>
                                 <div class="flex-1">
                                     <div class="font-bold text-gray-800 dark:text-white text-sm">{{ participant.displayName || participant.email.split('@')[0] }}</div>
                                     <div class="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ participant.stats?.delivered || 0 }}</span>
-                                        <span><i class="fas fa-edit ml-1 text-blue-500"></i>{{ participant.stats?.updated || 0 }}</span>
+                                        <span><i class="fas fa-check-circle ml-1 text-green-500"></i>{{ (participant.stats && participant.stats.delivered) || 0 }}</span>
+                                        <span><i class="fas fa-edit ml-1 text-blue-500"></i>{{ (participant.stats && participant.stats.updated) || 0 }}</span>
                                         <span class="px-2 py-0.5 rounded-full" :class="getRoleColor(participant.role)">{{ getRoleNameAr(participant.role) }}</span>
                                     </div>
                                 </div>

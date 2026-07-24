@@ -2926,6 +2926,7 @@ const appMethods = {
       scope: "global",
       municipality: this.parcels.find((p) => p.id === parcelId)?.municipality || "",
     };
+    this.showQuickTagForm = false;
     this.showTagPicker = true;
   },
 
@@ -2962,6 +2963,7 @@ const appMethods = {
 
     this.saveSettings();
     this.selectTagForParcel(tagName);
+    this.showQuickTagForm = false;
     this.quickTagForm = {
       name: "",
       color: "#8b5cf6",

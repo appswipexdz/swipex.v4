@@ -85,6 +85,7 @@ showYalidineMenu: false,
         scope: 'global',
         municipality: ''
     },
+    showQuickTagForm: false,
     importStats: { total: 0, new: 0, updated: 0, duplicates: 0, favorites: 0 },
     // نظام الإشعارات والتذكيرات
     showNotificationsPanel: false,
