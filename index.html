@@ -1155,6 +1155,38 @@
                     </div>
                 </div>
 
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div @click="settingsExpanded.password = !settingsExpanded.password" class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                                <i class="fas fa-key text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">إدارة كلمة المرور</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">إنشاء أو تحديث كلمة المرور للحساب الحالي</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300" :class="{ 'rotate-180': settingsExpanded.password }"></i>
+                    </div>
+                    <div v-show="settingsExpanded.password" class="px-4 pb-4 space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">البريد الإلكتروني</label>
+                            <input :value="currentUser?.email || ''" type="email" disabled class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-slate-900 text-gray-700 dark:text-gray-300 outline-none" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">كلمة المرور الجديدة</label>
+                            <input v-model="settingsPasswordForm.password" type="password" autocomplete="new-password" placeholder="أدخل كلمة المرور الجديدة" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-red-400" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">تأكيد كلمة المرور</label>
+                            <input v-model="settingsPasswordForm.confirmPassword" type="password" autocomplete="new-password" placeholder="أعد كتابة كلمة المرور" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-red-400" />
+                        </div>
+                        <button @click="saveAccountPassword" :disabled="!currentUser" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold shadow-lg hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            إنشاء / تحديث كلمة المرور
+                        </button>
+                    </div>
+                </div>
+
                 <!-- مظهر التطبيق -->
                 <div class="glass-panel rounded-2xl overflow-hidden">
                     <div @click="settingsExpanded.theme = !settingsExpanded.theme" class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">

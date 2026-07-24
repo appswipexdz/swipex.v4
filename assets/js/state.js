@@ -148,10 +148,15 @@ showYalidineMenu: false,
         sms: false,
         data: false,
         info: false,
-        favoritePhones: false
+        favoritePhones: false,
+        password: false
     },
     showUserMenu: false,
     currentUser: null,
+    settingsPasswordForm: {
+        password: '',
+        confirmPassword: ''
+    },
     _firestoreLoaded: false,
     syncStatus: 'idle',
     showSmsEditor: false,

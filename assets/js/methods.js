@@ -2992,6 +2992,10 @@ const appMethods = {
       const parsed = JSON.parse(userData);
       if (parsed && parsed.email) {
         this.currentUser = parsed;
+        this.settingsPasswordForm = {
+          ...this.settingsPasswordForm,
+          email: parsed.email
+        };
       }
     }
 
@@ -3005,6 +3009,10 @@ const appMethods = {
             displayName: user.displayName,
             photoURL: user.photoURL,
             accessToken: savedToken,
+          };
+          this.settingsPasswordForm = {
+            ...this.settingsPasswordForm,
+            email: user.email
           };
           localStorage.setItem("swipex_user", JSON.stringify(this.currentUser));
           console.log("✓ تم تسجيل الدخول:", user.email);
@@ -3022,6 +3030,68 @@ const appMethods = {
           window.location.href = "login.html";
         }
       });
+    }
+  },
+
+  async saveAccountPassword() {
+    if (typeof firebase === "undefined" || !firebase.auth || !firebase.auth().currentUser) {
+      this.showToast('يرجى تسجيل الدخول أولاً', 'error');
+      return;
+    }
+
+    const user = firebase.auth().currentUser;
+    const email = (this.currentUser?.email || user.email || '').trim();
+    const password = (this.settingsPasswordForm.password || '').trim();
+    const confirmPassword = (this.settingsPasswordForm.confirmPassword || '').trim();
+
+    if (!email || !password || !confirmPassword) {
+      this.showToast('يرجى إدخال البريد الإلكتروني وكلمتي المرور', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      this.showToast('تأكيد كلمة المرور لا يطابق كلمة المرور الجديدة', 'error');
+      return;
+    }
+
+    try {
+      const hasPasswordProvider = user.providerData.some(provider => provider.providerId === 'password');
+
+      if (hasPasswordProvider) {
+        await user.updatePassword(password);
+        this.showToast('تم تحديث كلمة المرور بنجاح', 'success');
+      } else {
+        const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+        await user.linkWithCredential(credential);
+        this.showToast('تم إنشاء كلمة المرور بنجاح', 'success');
+      }
+
+      this.settingsPasswordForm.password = '';
+      this.settingsPasswordForm.confirmPassword = '';
+    } catch (error) {
+      console.error('Password update error:', error);
+
+      switch (error.code) {
+        case 'auth/requires-recent-login':
+          this.showToast('يرجى تسجيل الدخول مرة أخرى ثم حاول مجدداً', 'error');
+          break;
+        case 'auth/email-already-in-use':
+          this.showToast('هذا البريد الإلكتروني مستخدم في حساب آخر', 'error');
+          break;
+        case 'auth/weak-password':
+          this.showToast('كلمة المرور ضعيفة جدًا', 'error');
+          break;
+        case 'auth/provider-already-linked':
+          this.showToast('هذا الحساب مرتبط بالفعل بكلمة مرور', 'info');
+          break;
+        default:
+          this.showToast(error.message || 'فشل تحديث كلمة المرور', 'error');
+      }
     }
   },
 

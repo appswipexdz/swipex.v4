@@ -115,6 +115,24 @@
                 {{ error }}
             </div>
 
+            <form @submit.prevent="signInWithEmailPassword" class="space-y-3 mb-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">البريد الإلكتروني</label>
+                    <input v-model="loginEmail" type="email" autocomplete="email" placeholder="example@domain.com" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-red-400" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">كلمة المرور</label>
+                    <input v-model="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-red-400" required />
+                </div>
+                <button type="submit" :disabled="isLoading" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold shadow-lg hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span v-if="isLoading" class="flex items-center justify-center gap-2">
+                        <div class="loading-spinner"></div>
+                        جاري الدخول...
+                    </span>
+                    <span v-else>دخول بالبريد الإلكتروني</span>
+                </button>
+            </form>
+
             <!-- Google Sign In Button -->
             <button 
                 @click="signInWithGoogle" 
@@ -194,7 +212,9 @@
             data() {
                 return {
                     isLoading: false,
-                    error: null
+                    error: null,
+                    loginEmail: '',
+                    loginPassword: ''
                 };
             },
             mounted() {
@@ -225,6 +245,47 @@
                 });
             },
             methods: {
+                async signInWithEmailPassword() {
+                    this.isLoading = true;
+                    this.error = null;
+
+                    try {
+                        const result = await auth.signInWithEmailAndPassword(
+                            this.loginEmail.trim(),
+                            this.loginPassword
+                        );
+
+                        if (result.user) {
+                            this.saveUserData(result.user);
+                            window.location.replace('index.html');
+                        }
+                    } catch (error) {
+                        console.error('Email login error:', error);
+
+                        switch (error.code) {
+                            case 'auth/invalid-email':
+                                this.error = 'البريد الإلكتروني غير صحيح';
+                                break;
+                            case 'auth/user-not-found':
+                                this.error = 'هذا البريد غير مسجل في النظام';
+                                break;
+                            case 'auth/wrong-password':
+                                this.error = 'كلمة المرور غير صحيحة';
+                                break;
+                            case 'auth/too-many-requests':
+                                this.error = 'تم حظر المحاولات مؤقتاً. حاول لاحقاً';
+                                break;
+                            case 'auth/network-request-failed':
+                                this.error = 'خطأ في الاتصال بالإنترنت';
+                                break;
+                            default:
+                                this.error = `خطأ: ${error.code || error.message}`;
+                        }
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
                 async signInWithGoogle() {
                     this.isLoading = true;
                     this.error = null;
