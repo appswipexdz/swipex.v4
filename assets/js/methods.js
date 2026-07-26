@@ -3009,10 +3009,21 @@ const appMethods = {
     }
 
     const municipality = this.filters.municipality || "";
-    (this.settings.tags || []).forEach((tag) => {
-      if (this.isTagVisibleForMunicipality(tag, municipality)) {
-        tags.add(tag);
+    (this.parcels || []).forEach((parcel) => {
+      const tagName = String(parcel?.tag || "").trim();
+      if (!tagName) return;
+
+      const tagDefinition = this.getTagDefinition(tagName);
+      if (!tagDefinition) return;
+
+      if (tagDefinition.scope === "municipality") {
+        if (!municipality || tagDefinition.municipality === municipality) {
+          tags.add(tagName);
+        }
+        return;
       }
+
+      tags.add(tagName);
     });
 
     const orderedTags = Array.from(tags);
