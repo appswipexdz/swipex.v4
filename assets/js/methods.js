@@ -294,14 +294,20 @@ const appMethods = {
         return;
       }
 
-      const oldParcels = await firestoreSync.loadParcels();
-      const oldArchive = await firestoreSync.loadArchive();
+      // ضمان تحميل البيانات المدمجة (محلي + سحابي) قبل القراءة
+      await this.loadFromCloud();
 
-      if (Array.isArray(oldParcels) && oldParcels.length) {
-        for (let i = 0; i < oldParcels.length; i += 450) {
+      // المصدر: this.parcels / this.archive الحاليتان في الذاكرة
+      // (وليس قراءة سحابية جديدة) — لأنهما تحويان أي بيانات محلية
+      // لم تصل للسحابة سابقًا (مثل الأرشيف الذي كان يفشل بسبب الحجم)
+      const localParcels = this.parcels;
+      const localArchive = this.archive;
+
+      if (Array.isArray(localParcels) && localParcels.length) {
+        for (let i = 0; i < localParcels.length; i += 450) {
           const batch = window.db.batch();
-          oldParcels.slice(i, i + 450).forEach(p => {
-            const tracking = p.tracking || p.id;
+          localParcels.slice(i, i + 450).forEach(p => {
+            const tracking = (p.tracking || p.id || '').trim();
             if (!tracking) return;
             const ref = window.db.collection('users').doc(uid).collection('parcels_v2').doc(tracking);
             batch.set(ref, { ...p, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), deleted: false }, { merge: true });
@@ -310,8 +316,8 @@ const appMethods = {
         }
       }
 
-      if (oldArchive && typeof oldArchive === 'object') {
-        const entries = Object.entries(oldArchive);
+      if (localArchive && typeof localArchive === 'object') {
+        const entries = Object.entries(localArchive);
         for (let i = 0; i < entries.length; i += 450) {
           const batch = window.db.batch();
           entries.slice(i, i + 450).forEach(([tracking, entry]) => {
@@ -323,7 +329,7 @@ const appMethods = {
       }
 
       localStorage.setItem('swipex_v2_migrated', 'true');
-      console.log('✓ اكتملت هجرة البيانات إلى البنية V2');
+      console.log('✓ اكتملت هجرة البيانات إلى البنية V2 (من الحالة المدموجة محلي+سحابي)');
     } catch (e) {
       console.error('❌ فشلت هجرة V2:', e);
     }
