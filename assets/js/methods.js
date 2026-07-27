@@ -1237,15 +1237,22 @@ const appMethods = {
       this.showToast("الأرشيف فارغ", "info");
       return;
     }
-    this.showToast("جاري مزامنة الأرشيف...", "info");
+    const uid = firestoreSync.getUid();
+    if (!uid) {
+      this.showToast("غير مسجل الدخول", "error");
+      return;
+    }
+    this.showToast("جاري مزامنة " + keys.length + " عنصر...", "info");
     try {
-      keys.forEach(t => this._dirtyArchive.add(t));
-      const ok = await firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
-      if (ok) {
-        this.showToast("تم مزامنة " + keys.length + " عنصر إلى السحابة", "success");
-      } else {
-        this.showToast("فشلت المزامنة", "error");
+      for (let i = 0; i < keys.length; i += 450) {
+        const batch = window.db.batch();
+        keys.slice(i, i + 450).forEach(tracking => {
+          const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
+          batch.set(ref, { ...this.archive[tracking], updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        });
+        await batch.commit();
       }
+      this.showToast("تم مزامنة " + keys.length + " عنصر إلى السحابة", "success");
     } catch (e) {
       console.error('syncArchiveToCloud:', e);
       this.showToast("فشلت المزامنة", "error");
