@@ -284,13 +284,21 @@ const appMethods = {
     if (localStorage.getItem('swipex_v2_migrated') === 'true') return;
     if (!firestoreSync.isAvailable()) return;
     try {
-      const oldParcels = await firestoreSync.loadParcels();
-      const oldArchive = await firestoreSync.loadArchive();
       const uid = firestoreSync.getUid();
 
+      // تحقق: هل جهاز آخر بدأ العمل بـ V2 مسبقًا؟
+      const existingCheck = await window.db.collection('users').doc(uid).collection('parcels_v2').limit(1).get();
+      if (!existingCheck.empty) {
+        localStorage.setItem('swipex_v2_migrated', 'true');
+        console.log('✓ تم تخطي الهجرة — بيانات V2 موجودة مسبقًا من جهاز آخر');
+        return;
+      }
+
+      const oldParcels = await firestoreSync.loadParcels();
+      const oldArchive = await firestoreSync.loadArchive();
+
       if (Array.isArray(oldParcels) && oldParcels.length) {
-        const ids = oldParcels.map(p => p.tracking || p.id).filter(Boolean);
-        for (let i = 0; i < ids.length; i += 450) {
+        for (let i = 0; i < oldParcels.length; i += 450) {
           const batch = window.db.batch();
           oldParcels.slice(i, i + 450).forEach(p => {
             const tracking = p.tracking || p.id;
