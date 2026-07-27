@@ -10,6 +10,19 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // البنية الجديدة V2: طرود فردية + أرشيف فردي + بيانات مزامنة
+    // ═══════════════════════════════════════════════════════════════
+    match /users/{userId}/parcels_v2/{tracking} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/archive_v2/{tracking} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/_syncMeta/{deviceId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // نظام الجلسات التعاونية (Sessions)
     // ═══════════════════════════════════════════════════════════════
     match /sessions/{sessionId} {

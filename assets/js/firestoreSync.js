@@ -344,6 +344,102 @@ const firestoreSync = {
             this._saveTimeout = null;
             if (callback) callback(result);
         }, this._debounceMs);
+    },
+
+    // ============ V2 Incremental Sync Methods ============
+
+    async pushDirtyParcels(dirtySet, getParcelById) {
+        if (!dirtySet.size) return true;
+        const uid = this.getUid();
+        if (!uid) return false;
+        const ids = Array.from(dirtySet);
+        const chunks = [];
+        for (let i = 0; i < ids.length; i += 450) chunks.push(ids.slice(i, i + 450));
+        try {
+            for (const chunk of chunks) {
+                const batch = window.db.batch();
+                chunk.forEach(tracking => {
+                    const ref = window.db.collection('users').doc(uid).collection('parcels_v2').doc(tracking);
+                    const parcel = getParcelById(tracking);
+                    if (parcel) {
+                        batch.set(ref, { ...parcel, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), deleted: false }, { merge: true });
+                    } else {
+                        batch.set(ref, { deleted: true, deletedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                    }
+                });
+                await batch.commit();
+            }
+            dirtySet.clear();
+            return true;
+        } catch (e) {
+            console.error('pushDirtyParcels:', e);
+            return false;
+        }
+    },
+
+    async pushDirtyArchiveEntries(dirtySet, getArchiveEntryById) {
+        if (!dirtySet.size) return true;
+        const uid = this.getUid();
+        if (!uid) return false;
+        const ids = Array.from(dirtySet);
+        const chunks = [];
+        for (let i = 0; i < ids.length; i += 450) chunks.push(ids.slice(i, i + 450));
+        try {
+            for (const chunk of chunks) {
+                const batch = window.db.batch();
+                chunk.forEach(tracking => {
+                    const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
+                    const entry = getArchiveEntryById(tracking);
+                    batch.set(ref, { ...entry, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                });
+                await batch.commit();
+            }
+            dirtySet.clear();
+            return true;
+        } catch (e) {
+            console.error('pushDirtyArchiveEntries:', e);
+            return false;
+        }
+    },
+
+    async pullChangedParcels(sinceMillis) {
+        const uid = this.getUid();
+        if (!uid) return [];
+        let query = window.db.collection('users').doc(uid).collection('parcels_v2');
+        if (sinceMillis) {
+            query = query.where('updatedAt', '>', firebase.firestore.Timestamp.fromMillis(sinceMillis));
+        }
+        const snap = await query.get();
+        return snap.docs.map(d => ({ tracking: d.id, ...d.data() }));
+    },
+
+    async pullChangedArchive(sinceMillis) {
+        const uid = this.getUid();
+        if (!uid) return [];
+        let query = window.db.collection('users').doc(uid).collection('archive_v2');
+        if (sinceMillis) {
+            query = query.where('updatedAt', '>', firebase.firestore.Timestamp.fromMillis(sinceMillis));
+        }
+        const snap = await query.get();
+        return snap.docs.map(d => ({ tracking: d.id, ...d.data() }));
+    },
+
+    listenToParcelsV2(onChange) {
+        const uid = this.getUid();
+        if (!uid) return () => {};
+        return window.db.collection('users').doc(uid).collection('parcels_v2')
+            .onSnapshot(snap => {
+                snap.docChanges().forEach(change => onChange(change.doc.id, change.doc.data(), change.type));
+            }, e => console.error('listenToParcelsV2:', e));
+    },
+
+    listenToArchiveV2(onChange) {
+        const uid = this.getUid();
+        if (!uid) return () => {};
+        return window.db.collection('users').doc(uid).collection('archive_v2')
+            .onSnapshot(snap => {
+                snap.docChanges().forEach(change => onChange(change.doc.id, change.doc.data(), change.type));
+            }, e => console.error('listenToArchiveV2:', e));
     }
 };
 

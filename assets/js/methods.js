@@ -95,6 +95,16 @@ const appMethods = {
     return date + 'T' + time;
   },
 
+  initDeviceId() {
+    if (this._deviceId) return;
+    let id = localStorage.getItem('swipex_device_id');
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+      localStorage.setItem('swipex_device_id', id);
+    }
+    this._deviceId = id;
+  },
+
   createEmptyLocation() {
     return {
       label: "",
@@ -247,6 +257,70 @@ const appMethods = {
     return normalized;
   },
 
+  mergeIncomingParcel(localParcel, incoming) {
+    const localTime = localParcel?._localUpdatedAt || 0;
+    const incomingTime = incoming.updatedAt?.toMillis?.() || 0;
+    if (incomingTime >= localTime) {
+      return incoming.deleted ? null : this.normalizeParcelRecord(incoming);
+    }
+    return localParcel;
+  },
+
+  applyIncomingParcelChange(tracking, incomingData, changeType) {
+    const idx = this.parcels.findIndex(p => (p.tracking || p.id) === tracking);
+    const local = idx >= 0 ? this.parcels[idx] : null;
+    const merged = this.mergeIncomingParcel(local, incomingData);
+    if (merged === null) {
+      if (idx >= 0) this.parcels.splice(idx, 1);
+    } else if (idx >= 0) {
+      this.parcels.splice(idx, 1, merged);
+    } else {
+      this.parcels.push(merged);
+    }
+    this.syncLocalStorage();
+  },
+
+  async migrateToV2Structure() {
+    if (localStorage.getItem('swipex_v2_migrated') === 'true') return;
+    if (!firestoreSync.isAvailable()) return;
+    try {
+      const oldParcels = await firestoreSync.loadParcels();
+      const oldArchive = await firestoreSync.loadArchive();
+      const uid = firestoreSync.getUid();
+
+      if (Array.isArray(oldParcels) && oldParcels.length) {
+        const ids = oldParcels.map(p => p.tracking || p.id).filter(Boolean);
+        for (let i = 0; i < ids.length; i += 450) {
+          const batch = window.db.batch();
+          oldParcels.slice(i, i + 450).forEach(p => {
+            const tracking = p.tracking || p.id;
+            if (!tracking) return;
+            const ref = window.db.collection('users').doc(uid).collection('parcels_v2').doc(tracking);
+            batch.set(ref, { ...p, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), deleted: false }, { merge: true });
+          });
+          await batch.commit();
+        }
+      }
+
+      if (oldArchive && typeof oldArchive === 'object') {
+        const entries = Object.entries(oldArchive);
+        for (let i = 0; i < entries.length; i += 450) {
+          const batch = window.db.batch();
+          entries.slice(i, i + 450).forEach(([tracking, entry]) => {
+            const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
+            batch.set(ref, { ...entry, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          });
+          await batch.commit();
+        }
+      }
+
+      localStorage.setItem('swipex_v2_migrated', 'true');
+      console.log('✓ اكتملت هجرة البيانات إلى البنية V2');
+    } catch (e) {
+      console.error('❌ فشلت هجرة V2:', e);
+    }
+  },
+
     // تنظيف سلسلة رقم الهاتف وإعادتها في صيغة محلية: 0xx... (10 أرقام)
   cleanPhoneNumberString(raw) {
     if (!raw) return '';
@@ -335,6 +409,9 @@ const appMethods = {
     parcel.location = this.normalizeLocation(parcel.location);
     parcel.location.updatedAt = new Date().toISOString();
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _lt = (parcel.tracking || '').trim();
+    if (_lt && this._dirtyParcels) this._dirtyParcels.add(_lt);
     this.debouncedSaveData();
   },
 
@@ -371,6 +448,9 @@ const appMethods = {
         updatedAt: new Date().toISOString(),
       });
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _lct = (parcel.tracking || '').trim();
+      if (_lct && this._dirtyParcels) this._dirtyParcels.add(_lct);
       this.saveData();
       this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
     } catch (error) {
@@ -501,6 +581,9 @@ const appMethods = {
       updatedAt: new Date().toISOString(),
     });
     this.locationPickerParcel.updatedAt = new Date().toISOString();
+    this.locationPickerParcel._localUpdatedAt = Date.now();
+    const _mpt = (this.locationPickerParcel.tracking || '').trim();
+    if (_mpt && this._dirtyParcels) this._dirtyParcels.add(_mpt);
     this.saveData();
     this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
     this.closeLocationPicker();
@@ -521,6 +604,9 @@ const appMethods = {
     if (!parcel) return;
     parcel.location = this.createEmptyLocation();
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _clt = (parcel.tracking || '').trim();
+    if (_clt && this._dirtyParcels) this._dirtyParcels.add(_clt);
     this.saveData();
   },
 
@@ -549,6 +635,12 @@ const appMethods = {
     // حفظ في Firestore فوري (بدون تأخير)
     if (firestoreSync.isAvailable()) {
       this.syncStatus = "syncing";
+
+      // دفع الطرود المعدّلة عبر البنية V2
+      if (this._dirtyParcels && this._dirtyParcels.size) {
+        firestoreSync.pushDirtyParcels(this._dirtyParcels, t => this.parcels.find(p => (p.tracking || '').trim() === t) || null);
+      }
+
       const settingsToSave = JSON.parse(
         JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
       );
@@ -934,6 +1026,9 @@ const appMethods = {
     if (fav.municipality) { parcel.municipality = fav.municipality; applied = true; }
     if (applied) {
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _fvt = (parcel.tracking || '').trim();
+      if (_fvt && this._dirtyParcels) this._dirtyParcels.add(_fvt);
       this.saveData();
       this.showToast('تم تطبيق بيانات المفضلة', 'success');
     } else {
@@ -1095,7 +1190,13 @@ const appMethods = {
           latest: event,
         };
       }
+      if (this._dirtyArchive) this._dirtyArchive.add(tracking);
+      if (this._dirtyParcels) this._dirtyParcels.add(tracking);
     });
+
+    if (firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
+      firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
+    }
   },
 
   manualArchive() {
@@ -1206,9 +1307,13 @@ const appMethods = {
             added++;
           }
           this.archive[cleanTracking] = { events: rawEvents, latest: rawEvents[0] };
+          if (this._dirtyArchive) this._dirtyArchive.add(cleanTracking);
         });
 
         this.archiveVisibleCount = 30;
+        if (firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
+          firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
+        }
         this.saveData();
         this.showToast(`تم استيراد الأرشيف: ${added} جديد، ${updated} محدث`, "success");
       } catch (error) {
@@ -1685,7 +1790,10 @@ const appMethods = {
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
         parcel.status = newStatus;
         parcel.updatedAt = new Date().toISOString();
+        parcel._localUpdatedAt = Date.now();
         this.statusModalParcel = null;
+        const _t = (parcel.tracking || '').trim();
+        if (_t && this._dirtyParcels) this._dirtyParcels.add(_t);
         this.saveData();
         if (newStatus === "تم التسليم") this.triggerConfetti();
         if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) this.openYalidine(parcel.tracking);
@@ -1700,7 +1808,10 @@ const appMethods = {
 
     parcel.status = newStatus;
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
     this.statusModalParcel = null;
+    const _t2 = (parcel.tracking || '').trim();
+    if (_t2 && this._dirtyParcels) this._dirtyParcels.add(_t2);
     this.saveData();
 
     if (newStatus === "تم التسليم") {
@@ -1748,6 +1859,9 @@ const appMethods = {
     // تغيير الحالة
     parcel.status = newStatus;
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _ct = (parcel.tracking || '').trim();
+    if (_ct && this._dirtyParcels) this._dirtyParcels.add(_ct);
     this.saveData();
 
     if (newStatus === "تم التسليم") {
@@ -1767,6 +1881,9 @@ const appMethods = {
       parcel.smsSent = true;
     }
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _ct2 = (parcel.tracking || '').trim();
+    if (_ct2 && this._dirtyParcels) this._dirtyParcels.add(_ct2);
     this.saveData();
     const shouldOpenYalidine =
       actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus);
@@ -1789,6 +1906,9 @@ const appMethods = {
 
     this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
     this.statusSmsConfirmParcel.updatedAt = new Date().toISOString();
+    this.statusSmsConfirmParcel._localUpdatedAt = Date.now();
+    const _ot = (this.statusSmsConfirmParcel.tracking || '').trim();
+    if (_ot && this._dirtyParcels) this._dirtyParcels.add(_ot);
     this.saveData();
 
     if (this.statusSmsConfirmStatus === "تم التسليم") {
@@ -1837,7 +1957,11 @@ const appMethods = {
 
   confirmDelete() {
     if (this.deleteConfirmId) {
+      const _dp = this.parcels.find((p) => p.id === this.deleteConfirmId);
+      if (_dp) _dp._localUpdatedAt = Date.now();
+      const _dt = _dp ? (_dp.tracking || '').trim() : '';
       this.parcels = this.parcels.filter((p) => p.id !== this.deleteConfirmId);
+      if (_dt && this._dirtyParcels) this._dirtyParcels.add(_dt);
       this.saveData([this.deleteConfirmId]);
       this.detectDuplicates();
     }
@@ -1895,6 +2019,9 @@ const appMethods = {
       parcel.phone = this.editParcel.phone;
       parcel.phone2 = this.editParcel.phone2;
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const t = (parcel.tracking || '').trim();
+      if (t && this._dirtyParcels) this._dirtyParcels.add(t);
       this.saveData();
       this.detectDuplicates();
     }
@@ -1928,6 +2055,9 @@ const appMethods = {
       parcel.amount = this.pendingPriceChange.new;
 
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const t = (parcel.tracking || '').trim();
+      if (t && this._dirtyParcels) this._dirtyParcels.add(t);
       this.saveData();
       this.detectDuplicates();
     }
@@ -1969,7 +2099,7 @@ const appMethods = {
 
   addManualParcel() {
     this.parcels.forEach((p) => (p.expanded = false));
-    this.parcels.unshift({
+    const newP = {
       id: Date.now(),
       ...this.newParcel,
       location: this.normalizeLocation(this.newParcel.location),
@@ -1979,7 +2109,11 @@ const appMethods = {
       history: null,
       insertedAt: this._nowTimestamp(),
       updatedAt: new Date().toISOString(),
-    });
+      _localUpdatedAt: Date.now(),
+    };
+    this.parcels.unshift(newP);
+    const t = (newP.tracking || '').trim();
+    if (t && this._dirtyParcels) this._dirtyParcels.add(t);
     this.saveData();
     this.detectDuplicates();
     this.showAddModal = false;
@@ -2104,6 +2238,9 @@ const appMethods = {
   sendSmsAndMark(parcel) {
     parcel.smsSent = true;
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _smt = (parcel.tracking || '').trim();
+    if (_smt && this._dirtyParcels) this._dirtyParcels.add(_smt);
     this.saveData();
     window.location.href = this.getSmsLink(parcel);
   },
@@ -2156,6 +2293,9 @@ const appMethods = {
       if (real) {
         real.smsSent = true;
         real.updatedAt = new Date().toISOString();
+        real._localUpdatedAt = Date.now();
+        const _bsmt = (real.tracking || '').trim();
+        if (_bsmt && this._dirtyParcels) this._dirtyParcels.add(_bsmt);
         this.saveData();
       }
     }
@@ -2198,6 +2338,9 @@ const appMethods = {
             : transcript;
     
           parcel.updatedAt = new Date().toISOString();
+          parcel._localUpdatedAt = Date.now();
+          const _srt2 = (parcel.tracking || '').trim();
+          if (_srt2 && this._dirtyParcels) this._dirtyParcels.add(_srt2);
           this.saveData();
         }
         this.activeListeningId = null;
@@ -2623,6 +2766,9 @@ const appMethods = {
       parcel.reminderTime =
         this.reminderTime.hour + ":" + this.reminderTime.minute;
       parcel.reminderTriggered = false;
+      parcel._localUpdatedAt = Date.now();
+      const _srt = (parcel.tracking || '').trim();
+      if (_srt && this._dirtyParcels) this._dirtyParcels.add(_srt);
       this.saveData();
     }
     this.showReminderPicker = false;
@@ -2649,6 +2795,9 @@ const appMethods = {
       parcel.reminderTriggered = false;
 
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _rmt = (parcel.tracking || '').trim();
+      if (_rmt && this._dirtyParcels) this._dirtyParcels.add(_rmt);
       this.saveData();
     }
   },
@@ -2978,6 +3127,9 @@ const appMethods = {
       this.pauseSmartTagSorting(500);
       parcel.tag = tagName;
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _tgt = (parcel.tracking || '').trim();
+      if (_tgt && this._dirtyParcels) this._dirtyParcels.add(_tgt);
       this.saveData();
       this.resumeSmartTagSorting();
       this.showTagPicker = false;
@@ -2996,6 +3148,9 @@ const appMethods = {
       this.pauseSmartTagSorting(500);
       parcel.tag = null;
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _rtt = (parcel.tracking || '').trim();
+      if (_rtt && this._dirtyParcels) this._dirtyParcels.add(_rtt);
       this.saveData();
       this.resumeSmartTagSorting();
       this.scrollParcelIntoViewAfterUpdate(parcel.id);
@@ -3117,6 +3272,7 @@ const appMethods = {
 
   // ========== Authentication Methods ==========
   loadCurrentUser() {
+    this.initDeviceId();
     const userData = localStorage.getItem("swipex_user");
     if (userData) {
       const parsed = JSON.parse(userData);
@@ -3152,6 +3308,35 @@ const appMethods = {
             console.log("🔄 تفعيل المستمع الفوري...");
             this.initFirestoreListener();
             this._firestoreLoaded = true;
+
+            // هجرة البيانات إلى البنية V2 + تفعيل المستمع الفردي
+            this.migrateToV2Structure().then(() => {
+              if (this._v2ParcelsUnsub) return;
+              this._v2ParcelsUnsub = firestoreSync.listenToParcelsV2((id, data, type) => {
+                this.applyIncomingParcelChange(id, data, type);
+              });
+              console.log("✓ تم تفعيل مستمع V2 للطرود الفردية");
+
+              if (this._v2ArchiveUnsub) return;
+              this._v2ArchiveUnsub = firestoreSync.listenToArchiveV2((id, data, type) => {
+                if (!this.archive) this.archive = {};
+                if (type === 'removed') {
+                  if (this.archive[id]) { delete this.archive[id]; }
+                  return;
+                }
+                if (data && data.deleted) {
+                  if (this.archive[id]) { delete this.archive[id]; }
+                  return;
+                }
+                const localEntry = this.archive[id];
+                const incomingTs = data && data.updatedAt ? (typeof data.updatedAt.toMillis === 'function' ? data.updatedAt.toMillis() : new Date(data.updatedAt).getTime()) : 0;
+                const localTs = localEntry && localEntry.updatedAt ? new Date(localEntry.updatedAt).getTime() : 0;
+                if (incomingTs > localTs) {
+                  this.archive[id] = { ...data, updatedAt: data.updatedAt && data.updatedAt.toMillis ? new Date(data.updatedAt.toMillis()).toISOString() : data.updatedAt };
+                }
+              });
+              console.log("✓ تم تفعيل مستمع V2 للأرشيف الفردي");
+            });
           }
         } else {
           this.currentUser = null;
@@ -3349,6 +3534,15 @@ const appMethods = {
       if (this.firestoreUnsub) {
         this.firestoreUnsub();
         this.firestoreUnsub = null;
+      }
+      // إلغاء مستمع V2
+      if (this._v2ParcelsUnsub) {
+        this._v2ParcelsUnsub();
+        this._v2ParcelsUnsub = null;
+      }
+      if (this._v2ArchiveUnsub) {
+        this._v2ArchiveUnsub();
+        this._v2ArchiveUnsub = null;
       }
 
       // إلغاء المؤقتات المعلقة
@@ -3574,6 +3768,9 @@ const appMethods = {
   focusChangeStatus(parcel, newStatus) {
     parcel.status = newStatus;
     parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    const _fst = (parcel.tracking || '').trim();
+    if (_fst && this._dirtyParcels) this._dirtyParcels.add(_fst);
     this.saveData();
     if (newStatus === "تم التسليم") {
       this.triggerConfetti();
@@ -3598,6 +3795,9 @@ const appMethods = {
 
   focusSms(parcel) {
     parcel.smsSent = true;
+    parcel._localUpdatedAt = Date.now();
+    const _fsmt = (parcel.tracking || '').trim();
+    if (_fsmt && this._dirtyParcels) this._dirtyParcels.add(_fsmt);
     this.saveData();
     window.location.href = this.getSmsLink(parcel);
   },
@@ -3618,6 +3818,9 @@ const appMethods = {
     if (parcel) {
 
       parcel.updatedAt = new Date().toISOString();
+      parcel._localUpdatedAt = Date.now();
+      const _fsnt = (parcel.tracking || '').trim();
+      if (_fsnt && this._dirtyParcels) this._dirtyParcels.add(_fsnt);
     }
     this.saveData();
   },
