@@ -904,15 +904,19 @@
                 </div>
             </div>
 
-            <!-- Archive Import / Export -->
-            <div class="mx-3 mt-2 grid grid-cols-2 gap-2">
+            <!-- Archive Import / Export / Sync -->
+            <div class="mx-3 mt-2 grid grid-cols-3 gap-2">
                 <button @click="exportArchive" class="py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition flex items-center justify-center gap-2 border border-emerald-200 dark:border-emerald-800/50">
                     <i class="fas fa-file-export"></i>
-                    <span>تصدير الأرشيف</span>
+                    <span>تصدير</span>
                 </button>
                 <button @click="openArchiveImport" class="py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition flex items-center justify-center gap-2 border border-blue-200 dark:border-blue-800/50">
                     <i class="fas fa-file-import"></i>
-                    <span>استيراد الأرشيف</span>
+                    <span>استيراد</span>
+                </button>
+                <button @click="syncArchiveToCloud" class="py-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-bold text-sm hover:bg-purple-100 dark:hover:bg-purple-900/30 transition flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800/50">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>مزامنة</span>
                 </button>
                 <input ref="archiveImportInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" @change="handleArchiveImport" />
             </div>

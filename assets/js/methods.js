@@ -1227,6 +1227,31 @@ const appMethods = {
     this.showToast("تم أرشفة " + count + " طرد بنجاح", "success");
   },
 
+  async syncArchiveToCloud() {
+    if (!firestoreSync.isAvailable()) {
+      this.showToast("السحابة غير متاحة", "error");
+      return;
+    }
+    const keys = Object.keys(this.archive || {});
+    if (!keys.length) {
+      this.showToast("الأرشيف فارغ", "info");
+      return;
+    }
+    this.showToast("جاري مزامنة الأرشيف...", "info");
+    try {
+      keys.forEach(t => this._dirtyArchive.add(t));
+      const ok = await firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
+      if (ok) {
+        this.showToast("تم مزامنة " + keys.length + " عنصر إلى السحابة", "success");
+      } else {
+        this.showToast("فشلت المزامنة", "error");
+      }
+    } catch (e) {
+      console.error('syncArchiveToCloud:', e);
+      this.showToast("فشلت المزامنة", "error");
+    }
+  },
+
   exportArchive() {
     const archiveCount = Object.keys(this.archive || {}).length;
     if (!archiveCount) {
