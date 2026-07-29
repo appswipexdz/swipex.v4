@@ -411,8 +411,8 @@ createApp({
                                         }
                                     }
                                     
-                                    // تحديث الأرشيف (دمج بدلاً من استبدال)
-                                    if (doc.id === 'archive') {
+                                    // تحديث الأرشيف (دمج بدلاً من استبدال) - فقط إذا كانت المزامنة مفعلة
+                                    if (doc.id === 'archive' && this.settings?.archiveSyncEnabled !== false) {
                                         const remoteArchive = data.data ? JSON.parse(data.data) : null;
                                         if (remoteArchive && JSON.stringify(remoteArchive) !== JSON.stringify(this.archive)) {
                                             console.log('🔄 دمج الأرشيف من Firestore مع المحلي');

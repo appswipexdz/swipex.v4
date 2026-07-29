@@ -60,7 +60,8 @@ showYalidineMenu: false,
         statusOrder: [],
         favoritePhones: [],
         favoritePhonesEnabled: false,
-        bulkSmsEnabled: false
+        bulkSmsEnabled: false,
+        archiveSyncEnabled: true
     },
     newCustomStatus: { name: '', color: '#9ca3af', icon: 'fa-tag' },
     // نافذة تأكيد تغيير الحالة مع SMS

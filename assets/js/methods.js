@@ -658,13 +658,16 @@ const appMethods = {
       const settingsToSave = JSON.parse(
         JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
       );
+      const savePayload = {
+        parcels: this.parcels,
+        settings: settingsToSave,
+        tasks: this.tasks,
+      };
+      if (this.settings.archiveSyncEnabled) {
+        savePayload.archive = this.archive;
+      }
       firestoreSync
-        .saveAll({
-          parcels: this.parcels,
-          settings: settingsToSave,
-          archive: this.archive,
-          tasks: this.tasks,
-        })
+        .saveAll(savePayload)
         .then((ok) => {
           this.syncStatus = ok ? "synced" : "error";
           console.log(
@@ -1208,7 +1211,7 @@ const appMethods = {
       if (this._dirtyParcels) this._dirtyParcels.add(tracking);
     });
 
-    if (firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
+    if (this.settings.archiveSyncEnabled && firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
       firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
     }
   },
@@ -1227,9 +1230,19 @@ const appMethods = {
     this.showToast("تم أرشفة " + count + " طرد بنجاح", "success");
   },
 
+  toggleArchiveSync(enabled) {
+    this.settings.archiveSyncEnabled = enabled;
+    this.showToast(enabled ? 'تم تفعيل مزامنة الأرشيف مع السحابة' : 'تم إيقاف مزامنة الأرشيف مع السحابة', 'info');
+    this.saveData();
+  },
+
   async syncArchiveToCloud() {
     if (!firestoreSync.isAvailable()) {
       this.showToast("السحابة غير متاحة", "error");
+      return;
+    }
+    if (!this.settings.archiveSyncEnabled) {
+      this.showToast("مزامنة الأرشيف موقوفة. فعّلها من زر التبديل بالأعلى", "warning");
       return;
     }
     const keys = Object.keys(this.archive || {});
@@ -3506,13 +3519,16 @@ const appMethods = {
         // حفظ البيانات المدمجة
         console.log("💾 حفظ البيانات المدمجة...");
 
+        const syncPayload = {
+          parcels: this.parcels,
+          settings: { ...this.settings, _sessionDate: this.sessionDate },
+          tasks: this.tasks,
+        };
+        if (this.settings.archiveSyncEnabled) {
+          syncPayload.archive = this.archive;
+        }
         const saved = await Promise.race([
-          firestoreSync.saveAll({
-            parcels: this.parcels,
-            settings: { ...this.settings, _sessionDate: this.sessionDate },
-            archive: this.archive,
-            tasks: this.tasks,
-          }),
+          firestoreSync.saveAll(syncPayload),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error("SYNC_SAVE_TIMEOUT")), 8000)
           )

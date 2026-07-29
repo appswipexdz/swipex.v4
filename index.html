@@ -921,6 +921,22 @@
                 <input ref="archiveImportInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" @change="handleArchiveImport" />
             </div>
 
+            <!-- Archive Sync Toggle -->
+            <div class="mx-3 mt-2 glass-panel rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/30">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-cloud-arrow-up text-purple-500"></i>
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">مزامنة الأرشيف مع السحابة</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" :checked="settings.archiveSyncEnabled" @change="toggleArchiveSync($event.target.checked)" class="sr-only peer" />
+                        <div class="w-12 h-7 rounded-full transition-all relative overflow-hidden" :class="settings.archiveSyncEnabled ? 'bg-purple-500' : 'bg-gray-300'">
+                            <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all" :class="settings.archiveSyncEnabled ? 'left-1' : 'right-1'"></span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <!-- Archive Filter Pills -->
             <div class="mx-3 mt-2 flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none;">
                 <button @click="archiveStatusFilter = ''; archiveVisibleCount = 30" :class="[
