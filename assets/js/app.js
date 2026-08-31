@@ -271,18 +271,33 @@ createApp({
         // Scroll listener for header hide/show
         window.addEventListener('scroll', () => this.handleScroll(), { passive: true });
         
-        // Pull-to-search: سحب للأسفل لفتح البحث
+        // Pull-to-search: يعمل فقط بالسحب بأصبعين، وليس بإصبع واحد
         let pullStartY = 0;
+        let pullStartTouchCount = 0;
+
         document.addEventListener('touchstart', (e) => {
             if (window.scrollY === 0 && this.currentView === 'main' && !this.showFilters) {
-                pullStartY = e.touches[0].clientY;
+                if (e.touches.length === 2) {
+                    const touchYs = Array.from(e.touches).map(t => t.clientY);
+                    pullStartY = Math.min(...touchYs);
+                    pullStartTouchCount = 2;
+                } else {
+                    pullStartY = 0;
+                    pullStartTouchCount = 0;
+                }
             } else {
                 pullStartY = 0;
+                pullStartTouchCount = 0;
             }
         }, { passive: true });
+
         document.addEventListener('touchend', (e) => {
-            if (pullStartY > 0) {
-                const pullDistance = e.changedTouches[0].clientY - pullStartY;
+            if (pullStartTouchCount === 2 && pullStartY > 0) {
+                const endTouchY = e.changedTouches.length > 0
+                    ? Array.from(e.changedTouches).reduce((sum, touch) => sum + touch.clientY, 0) / e.changedTouches.length
+                    : pullStartY;
+                const pullDistance = endTouchY - pullStartY;
+
                 if (pullDistance > 80) {
                     this.showFilters = true;
                     this.$nextTick(() => {
@@ -290,6 +305,7 @@ createApp({
                     });
                 }
                 pullStartY = 0;
+                pullStartTouchCount = 0;
             }
         }, { passive: true });
         
