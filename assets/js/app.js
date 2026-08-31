@@ -269,14 +269,7 @@ createApp({
         document.addEventListener('touchstart', closeFilterPopups, true);
 
         // Scroll listener for header hide/show
-        window.addEventListener('scroll', () => {
-            this.handleScroll();
-            if (this.showMunicipalityDropdown || this.showTagsDropdown || this.showFilters) {
-                this.showMunicipalityDropdown = false;
-                this.showTagsDropdown = false;
-                this.showFilters = false;
-            }
-        }, { passive: true });
+        window.addEventListener('scroll', () => this.handleScroll(), { passive: true });
         
         // Pull-to-search: سحب للأسفل لفتح البحث
         let pullStartY = 0;
