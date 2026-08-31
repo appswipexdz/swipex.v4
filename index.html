@@ -2023,12 +2023,8 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="font-bold text-gray-800 dark:text-white truncate">{{ status.name }}</div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">انقر لتغيير الحالة · اضغط مطوّل للتفعيل/الإلغاء</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">انقر لتغيير الحالة · اضغط مطوّل لتغيير + ياليدين</p>
                             </div>
-                        </div>
-                        <div v-if="!['دون إجراء','في الإنتظار'].includes(status.name)" class="flex items-center" @click.stop>
-                            <span v-if="isStatusActionEnabled(status.name)" class="text-[10px] font-bold px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">مفعّل</span>
-                            <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">غير مفعّل</span>
                         </div>
                     </div>
                 </div>

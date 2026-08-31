@@ -1841,10 +1841,15 @@ const appMethods = {
     this.statusLongPressStatus = statusName;
     this.statusLongPressTimer = setTimeout(() => {
       this.statusLongPressTriggered = true;
-      this.toggleStatusActionEnabled(
-        statusName,
-        !this.isStatusActionEnabled(statusName),
-      );
+      if (this.statusModalParcel) {
+        this.changeStatus(this.statusModalParcel, statusName);
+        if (
+          !['دون إجراء', 'في الإنتظار'].includes(statusName) &&
+          this.statusModalParcel.tracking
+        ) {
+          this.openYalidine(this.statusModalParcel.tracking);
+        }
+      }
     }, 550);
   },
 
