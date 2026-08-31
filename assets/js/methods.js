@@ -2224,6 +2224,12 @@ const appMethods = {
     this.saveSettings();
   },
 
+  resetWhatsappTemplate() {
+    this.settings.whatsappTemplate =
+      "مرحبًا {اسم_المستلم}،\nأود متابعة طلبيتكم رقم {رقم_التتبع}.\nيسعدنا التواصل معكم بشأن الطلب.\nشكراً لكم!";
+    this.saveSettings();
+  },
+
   // ========== Formatting & Utilities ==========
   formatCurrency(value) {
     // نستخدم التنسيق الفرنسي-الجزائري للحصول على الترتيب المطلوب (رقم ثم مسافة ثم رمز العملة)
@@ -2304,7 +2310,10 @@ const appMethods = {
     if (!phone) return "";
     const base = `https://wa.me/213${phone}`;
     if (!withText) return base;
-    const message = this.getSmsTemplateMessage(parcel, this.settings.smsTemplate);
+    const message = this.getSmsTemplateMessage(
+      parcel,
+      this.settings.whatsappTemplate || this.settings.smsTemplate,
+    );
     return `${base}?text=${encodeURIComponent(message)}`;
   },
 
