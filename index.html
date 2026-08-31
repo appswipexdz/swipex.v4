@@ -2011,23 +2011,24 @@
                  </div>
 
                 <div class="p-3 space-y-2">
-                    <div v-for="status in allStatuses" :key="status.name" class="flex items-center gap-3 p-3 rounded-xl transition-all" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'">
-                        <div class="flex-1 flex items-center gap-3 cursor-pointer" @click="changeStatus(statusModalParcel, status.name)">
+                    <div v-for="status in allStatuses" :key="status.name" class="flex items-center gap-3 p-3 rounded-xl transition-all" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                         @pointerdown="startStatusLongPress(status.name)"
+                         @pointerup="handleStatusPointerUp(status.name)"
+                         @pointerleave="clearStatusLongPress()"
+                         @pointercancel="clearStatusLongPress()"
+                         @contextmenu.prevent>
+                        <div class="flex-1 flex items-center gap-3 cursor-pointer">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="status.dot">
                                 <i class="fas text-white text-sm" :class="status.icon"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="font-bold text-gray-800 dark:text-white truncate">{{ status.name }}</div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">انقر لتغيير الحالة</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">انقر لتغيير الحالة · اضغط مطوّل للتفعيل/الإلغاء</p>
                             </div>
                         </div>
                         <div v-if="!['دون إجراء','في الإنتظار'].includes(status.name)" class="flex items-center" @click.stop>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" :checked="isStatusActionEnabled(status.name)" @change="toggleStatusActionEnabled(status.name, $event.target.checked)" class="sr-only peer" />
-                                <div class="w-12 h-7 rounded-full bg-gray-300 peer-checked:bg-orange-500 transition-all relative overflow-hidden">
-                                    <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all" :class="isStatusActionEnabled(status.name) ? 'left-1' : 'right-1'"></span>
-                                </div>
-                            </label>
+                            <span v-if="isStatusActionEnabled(status.name)" class="text-[10px] font-bold px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">مفعّل</span>
+                            <span v-else class="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">غير مفعّل</span>
                         </div>
                     </div>
                 </div>

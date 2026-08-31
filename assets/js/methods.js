@@ -1835,6 +1835,38 @@ const appMethods = {
     this.statusModalParcel = parcel;
   },
 
+  startStatusLongPress(statusName) {
+    this.clearStatusLongPress();
+    this.statusLongPressTriggered = false;
+    this.statusLongPressStatus = statusName;
+    this.statusLongPressTimer = setTimeout(() => {
+      this.statusLongPressTriggered = true;
+      this.toggleStatusActionEnabled(
+        statusName,
+        !this.isStatusActionEnabled(statusName),
+      );
+    }, 550);
+  },
+
+  handleStatusPointerUp(statusName) {
+    this.clearStatusLongPress();
+    if (this.statusLongPressTriggered) {
+      this.statusLongPressTriggered = false;
+      this.statusLongPressStatus = null;
+      return;
+    }
+    if (this.statusModalParcel) {
+      this.changeStatus(this.statusModalParcel, statusName);
+    }
+  },
+
+  clearStatusLongPress() {
+    if (this.statusLongPressTimer) {
+      clearTimeout(this.statusLongPressTimer);
+      this.statusLongPressTimer = null;
+    }
+  },
+
   changeStatus(parcel, newStatus) {
     const actionEnabled = this.isStatusActionEnabled(newStatus);
     // هل هذه الحالة مفعّلة لإرسال SMS؟
