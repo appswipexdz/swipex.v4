@@ -2274,13 +2274,13 @@ const appMethods = {
     this.saveSettings();
   },
 
-  getSmsLink(parcel) {
-    let message =
-      this.settings.smsTemplate ||
+  getSmsTemplateMessage(parcel, template) {
+    const message =
+      template ||
       "مرحبًا {اسم_المستلم}،\nطلبيتكم برقم {رقم_التتبع} جاهزة.\nالمبلغ: {المبلغ} دج.";
     const maxLen = this.settings.smsContentLength || 10;
     const content = (parcel.content || "").substring(0, maxLen);
-    message = message
+    return message
       .replace(/\{المبلغ\}/g, parcel.amount || "0")
       .replace(/\{المحتوى\}/g, content)
       .replace(/\{اسم_المستلم\}/g, parcel.receiver || "")
@@ -2288,10 +2288,61 @@ const appMethods = {
       .replace(/\{البلدية\}/g, parcel.municipality || "")
       .replace(/\{الولاية\}/g, parcel.wilaya || "")
       .replace(/\{اسم_المرسل\}/g, parcel.sender || "");
+  },
+
+  getSmsLink(parcel) {
+    const message = this.getSmsTemplateMessage(parcel, this.settings.smsTemplate);
     const phones = parcel.phone2
       ? `${parcel.phone},${parcel.phone2}`
       : parcel.phone;
     return `sms:${phones}?body=${encodeURIComponent(message)}`;
+  },
+
+  getWhatsAppUrl(parcel, withText = false) {
+    if (!parcel || !parcel.phone) return "";
+    const phone = this.formatPhoneForWa(parcel.phone);
+    if (!phone) return "";
+    const base = `https://wa.me/213${phone}`;
+    if (!withText) return base;
+    const message = this.getSmsTemplateMessage(parcel, this.settings.smsTemplate);
+    return `${base}?text=${encodeURIComponent(message)}`;
+  },
+
+  focusWhatsApp(parcel) {
+    const url = this.getWhatsAppUrl(parcel, false);
+    if (!url) return;
+    window.open(url, "_blank");
+  },
+
+  focusWhatsAppWithText(parcel) {
+    const url = this.getWhatsAppUrl(parcel, true);
+    if (!url) return;
+    window.open(url, "_blank");
+  },
+
+  startWhatsappLongPress(parcel) {
+    this.clearWhatsappLongPressTimer();
+    this.whatsappLongPressTriggered = false;
+    this.whatsappLongPressTimer = setTimeout(() => {
+      this.whatsappLongPressTriggered = true;
+      this.focusWhatsAppWithText(parcel);
+    }, 650);
+  },
+
+  handleWhatsappPointerUp(parcel) {
+    this.clearWhatsappLongPressTimer();
+    if (this.whatsappLongPressTriggered) {
+      this.whatsappLongPressTriggered = false;
+      return;
+    }
+    this.focusWhatsApp(parcel);
+  },
+
+  clearWhatsappLongPressTimer() {
+    if (this.whatsappLongPressTimer) {
+      clearTimeout(this.whatsappLongPressTimer);
+      this.whatsappLongPressTimer = null;
+    }
   },
 
   sendSmsAndMark(parcel) {
@@ -3846,13 +3897,6 @@ const appMethods = {
     } else {
       this.callPhone(parcel.phone);
     }
-  },
-
-  focusWhatsApp(parcel) {
-    window.open(
-      "https://wa.me/213" + this.formatPhoneForWa(parcel.phone),
-      "_blank",
-    );
   },
 
   focusSms(parcel) {

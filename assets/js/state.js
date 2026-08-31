@@ -2,6 +2,8 @@ const appState = {
     currentView: 'main',
     filters: { search: "", municipality: "", status: "", tag: "", favorite: false },
     showFilters: false,
+    whatsappLongPressTimer: null,
+    whatsappLongPressTriggered: false,
     drawerOpen: false,
     drawerDataExpanded: false,
     drawerYalidineExpanded: false,
