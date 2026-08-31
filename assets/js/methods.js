@@ -1835,7 +1835,11 @@ const appMethods = {
     this.statusModalParcel = parcel;
   },
 
-  startStatusLongPress(statusName) {
+  startStatusLongPress(statusName, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     this.clearStatusLongPress();
     this.statusLongPressTriggered = false;
     this.statusLongPressStatus = statusName;
@@ -1850,7 +1854,11 @@ const appMethods = {
     }, 550);
   },
 
-  handleStatusPointerUp(statusName) {
+  handleStatusPointerUp(statusName, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     this.clearStatusLongPress();
     if (this.statusLongPressTriggered) {
       this.statusLongPressTriggered = false;
