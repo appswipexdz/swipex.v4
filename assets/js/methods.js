@@ -1873,8 +1873,7 @@ const appMethods = {
   },
 
   changeStatus(parcel, newStatus) {
-    const actionEnabled = this.isStatusActionEnabled(newStatus);
-    // هل هذه الحالة مفعّلة لإرسال SMS؟
+    // لا تفتح Yalidine عند النقر العادي؛ فقط عند الضغط المطوّل.
     const statusSmsEnabled =
       (newStatus === "مغلق" && this.settings.smsOnStatusClosed) ||
       (newStatus === "لا يرد" && this.settings.smsOnStatusNoAnswer) ||
@@ -1892,7 +1891,6 @@ const appMethods = {
         if (_t && this._dirtyParcels) this._dirtyParcels.add(_t);
         this.saveData();
         if (newStatus === "تم التسليم") this.triggerConfetti();
-        if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) this.openYalidine(parcel.tracking);
         return;
       }
       this.statusSmsConfirmParcel = parcel;
@@ -1912,9 +1910,6 @@ const appMethods = {
 
     if (newStatus === "تم التسليم") {
       this.triggerConfetti();
-    }
-    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus)) {
-      this.openYalidine(parcel.tracking);
     }
   },
 
@@ -1950,7 +1945,6 @@ const appMethods = {
 
     const parcel = this.statusSmsConfirmParcel;
     const newStatus = this.statusSmsConfirmStatus;
-    const actionEnabled = this.isStatusActionEnabled(newStatus);
 
     // تغيير الحالة
     parcel.status = newStatus;
@@ -1981,15 +1975,7 @@ const appMethods = {
     const _ct2 = (parcel.tracking || '').trim();
     if (_ct2 && this._dirtyParcels) this._dirtyParcels.add(_ct2);
     this.saveData();
-    const shouldOpenYalidine =
-      actionEnabled && !['دون إجراء','في الإنتظار'].includes(newStatus);
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
-
-    if (shouldOpenYalidine) {
-      setTimeout(() => {
-        this.openYalidine(parcel.tracking);
-      }, 800);
-    }
 
     this.closeStatusSmsConfirm();
   },
@@ -1997,8 +1983,6 @@ const appMethods = {
   // تأكيد تغيير الحالة بدون SMS
   confirmStatusChangeOnly() {
     if (!this.statusSmsConfirmParcel) return;
-
-    const actionEnabled = this.isStatusActionEnabled(this.statusSmsConfirmStatus);
 
     this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
     this.statusSmsConfirmParcel.updatedAt = new Date().toISOString();
@@ -2009,10 +1993,6 @@ const appMethods = {
 
     if (this.statusSmsConfirmStatus === "تم التسليم") {
       this.triggerConfetti();
-    }
-
-    if (actionEnabled && !['دون إجراء','في الإنتظار'].includes(this.statusSmsConfirmStatus)) {
-      this.openYalidine(this.statusSmsConfirmParcel.tracking);
     }
 
     this.closeStatusSmsConfirm();
