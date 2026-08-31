@@ -36,6 +36,10 @@ const scannerFunctions = {
             return;
         }
 
+        const isValidTrackingCode = (code) => {
+            return /^yal-[A-Za-z0-9]{6}$/i.test(String(code || '').trim());
+        };
+
         // التأكد من وجود العنصر
         const targetElement = document.querySelector("#scanner-viewport");
         if (!targetElement) {
@@ -90,18 +94,22 @@ const scannerFunctions = {
             if (this.isProcessingCode) return;
 
             if (result && result.codeResult && result.codeResult.code) {
-                const code = result.codeResult.code.trim();
-                
-                // تجاهل الأكواد الفارغة أو القصيرة جداً
-                if (!code || code.length < 3) return;
+                const rawCode = result.codeResult.code.trim();
+                const normalizedCode = rawCode.toLowerCase();
+
+                // قبول فقط تنسيق رقم التتبع: yal- + 6 أحرف/أرقام إنجليزية
+                if (!isValidTrackingCode(rawCode)) {
+                    console.log("🚫 تم تجاهل كود غير مطابق للتنسيق المطلوب:", rawCode);
+                    return;
+                }
 
                 // تجنب قراءة الكود نفسه مرتين متتاليتين
-                if (this.lastScannedCode === code) return;
+                if (this.lastScannedCode === normalizedCode) return;
 
-                this.lastScannedCode = code;
+                this.lastScannedCode = normalizedCode;
                 this.isProcessingCode = true;
 
-                console.log("✓ تم مسح الكود:", code);
+                console.log("✓ تم مسح الكود المطلوب:", rawCode);
 
                 // صوت التنبيه
                 try {
@@ -112,14 +120,15 @@ const scannerFunctions = {
                 // إدخال البيانات مباشرة
                 const self = this;
                 const mode = this.scannerMode;
-                
+                const code = normalizedCode;
+
                 if (mode === "search") {
                     this.filters.search = code;
                     this.showFilters = true;
                 } else if (mode === "tracking" || mode === "add") {
                     this.newParcel.tracking = code;
                 }
-                
+
                 // إغلاق الماسح
                 setTimeout(() => {
                     self.closeScanner();
