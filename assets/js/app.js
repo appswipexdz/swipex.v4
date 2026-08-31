@@ -241,28 +241,42 @@ createApp({
             }
         }, 3000);
         
-        // Close search before child click handlers can stop propagation.
-        document.addEventListener('pointerdown', (e) => {
-            if (this.showFilters && !e.target.closest('.search-wrapper') && !e.target.closest('.top-search-toggle')) {
+        // Close filter/search popups whenever the user touches or scrolls outside them.
+        const closeFilterPopups = (event) => {
+            const target = event && event.target;
+            if (!target) return;
+
+            const insideSearch = target.closest('.search-wrapper') || target.closest('.top-search-toggle');
+            const insideMunicipality = target.closest('.municipality-dropdown') || target.closest('.municipality-filter-toggle');
+            const insideTags = target.closest('.tags-dropdown') || target.closest('.tags-filter-toggle');
+            const insideTopMenu = target.closest('.top-menu-wrapper');
+
+            if (this.showFilters && !insideSearch) {
                 this.showFilters = false;
             }
-        }, true);
-
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', (e) => {
-            if (this.showMunicipalityDropdown && !e.target.closest('.municipality-dropdown')) {
+            if (this.showMunicipalityDropdown && !insideMunicipality) {
                 this.showMunicipalityDropdown = false;
             }
-            if (this.showTagsDropdown && !e.target.closest('.tags-dropdown')) {
+            if (this.showTagsDropdown && !insideTags) {
                 this.showTagsDropdown = false;
             }
-            if (this.showTopMenu && !e.target.closest('.top-menu-wrapper')) {
+            if (this.showTopMenu && !insideTopMenu) {
                 this.showTopMenu = false;
             }
-        });
-        
+        };
+
+        document.addEventListener('pointerdown', closeFilterPopups, true);
+        document.addEventListener('touchstart', closeFilterPopups, true);
+
         // Scroll listener for header hide/show
-        window.addEventListener('scroll', () => this.handleScroll(), { passive: true });
+        window.addEventListener('scroll', () => {
+            this.handleScroll();
+            if (this.showMunicipalityDropdown || this.showTagsDropdown || this.showFilters) {
+                this.showMunicipalityDropdown = false;
+                this.showTagsDropdown = false;
+                this.showFilters = false;
+            }
+        }, { passive: true });
         
         // Pull-to-search: سحب للأسفل لفتح البحث
         let pullStartY = 0;
