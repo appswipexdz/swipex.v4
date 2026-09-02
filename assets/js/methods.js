@@ -418,6 +418,43 @@ const appMethods = {
       .toLowerCase();
   },
 
+  syncParcelLocationToArchive(parcel) {
+    const tracking = (parcel?.tracking || '').trim();
+    if (!tracking || !parcel) return;
+
+    const location = this.normalizeLocation(parcel.location);
+    const existing = this.archive[tracking];
+    const events = existing ? this.getArchiveEvents(existing) : [];
+    const latest = {
+      status: parcel.status || "دون إجراء",
+      notes: parcel.notes || "",
+      tag: parcel.tag || null,
+      location,
+      lastUpdate: new Date().toISOString(),
+      amount: parcel.amount || 0,
+      municipality: parcel.municipality || "",
+      receiver: parcel.receiver || "",
+      phone: parcel.phone || "",
+      phone2: parcel.phone2 || "",
+      smsSent: parcel.smsSent || false,
+      senderSmsSent: parcel.senderSmsSent || false,
+      sender: parcel.sender || "",
+      type: parcel.type || "",
+      content: parcel.content || "",
+      createdDate: parcel.createdDate || parcel.insertedAt || "",
+      senderPhone: parcel.senderPhone || "",
+      recipientAddress: parcel.recipientAddress || "",
+    };
+
+    if (events.length) {
+      events[0] = { ...events[0], ...latest };
+    } else {
+      events.push(latest);
+    }
+    this.archive[tracking] = { events, latest: events[0] };
+    if (this._dirtyArchive) this._dirtyArchive.add(tracking);
+  },
+
   touchParcelLocation(parcel) {
     if (!parcel) return;
     parcel.location = this.normalizeLocation(parcel.location);
@@ -426,6 +463,7 @@ const appMethods = {
     parcel._localUpdatedAt = Date.now();
     const _lt = (parcel.tracking || '').trim();
     if (_lt && this._dirtyParcels) this._dirtyParcels.add(_lt);
+    this.syncParcelLocationToArchive(parcel);
     this.debouncedSaveData();
   },
 
@@ -465,6 +503,7 @@ const appMethods = {
       parcel._localUpdatedAt = Date.now();
       const _lct = (parcel.tracking || '').trim();
       if (_lct && this._dirtyParcels) this._dirtyParcels.add(_lct);
+      this.syncParcelLocationToArchive(parcel);
       this.saveData();
       this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
     } catch (error) {
@@ -598,6 +637,7 @@ const appMethods = {
     this.locationPickerParcel._localUpdatedAt = Date.now();
     const _mpt = (this.locationPickerParcel.tracking || '').trim();
     if (_mpt && this._dirtyParcels) this._dirtyParcels.add(_mpt);
+    this.syncParcelLocationToArchive(this.locationPickerParcel);
     this.saveData();
     this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
     this.closeLocationPicker();
@@ -621,6 +661,7 @@ const appMethods = {
     parcel._localUpdatedAt = Date.now();
     const _clt = (parcel.tracking || '').trim();
     if (_clt && this._dirtyParcels) this._dirtyParcels.add(_clt);
+    this.syncParcelLocationToArchive(parcel);
     this.saveData();
   },
 
