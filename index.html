@@ -344,7 +344,6 @@
                             {{ status.count }}
                         </span>
                     </button>
-                </div>
 
                 <!-- Municipality Dropdown -->
                 <div v-show="showMunicipalityDropdown" class="municipality-dropdown absolute right-3 top-14 w-52 max-h-64 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50" @click.stop>
@@ -1434,7 +1433,7 @@
                                 <i class="fas fa-comment-dots text-white"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-gray-800 dark:text-white">رسالة SMS</h3>
+                                <h3 class="font-bold text-gray-800 dark:text-white">الرسائل</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">تخصيص نص الرسالة النصية</p>
                             </div>
                         </div>
@@ -1443,7 +1442,7 @@
                     <div v-show="settingsExpanded.sms" class="px-4 pb-4 space-y-3">
                         <button @click="openSmsEditor('smsTemplate')" class="w-full bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition border border-green-200 dark:border-green-800">
                             <i class="fas fa-edit"></i>
-                            تعديل رسالة الاستلام
+                            تعديل رسالة SMS
                         </button>
                         <button @click="openSmsEditor('whatsappTemplate')" class="w-full bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition border border-emerald-200 dark:border-emerald-800">
                             <i class="fab fa-whatsapp"></i>
@@ -3361,7 +3360,7 @@
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                         <i class="fas fa-edit text-green-500"></i>
-                        {{ smsEditorKey === 'smsTemplate' ? 'رسالة الاستلام' : smsEditorKey === 'smsStatusTemplate' ? 'رسالة عدم الرد/مغلق' : 'رسالة رقم خاطئ' }}
+                        {{ smsEditorKey === 'smsTemplate' ? 'رسالة الاستلام' : smsEditorKey === 'whatsappTemplate' ? 'رسالة الواتساب' : smsEditorKey === 'smsStatusTemplate' ? 'رسالة عدم الرد/مغلق' : 'رسالة رقم خاطئ' }}
                     </h3>
                     <button @click="closeSmsEditor" class="w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition">
                         <i class="fas fa-times text-gray-500"></i>
