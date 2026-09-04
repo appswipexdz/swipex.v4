@@ -2472,8 +2472,7 @@
                         class="w-full py-3 px-4 rounded-xl text-white font-bold shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2"
                         :class="isSenderSms() ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-amber-500 to-orange-500'">
                         <i class="fas fa-sms"></i>
-                        {{ isSenderSms() ? 'تغيير + إبلاغ المرسل' : 'تغيير الحالة + إرسال
-                        SMS' }}
+                        {{ isSenderSms() ? 'تغيير + إبلاغ المرسل' : 'تغيير الحالة + إرسال SMS' }}
                     </button>
                     <button @click="confirmStatusChangeOnly"
                         class="w-full py-3 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2">
@@ -2603,16 +2602,13 @@
                             </div>
                             <div class="p-2 rounded-lg bg-green-50 dark:bg-green-900/20">
                                 <div class="text-lg font-bold text-green-600">
-                                    {{ customerHistoryData.filter(i => i.status === 'تم
-                                    التسليم').length }}
+                                    {{ customerHistoryData.filter(i => i.status === 'تم التسليم').length }}
                                 </div>
                                 <div class="text-[10px] text-gray-500">تم التسليم</div>
                             </div>
                             <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/20">
                                 <div class="text-lg font-bold text-red-600">
-                                    {{ customerHistoryData.filter(i => i.status === 'إلغاء
-                                    الطلبية' || i.status === 'لا يرد' || i.status === 'رقم
-                                    خاطئ').length }}
+                                    {{ customerHistoryData.filter(i => i.status === 'إلغاء الطلبية' || i.status === 'لا يرد' || i.status === 'رقم خاطئ').length }}
                                 </div>
                                 <div class="text-[10px] text-gray-500">مشكلة</div>
                             </div>
@@ -5177,8 +5173,7 @@
                     </div>
                     <div class="glass-panel p-2 rounded-lg text-center">
                         <div class="text-lg font-bold text-green-600">
-                            {{ sessionParcels.filter(p => p.status === 'تم التسليم
-                            ✓').length }}
+                            {{ sessionParcels.filter(p => p.status === 'تم التسليم').length }}
                         </div>
                         <div class="text-xs text-gray-600 dark:text-gray-400">مسلّم</div>
                     </div>
