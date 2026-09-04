@@ -339,7 +339,7 @@
                 </div>
             </div>
             <!-- Filter Pills (ثابتة دائماً) -->
-            <div class="sticky z-30 transition-all duration-300" :style="{ top: headerHidden ? '0' : '48px' }">
+            <div class="filter-pills sticky z-40 transition-all duration-300" :style="{ top: headerHidden ? '0' : '48px' }">
                 <div class="mx-1 mt-1 px-0.5 py-0.2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm"
                     style="overflow: visible">
                     <div class="flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none">
@@ -402,6 +402,8 @@
                             </span>
                         </button>
 
+                    </div>
+
                         <!-- Municipality Dropdown -->
                         <div v-show="showMunicipalityDropdown"
                             class="municipality-dropdown absolute right-3 top-14 w-52 max-h-64 overflow-auto p-2 rounded-2xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-2xl z-50"
@@ -444,8 +446,8 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
                 </div>
+            </div>
 
                 <!-- Daily Summary Widget -->
                 <div v-if="parcels.length > 0" class="mx-3 mt-2 mb-1">
@@ -939,7 +941,6 @@
                     </div>
                 </main>
             </div>
-        </div>
 
         <!-- ============ صفحة عرض الجلسات ============ -->
         <div v-if="false" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto">
