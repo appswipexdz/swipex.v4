@@ -1996,7 +1996,7 @@
 
         <!-- Status Modal -->
         <div v-if="statusModalParcel" class="status-modal" @click="statusModalParcel = null">
-            <div class="status-modal-content" @click.stop>
+            <div class="status-modal-content" @pointerdown.stop @pointerup.stop @click.stop>
                 <div class="p-5 bg-gradient-to-r from-red-600 to-red-700 text-white sticky top-0 z-10">
                     <div class="flex items-center justify-between">
                         <h2 class="text-xl font-bold flex items-center gap-2">
