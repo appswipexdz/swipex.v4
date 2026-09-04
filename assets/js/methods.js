@@ -1878,7 +1878,6 @@ const appMethods = {
 
   startStatusLongPress(statusName, event) {
     if (event) {
-      event.preventDefault();
       event.stopPropagation();
     }
     this.clearStatusLongPress();
@@ -1897,10 +1896,21 @@ const appMethods = {
 
   handleStatusPointerUp(statusName, event) {
     if (event) {
-      event.preventDefault();
       event.stopPropagation();
     }
     this.clearStatusLongPress();
+    if (this.statusLongPressTriggered) {
+      this.statusLongPressTriggered = false;
+      this.statusLongPressStatus = null;
+      return;
+    }
+  },
+
+  handleStatusClick(statusName, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     if (this.statusLongPressTriggered) {
       this.statusLongPressTriggered = false;
       this.statusLongPressStatus = null;

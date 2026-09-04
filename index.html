@@ -2013,7 +2013,7 @@
                     <div v-for="status in allStatuses" :key="status.name" class="flex items-center gap-3 p-3 rounded-xl transition-all status-option-row" :class="statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50'"
                          @pointerdown="startStatusLongPress(status.name, $event)"
                          @pointerup="handleStatusPointerUp(status.name, $event)"
-                         @click.stop.prevent
+                         @click="handleStatusClick(status.name, $event)"
                          @pointerleave="clearStatusLongPress()"
                          @pointercancel="clearStatusLongPress()"
                          @contextmenu.prevent>
