@@ -3820,7 +3820,6 @@ const appMethods = {
     this.archiveSearch = '';
     this.archiveStatusFilter = '';
     this.showTopMenu = false;
-    this.showSessionsView = false;
     this.showDashboard = false;
     this.$nextTick(() => {
       window.scrollTo({ top: 0, behavior: 'auto' });
@@ -4093,10 +4092,6 @@ const appMethods = {
       this.focusTouchDeltaX = 0;
     }
   },
-
-  // ═══════════════════════════════════════════════════════════════
-  // 📋 نظام الجلسات التعاونية (Collaborative Sessions)
-  // ═══════════════════════════════════════════════════════════════
 
   /**
    * فتح عرض الجلسات

@@ -196,10 +196,6 @@
                                     <i class="fas fa-chart-pie text-indigo-500"></i>
                                     <span>لوحة الإحصائيات</span>
                                 </button>
-                                <button @click="openSessionsView(); showTopMenu = false" class="top-menu-item">
-                                    <i class="fas fa-users text-purple-500"></i>
-                                    <span>الجلسات التعاونية</span>
-                                </button>
                                 <button @click="openArchive(); showTopMenu = false" class="top-menu-item">
                                     <i class="fas fa-archive text-purple-500"></i>
                                     <span>الأرشيف</span>
@@ -749,12 +745,8 @@
         
         </div>
 
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📋 نظام الجلسات التعاونية (Collaborative Sessions) -->
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-
         <!-- ============ صفحة عرض الجلسات ============ -->
-        <div v-if="showSessionsView" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto">
+        <div v-if="false" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 overflow-y-auto">
             <!-- Header -->
             <div class="sticky top-0 z-10 glass-header p-4 flex items-center gap-3 border-b border-gray-200 dark:border-gray-700">
                 <button @click="closeSessionsView()" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:scale-110 transition">
@@ -3488,11 +3480,11 @@
     </div>
 
         <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!-- 📋 نوافذ نظام الجلسات التعاونية (Sessions Modals) -->
+        <!-- نوافذ الجلسات القديمة معطلة -->
         <!-- ═══════════════════════════════════════════════════════════════ -->
 
         <!-- ============ نافذة إنشاء جلسة جديدة ============ -->
-        <div v-if="showCreateSessionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" @click.self="closeCreateSessionModal()">
+        <div v-if="false" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" @click.self="closeCreateSessionModal()">
             <div class="glass-panel rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <!-- Header -->
                 <div class="sticky top-0 glass-header p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -3602,7 +3594,7 @@
         </div>
 
         <!-- ============ نافذة تفاصيل الجلسة ============ -->
-        <div v-if="showSessionDetailsModal && currentSession" class="fixed inset-0 bg-white dark:bg-gray-900 z-[60] overflow-y-auto">
+        <div v-if="false" class="fixed inset-0 bg-white dark:bg-gray-900 z-[60] overflow-y-auto">
             <!-- Header -->
             <div class="sticky top-0 z-10 glass-header p-4 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-3 mb-3">
@@ -3851,7 +3843,7 @@
         </div>
 
         <!-- ============ نافذة الإحصائيات ============ -->
-        <div v-if="showSessionStatsModal && sessionStats" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4" @click.self="showSessionStatsModal = false">
+        <div v-if="false" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4" @click.self="showSessionStatsModal = false">
             <div class="glass-panel rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                 <div class="sticky top-0 glass-header p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">
@@ -3908,7 +3900,7 @@
         </div>
 
         <!-- ============ Bottom Navigation Bar ============ -->
-        <div class="bottom-nav" v-if="!focusModeActive && !showGuide && !showDashboard && !showBulkSmsModal && !showAddModal && !showEditModal && !showImportSummary && !showHistoryModal && !showNotificationsPanel && !showReminderPicker && !showAddTaskModal && !showEditTaskModal && !showNotificationHistory && !showNoteModal && !favInfoParcelId && !showCustomerHistory && !showSessionsView && !showSessionDetailsModal && !showCreateSessionModal">
+        <div class="bottom-nav" v-if="!focusModeActive && !showGuide && !showDashboard && !showBulkSmsModal && !showAddModal && !showEditModal && !showImportSummary && !showHistoryModal && !showNotificationsPanel && !showReminderPicker && !showAddTaskModal && !showEditTaskModal && !showNotificationHistory && !showNoteModal && !favInfoParcelId && !showCustomerHistory">
             <div class="bottom-nav-inner">
                 <!-- Profile/Settings -->
                 <button class="bottom-nav-item" :class="{'active': currentView === 'settings'}" @click="currentView = currentView === 'settings' ? 'main' : 'settings'; showFabMenu = false; showYalidineMenu = false">
@@ -3994,8 +3986,6 @@
     <script src="assets/js/methods.js"></script>
     <script src="assets/js/app.js"></script>
     
-    <!-- استيراد مدير الجلسات التعاونية -->
-    <script src="assets/js/sessions.js"></script>
     
     <script>
         if ("serviceWorker" in navigator) {
