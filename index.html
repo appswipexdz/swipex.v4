@@ -2582,9 +2582,17 @@
                                 <i class="fas fa-sticky-note text-[10px] ml-1"></i>
                                 {{ item.notes }}
                             </div>
-                            <div v-if="item.tag" class="mt-1 text-xs font-bold px-2 py-1 rounded-lg text-white w-fit"
-                                :style="getTagBadgeStyle(item.tag)">
-                                {{ getTagNameForDisplay(item.tag) }}
+                            <div class="mt-1 flex items-center justify-between gap-2">
+                                <div v-if="item.tag" class="text-xs font-bold px-2 py-1 rounded-lg text-white w-fit"
+                                    :style="getTagBadgeStyle(item.tag)">
+                                    {{ getTagNameForDisplay(item.tag) }}
+                                </div>
+                                <button @click="copyCustomerHistoryDetails(item)"
+                                    title="نسخ التمييز والملاحظة للطرد الحالي"
+                                    aria-label="نسخ التمييز والملاحظة للطرد الحالي"
+                                    class="w-7 h-7 mr-auto rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-copy text-xs"></i>
+                                </button>
                             </div>
                         </div>
                     </div>

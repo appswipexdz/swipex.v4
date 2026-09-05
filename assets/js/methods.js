@@ -1621,6 +1621,21 @@ const appMethods = {
     this.showCustomerHistory = true;
   },
 
+  copyCustomerHistoryDetails(item) {
+    if (!item || !this.customerHistoryParcel) return;
+
+    const parcel = this.customerHistoryParcel;
+    parcel.tag = item.tag || '';
+    parcel.notes = item.notes || '';
+    parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+
+    const tracking = (parcel.tracking || '').trim();
+    if (tracking && this._dirtyParcels) this._dirtyParcels.add(tracking);
+    this.saveData();
+    this.showToast('تم نسخ التمييز والملاحظة إلى الطرد الحالي', 'success');
+  },
+
   // ========== History ==========
   openArchiveHistory(item) {
     if (!item) return;
