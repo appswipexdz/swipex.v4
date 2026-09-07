@@ -969,6 +969,7 @@ const appMethods = {
   },
 
   normalizeTagSettings() {
+    this.normalizeStatusGroups();
     if (!Array.isArray(this.settings.tags)) {
       this.settings.tags = [];
     }
@@ -1045,6 +1046,7 @@ const appMethods = {
   },
 
   saveSettings() {
+    this.normalizeStatusGroups();
     this.normalizeTagSettings();
     this.saveData();
   },
@@ -3255,6 +3257,79 @@ const appMethods = {
   resetStatusOrder() {
     this.settings.statusOrder = [];
     this.showStatusOrderModal = false;
+    this.saveSettings();
+  },
+
+  // ========== Status Groups (تجميعات الحالات) ==========
+  normalizeStatusGroups() {
+    if (!Array.isArray(this.settings.statusGroups)) {
+      this.settings.statusGroups = [];
+    }
+    this.settings.statusGroups.forEach((g) => {
+      if (!g.id) g.id = 'sg' + Date.now() + Math.random().toString(36).slice(2, 6);
+      if (!g.statuses) g.statuses = [];
+      if (!g.icon) g.icon = 'fa-layer-group';
+      if (!g.color) g.color = '#6b7280';
+      if (g.layout !== 'row' && g.layout !== 'column') g.layout = 'column';
+    });
+  },
+
+  addStatusGroup() {
+    this.normalizeStatusGroups();
+    this.settings.statusGroups.push({
+      id: 'sg' + Date.now() + Math.random().toString(36).slice(2, 6),
+      name: 'تجميع جديد',
+      icon: 'fa-layer-group',
+      color: '#6b7280',
+      layout: 'column',
+      statuses: [],
+    });
+    this.saveSettings();
+    this.showToast('تم إنشاء تجميع جديد', 'success');
+  },
+
+  removeStatusGroup(id) {
+    this.settings.statusGroups = (this.settings.statusGroups || []).filter((g) => g.id !== id);
+    this.saveSettings();
+    this.showToast('تم حذف التجميع', 'info');
+  },
+
+  availableStatusesForGroup(group) {
+    const assigned = new Set();
+    (this.settings.statusGroups || []).forEach((g) => (g.statuses || []).forEach((s) => assigned.add(s)));
+    return this.allStatuses.filter((s) => !assigned.has(s.name));
+  },
+
+  addStatusToGroup(group, statusName) {
+    if (!statusName) return;
+    // إزالة الحالة من أي تجميع آخر (حالة واحدة = تجميع واحد)
+    (this.settings.statusGroups || []).forEach((g) => {
+      if (g.id !== group.id) {
+        g.statuses = (g.statuses || []).filter((s) => s !== statusName);
+      }
+    });
+    if (!group.statuses) group.statuses = [];
+    if (!group.statuses.includes(statusName)) group.statuses.push(statusName);
+    if (this.statusGroupSelection) this.statusGroupSelection[group.id] = '';
+    this.saveSettings();
+  },
+
+  removeStatusFromGroup(group, statusName) {
+    group.statuses = (group.statuses || []).filter((s) => s !== statusName);
+    this.saveSettings();
+  },
+
+  moveStatusInGroup(group, index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= group.statuses.length) return;
+    const temp = group.statuses[index];
+    group.statuses[index] = group.statuses[newIndex];
+    group.statuses[newIndex] = temp;
+    this.saveSettings();
+  },
+
+  setStatusGroupLayout(group, layout) {
+    group.layout = layout;
     this.saveSettings();
   },
 

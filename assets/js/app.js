@@ -110,6 +110,48 @@ createApp({
                 return ordered;
             }
             return all;
+        },
+        // تجميعات الحالات: تنظيم الحالات في مجموعات (تُظهر في نافذة تغيير الحالة والإحصائيات)
+        groupedStatuses() {
+            const configuredGroups = this.settings.statusGroups || [];
+            const all = this.allStatuses;
+            if (configuredGroups.length === 0) {
+                return [{ group: { id: 'all', name: '', icon: '', color: '', layout: 'column' }, statuses: all }];
+            }
+            const assigned = new Set();
+            configuredGroups.forEach(g => (g.statuses || []).forEach(s => assigned.add(s)));
+            const result = configuredGroups.map((g, gi) => {
+                const statuses = (g.statuses || [])
+                    .map(name => all.find(s => s.name === name))
+                    .filter(Boolean);
+                return {
+                    group: {
+                        id: g.id || ('sg' + gi),
+                        name: g.name || 'تجميع',
+                        icon: g.icon || 'fa-layer-group',
+                        color: g.color || '#6b7280',
+                        layout: g.layout === 'row' ? 'row' : 'column',
+                    },
+                    statuses,
+                };
+            });
+            const unassigned = all.filter(s => !assigned.has(s.name));
+            if (unassigned.length > 0) {
+                result.push({
+                    group: { id: 'unassigned', name: 'غير مجمّعة', icon: 'fa-folder-open', color: '#9ca3af', layout: 'column' },
+                    statuses: unassigned,
+                });
+            }
+            return result;
+        },
+        // إحصائيات مجمّعة: إظهار فقط الحالات التي بها أكثر من طرد واحد (> 1)
+        dashboardGroups() {
+            return this.groupedStatuses
+                .map(g => ({
+                    ...g,
+                    statuses: g.statuses.filter(s => (this.getDashboardStats()[s.name] || 0) > 1),
+                }))
+                .filter(g => g.statuses.length > 0);
         }
     },
     
