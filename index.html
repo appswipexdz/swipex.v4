@@ -2757,21 +2757,23 @@
                         </div>
                         <div :class="g.group.layout === 'row' ? 'flex flex-wrap gap-2' : 'space-y-2'">
                             <div v-for="status in g.statuses" :key="status.name"
-                                class="flex items-center gap-3 p-3 rounded-xl transition-all status-option-row"
+                                class="flex items-center rounded-xl transition-all status-option-row"
                                 :class="[
                                     statusModalParcel.status === status.name ? 'bg-red-50 dark:bg-red-900/30 border-2 border-red-500' : 'glass-panel hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                                    g.group.layout === 'row' ? 'flex-1 min-w-[170px]' : 'w-full'
+                                    g.group.layout === 'row' ? 'flex-1 min-w-[90px] gap-1.5 p-2' : 'gap-3 p-3 w-full'
                                 ]"
                                 @pointerdown="startStatusLongPress(status.name, $event)"
                                 @pointerup="handleStatusPointerUp(status.name, $event)"
                                 @click="handleStatusClick(status.name, $event)" @pointerleave="clearStatusLongPress()"
                                 @pointercancel="clearStatusLongPress()" @contextmenu.prevent>
-                                <div class="flex-1 flex items-center gap-3 cursor-pointer">
-                                    <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="status.dot">
-                                        <i class="fas text-white text-sm" :class="status.icon"></i>
+                                <div class="flex-1 flex items-center cursor-pointer min-w-0"
+                                    :class="g.group.layout === 'row' ? 'flex-col gap-1 text-center' : 'flex-row gap-3'">
+                                    <div class="rounded-full flex items-center justify-center flex-shrink-0" :class="[status.dot, g.group.layout === 'row' ? 'w-8 h-8' : 'w-10 h-10']">
+                                        <i class="fas text-white" :class="[status.icon, g.group.layout === 'row' ? 'text-xs' : 'text-sm']"></i>
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="font-bold text-gray-800 dark:text-white truncate">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-bold text-gray-800 dark:text-white break-words leading-tight"
+                                            :class="g.group.layout === 'row' ? 'text-[11px]' : 'text-sm'">
                                             {{ status.name }}
                                         </div>
                                     </div>
