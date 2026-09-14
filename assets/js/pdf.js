@@ -81,8 +81,15 @@ const pdfFunctions = {
                 const sameLine = candidates.filter(it => Math.abs(it.y - closestY) < 3);
 
                 // نأخذ الأيمن (أكبر x) — هو المبلغ دائماً
-                const target = sameLine.sort((a, b) => b.x - a.x)[0];
+                // نستثني العناصر الخالية من أرقام (مثل "OUVERTURE AUTORISÉE")
+                const target = sameLine
+                    .filter(it => /\d/.test(it.s))
+                    .sort((a, b) => b.x - a.x)[0];
                 if (!target) return null;
+
+                // إن كان السطر يشير إلى قطعة أخرى (مثل "Voir pièce 1") فلا نعتبره مبلغاً
+                const lineText = sameLine.map(it => it.s).join(" ");
+                if (/voir\s*pi[èe]ce/i.test(lineText)) return null;
 
                 // استخراج الرقم من النص (يتعامل مع "6950 DA" و "DA 4000" و "6950")
                 const m = target.s.match(/\d[\d\s]*/);
@@ -160,7 +167,11 @@ const pdfFunctions = {
                         pin:             "",
                         content:         "",
                         amount:          "0",
-                        createdDate:     ""
+                        createdDate:     "",
+                        multiPieceCode:  "",
+                        pieceIndex:      0,
+                        pieceTotal:      0,
+                        openingAllowed:  null
                     };
 
                     // ── رقم التتبع (شرط أساسي للمتابعة) ──
@@ -189,6 +200,23 @@ const pdfFunctions = {
                         else if (t.includes("AVEC ÉCHANGE") || t.includes("AVEC ECHANGE")) parcel.type = "AVEC ÉCHANGE";
                         else if (t.includes("CLASSIQUE"))                                   parcel.type = "CLASSIQUE";
                         else if (t.includes("AVEC ACCUSÉ") || t.includes("AVEC ACCUSE"))   parcel.type = "AVEC ACCUSÉ";
+                    }
+
+                    // ── الطرد متعدد القطع (multi-pièce) ──
+                    // النمط الظاهري: "multi-pièce CMP-SH58HC 1/3" في سطر القسيمة
+                    const quadText = lines.map(l => l.text).join(" ");
+                    parcel.openingAllowed = /OUVERTURE\s*AUTORIS[ÉE]E/i.test(quadText);
+
+                    const multiMatch = quadText.match(/multi[-\s]?pi[èe]ce/i);
+                    if (multiMatch) {
+                        const afterMulti = quadText.slice(multiMatch.index);
+                        const codeMatch = afterMulti.match(/([A-Z]{2,5}-[A-Z0-9]{2,12})/);
+                        if (codeMatch) parcel.multiPieceCode = codeMatch[1];
+                        const pieceMatch = afterMulti.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+                        if (pieceMatch) {
+                            parcel.pieceIndex = parseInt(pieceMatch[1], 10);
+                            parcel.pieceTotal  = parseInt(pieceMatch[2], 10);
+                        }
                     }
 
                     // ── بيانات المرسل (Expéditeur) ──
@@ -307,7 +335,8 @@ const pdfFunctions = {
                                 lt.includes("Utilisez") ||
                                 lt.includes("Taille") ||
                                 lt.includes("Moins de") ||
-                                lt.includes("Poids")
+                                lt.includes("Poids") ||
+                                /^(OUVERTURE|Autorisation)/i.test(lt)
                             ) break;
                             if (!lt) continue;
                             contentParts.push(lt);
@@ -331,6 +360,7 @@ const pdfFunctions = {
                         if (!parcel.amount || parcel.amount === "0") {
                             for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
                                 const lt = lines[j].text.trim();
+                                if (/voir\s*pi[èe]ce/i.test(lt)) continue;
                                 const strictMatch = lt.match(/^(DA\s*)?([\d\s]{1,})(\s*DA)?$/i);
                                 if (strictMatch) {
                                     const val = (strictMatch[2] || "").replace(/\s/g, "");
@@ -371,15 +401,66 @@ const pdfFunctions = {
                         createdDate:   parcel.createdDate    || "",
                         notes:         "",
                         status:        "دون إجراء",
-                        expanded:      false
+                        expanded:      false,
+                        multiPieceCode: parcel.multiPieceCode || "",
+                        pieceIndex:    parcel.pieceIndex     || 0,
+                        pieceTotal:    parcel.pieceTotal     || 0,
+                        isMultiPiece:  false,
+                        openingAllowed: parcel.openingAllowed === null ? null : !!parcel.openingAllowed
                     });
                 }
             }
 
-            extractedParcels.sort((a, b) =>
+            // ================================================================
+            // تجميع القسائم متعددة القطع (multi-pièce):
+            // كل مجموعة بنفس multiPieceCode تصبح طرداً واحداً tracking = كود المجموعة
+            // ================================================================
+            const groupedParcels = [];
+            const groups = new Map();
+            const standaloneParcels = [];
+
+            extractedParcels.forEach(p => {
+                if (p.multiPieceCode) {
+                    if (!groups.has(p.multiPieceCode)) groups.set(p.multiPieceCode, []);
+                    groups.get(p.multiPieceCode).push(p);
+                } else {
+                    standaloneParcels.push(p);
+                }
+            });
+
+            groups.forEach((pieces, code) => {
+                pieces.sort((a, b) => (a.pieceIndex || 0) - (b.pieceIndex || 0));
+                const first = pieces[0] || {};
+                const firstWithData = pieces.find(p => (p.receiver && p.receiver !== "مجهول")) || first;
+
+                const subTrackings = pieces
+                    .map(p => ({ tracking: p.tracking, pin: p.pin || "", pieceIndex: p.pieceIndex || 0 }))
+                    .sort((a, b) => a.pieceIndex - b.pieceIndex);
+
+                // تجميع المحتوى (إن اختلف بين القطع)
+                const uniqueContents = [...new Set(pieces.map(p => (p.content || "").trim()).filter(Boolean))];
+
+                groupedParcels.push({
+                    ...firstWithData,
+                    tracking:       code,
+                    isMultiPiece:   true,
+                    piecesCount:    first.pieceTotal || pieces.length,
+                    subTrackings:   subTrackings,
+                    amount:         (first.amount && first.amount !== "0") ? first.amount : pieces.map(p => p.amount).find(a => a && a !== "0") || "0",
+                    content:        uniqueContents.length ? uniqueContents.join("، ") : "",
+                    openingAllowed: pieces.some(p => p.openingAllowed === true),
+                    multiPieceCode: undefined,
+                    pieceIndex:     undefined,
+                    pieceTotal:     undefined
+                });
+            });
+
+            const finalParcels = [...groupedParcels, ...standaloneParcels];
+
+            finalParcels.sort((a, b) =>
                 (a.municipality || "").localeCompare(b.municipality || "", "ar")
             );
-            this.findAndMerge(extractedParcels);
+            this.findAndMerge(finalParcels);
             this.saveData();
             this.$nextTick(() => {
                 this.initSortable();

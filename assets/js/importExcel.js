@@ -97,7 +97,12 @@ const importExcelFunctions = {
             
             // التذكير والتمييز
             "وقت التذكير": p.reminderTime || "",
-            "التمييز": p.tag || ""
+            "التمييز": p.tag || "",
+            
+            // الطرود متعددة القطع
+            "عدد القطع": p.piecesCount || 1,
+            "أرقام التتبع الفرعية": Array.isArray(p.subTrackings) ? p.subTrackings.map(s => s.tracking).filter(Boolean).join(", ") : "",
+            "إمكانية الفتح": typeof p.openingAllowed === 'boolean' ? (p.openingAllowed ? 'مسموح' : 'غير مسموح') : ''
         }));
         
         const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -123,7 +128,10 @@ const importExcelFunctions = {
             { wch: 15 },  // الحالة
             { wch: 40 },  // ملاحظات
             { wch: 12 },  // وقت التذكير
-            { wch: 20 }   // التمييز
+            { wch: 20 },  // التمييز
+            { wch: 10 },  // عدد القطع
+            { wch: 40 },  // أرقام التتبع الفرعية
+            { wch: 15 }   // إمكانية الفتح
         ];
         
         const wb = XLSX.utils.book_new();

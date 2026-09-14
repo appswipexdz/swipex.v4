@@ -178,6 +178,13 @@ const appMethods = {
     return {
       ...entry,
       location: this.normalizeLocation(entry.location),
+      isMultiPiece: !!entry.isMultiPiece,
+      piecesCount: typeof entry.piecesCount === "number" ? entry.piecesCount : 1,
+      subTrackings: Array.isArray(entry.subTrackings) ? entry.subTrackings : [],
+      // null = غير معروف (طرود قديمة)، true/false = محدد
+      openingAllowed: typeof entry.openingAllowed === "boolean"
+        ? entry.openingAllowed
+        : null,
     };
   },
 
@@ -246,6 +253,14 @@ const appMethods = {
     const normalized = {
       ...parcel,
       location: this.normalizeLocation(parcel.location),
+      // توافق رجعي: حقول الطرود متعددة القطع بقيم افتراضية آمنة
+      isMultiPiece: !!parcel.isMultiPiece,
+      piecesCount: typeof parcel.piecesCount === "number" ? parcel.piecesCount : 1,
+      subTrackings: Array.isArray(parcel.subTrackings) ? parcel.subTrackings : [],
+      // null = غير معروف (طرود قديمة/يدوية)، true/false = محددة من PDF
+      openingAllowed: typeof parcel.openingAllowed === "boolean"
+        ? parcel.openingAllowed
+        : null,
     };
     if (parcel.history && typeof parcel.history === "object") {
       if (Array.isArray(parcel.history)) {
@@ -418,6 +433,15 @@ const appMethods = {
       .toLowerCase();
   },
 
+  // نص البحث داخل الأرقام الفرعية للطرد متعدد القطع (مع PINs)
+  getSubTrackingSearchText(parcel) {
+    if (!parcel || !Array.isArray(parcel.subTrackings)) return "";
+    return parcel.subTrackings
+      .map((s) => `${s.tracking || ""} ${s.pin || ""}`)
+      .join(" ")
+      .toLowerCase();
+  },
+
   syncParcelLocationToArchive(parcel) {
     const tracking = (parcel?.tracking || '').trim();
     if (!tracking || !parcel) return;
@@ -444,6 +468,12 @@ const appMethods = {
       createdDate: parcel.createdDate || parcel.insertedAt || "",
       senderPhone: parcel.senderPhone || "",
       recipientAddress: parcel.recipientAddress || "",
+      isMultiPiece: parcel.isMultiPiece || false,
+      piecesCount: typeof parcel.piecesCount === "number" ? parcel.piecesCount : 1,
+      subTrackings: Array.isArray(parcel.subTrackings) ? parcel.subTrackings : [],
+      openingAllowed: typeof parcel.openingAllowed === "boolean"
+        ? parcel.openingAllowed
+        : null,
     };
 
     if (events.length) {
@@ -1234,6 +1264,12 @@ const appMethods = {
         createdDate: p.createdDate || p.insertedAt || "",
         senderPhone: p.senderPhone || "",
         recipientAddress: p.recipientAddress || "",
+        isMultiPiece: p.isMultiPiece || false,
+        piecesCount: typeof p.piecesCount === "number" ? p.piecesCount : 1,
+        subTrackings: Array.isArray(p.subTrackings) ? p.subTrackings : [],
+        openingAllowed: typeof p.openingAllowed === "boolean"
+          ? p.openingAllowed
+          : null,
       };
 
       const existing = this.archive[tracking];
@@ -1720,7 +1756,7 @@ const appMethods = {
         this.callPhone(parcel.phone);
       }
     } else if (this.currentTouchX < -this.SWIPE_THRESHOLD) {
-      this.openYalidine(parcel.tracking);
+      this.openYalidine(parcel.tracking, parcel);
     }
     this.currentTouchX = 0;
     this.activeSwipeId = null;
@@ -1906,7 +1942,7 @@ const appMethods = {
       if (!parcel) return;
       this.changeStatus(parcel, statusName);
       if (!['دون إجراء', 'في الإنتظار'].includes(statusName) && parcel.tracking) {
-        this.openYalidine(parcel.tracking);
+        this.openYalidine(parcel.tracking, parcel);
       }
     }, 550);
   },
@@ -2280,6 +2316,10 @@ const appMethods = {
       sender: "",
       senderPhone: "",
       senderAddress: "",
+      isMultiPiece: false,
+      piecesCount: 1,
+      subTrackings: [],
+      openingAllowed: null,
       location: this.createEmptyLocation(),
     };
     // إعادة تهيئة Sortable بعد إضافة طرد جديد
@@ -2344,12 +2384,35 @@ const appMethods = {
     window.location.href = `tel:${phone}`;
   },
 
-  openYalidine(tracking) {
-    if (!tracking) return;
+  openYalidine(tracking, parcel) {
+    // البطاقة متعددة القطع تُفتح بكود المجموعة الموحّد (CMP-...)
+    const realTracking = parcel && parcel.isMultiPiece ? (parcel.tracking || tracking) : tracking;
+    if (!realTracking) return;
     window.open(
-      `https://yalidine.app/app/livraison/livrer_un_colis.php?tracking=${tracking}`,
+      `https://yalidine.app/app/livraison/livrer_un_colis.php?tracking=${realTracking}`,
       "_blank",
     );
+  },
+
+  // ========== Multi-Piece Modal (الطرود متعددة القطع) ==========
+  openMultiPieceModal(parcel) {
+    if (!parcel) return;
+    this.multiPieceModalParcel = parcel;
+    this.showMultiPieceModal = true;
+  },
+
+  closeMultiPieceModal() {
+    this.showMultiPieceModal = false;
+    this.multiPieceModalParcel = null;
+  },
+
+  copyAllSubTrackings() {
+    if (!this.multiPieceModalParcel || !Array.isArray(this.multiPieceModalParcel.subTrackings)) return;
+    const text = this.multiPieceModalParcel.subTrackings
+      .map((s) => s.tracking)
+      .filter(Boolean)
+      .join("\n");
+    if (text) this.copyTracking(text);
   },
 
   isStatusActionEnabled(statusName) {
@@ -2635,7 +2698,8 @@ const appMethods = {
         (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
         (p.notes && p.notes.toLowerCase().includes(query)) ||
-        this.getLocationSearchText(p).includes(query);
+        this.getLocationSearchText(p).includes(query) ||
+        this.getSubTrackingSearchText(p).includes(query);
       const matchesMuni =
         !this.filters.municipality ||
         p.municipality === this.filters.municipality;
@@ -2661,7 +2725,8 @@ const appMethods = {
         (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
         (p.notes && p.notes.toLowerCase().includes(query)) ||
-        this.getLocationSearchText(p).includes(query)
+        this.getLocationSearchText(p).includes(query) ||
+        this.getSubTrackingSearchText(p).includes(query)
       );
     } else {
       list = this.parcels.filter((p) => {

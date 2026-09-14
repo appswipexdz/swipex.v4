@@ -63,16 +63,19 @@ createApp({
             }
             if (this.archiveSearch) {
                 const q = this.archiveSearch.toLowerCase();
-                list = list.filter(item =>
-                    (item.tracking || '').toLowerCase().includes(q) ||
-                    (item.receiver || '').toLowerCase().includes(q) ||
-                    (item.phone || '').includes(q) ||
-                    (item.phone2 || '').includes(q) ||
-                    (item.notes || '').toLowerCase().includes(q) ||
-                    (item.tag || '').toLowerCase().includes(q) ||
-                    (item.municipality || '').toLowerCase().includes(q) ||
-                    ((typeof window.appMethods !== 'undefined' && window.appMethods.getLocationSearchText) ? window.appMethods.getLocationSearchText.call(this, item) : '').includes(q)
-                );
+                list = list.filter(item => {
+                    const subTrackings = Array.isArray(item.subTrackings) ? item.subTrackings : [];
+                    const subText = subTrackings.map(s => (s.tracking || '') + ' ' + (s.pin || '')).join(' ').toLowerCase();
+                    return (item.tracking || '').toLowerCase().includes(q) ||
+                        (item.receiver || '').toLowerCase().includes(q) ||
+                        (item.phone || '').includes(q) ||
+                        (item.phone2 || '').includes(q) ||
+                        (item.notes || '').toLowerCase().includes(q) ||
+                        (item.tag || '').toLowerCase().includes(q) ||
+                        (item.municipality || '').toLowerCase().includes(q) ||
+                        subText.includes(q) ||
+                        ((typeof window.appMethods !== 'undefined' && window.appMethods.getLocationSearchText) ? window.appMethods.getLocationSearchText.call(this, item) : '').includes(q);
+                });
             }
             return list;
         },
