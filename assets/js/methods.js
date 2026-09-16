@@ -366,93 +366,100 @@ const appMethods = {
     if (this.forceResyncInProgress) return;
     this.forceResyncInProgress = true;
     this.forceResyncError = null;
-
-    const uid = firestoreSync.getUid();
-    if (!uid || !window.db) {
-      this.forceResyncError = 'تعذّر الاتصال بالسحابة';
-      this.forceResyncInProgress = false;
-      return;
-    }
-
-    // قراءة البيانات المحلية وتقسيمها إلى سجلات فردية (طرد/سجل أرشيف لكل tracking)
-    const parcelsRecords = (Array.isArray(this.parcels) ? this.parcels : [])
-      .map(p => {
-        const tracking = (p.tracking || p.id || '').trim();
-        if (!tracking) return null;
-        return {
-          tracking,
-          data: {
-            ...this._firestoreSafeDeep(p),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            deleted: false,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    const archiveRecords = (this.archive && typeof this.archive === 'object'
-      ? Object.entries(this.archive)
-      : [])
-      .map(([tracking, entry]) => {
-        if (!entry) return null;
-        return {
-          tracking,
-          data: {
-            ...this._firestoreSafeDeep(entry),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          },
-        };
-      })
-      .filter(Boolean);
-
-    this.forceResyncProgress = {
-      parcelsDone: 0, parcelsTotal: parcelsRecords.length,
-      archiveDone: 0, archiveTotal: archiveRecords.length,
-      parcelsFailed: 0, archiveFailed: 0,
-    };
-
-    // كتابة مجموعة سجلات على دفعات صغيرة (100) تُرفع تدريجياً؛
-    // ولو فشلت الدفعة كاملة نعيد المحاولة كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي
-    const writeRecordsProgressive = async (collection, records, updateProgressKey) => {
-      const batchSize = 100;
-      for (let i = 0; i < records.length; i += batchSize) {
-        const chunk = records.slice(i, i + batchSize);
-        const commitChunk = (items) => {
-          const batch = window.db.batch();
-          items.forEach(r => {
-            const ref = window.db.collection('users').doc(uid).collection(collection).doc(r.tracking);
-            batch.set(ref, r.data, { merge: true });
-          });
-          return batch.commit();
-        };
-
-        try {
-          await commitChunk(chunk);
-        } catch (batchErr) {
-          // الدفعة رُفضت كاملة (سجل فاسد/حجم كبير) — نرفع كل سجل منفرداً ونتجاوز المعطوب
-          let failed = 0;
-          for (const r of chunk) {
-            try {
-              await commitChunk([r]);
-            } catch (itemErr) {
-              failed++;
-              console.error(`فشل رفع ${collection}/${r.tracking}:`, itemErr);
-            }
-          }
-          this.forceResyncProgress = {
-            ...this.forceResyncProgress,
-            [updateProgressKey + 'Failed']: (this.forceResyncProgress[updateProgressKey + 'Failed'] || 0) + failed,
-          };
-        }
-        // نُحدّث تقدّم العدد المعالَج فعلياً
-        this.forceResyncProgress = {
-          ...this.forceResyncProgress,
-          [updateProgressKey]: Math.min(i + batchSize, records.length),
-        };
-      }
-    };
+    this.forceResyncProgress = null;
 
     try {
+      const uid = firestoreSync.getUid();
+      if (!uid || !window.db) {
+        this.forceResyncError = 'تعذّر الاتصال بالسحابة';
+        this.forceResyncInProgress = false;
+        return;
+      }
+
+      // تقدّم أولي فوري من الأعداد الخام حتى تظهر الواجهة شيئاً بدون تعليق
+      const rawParcels = Array.isArray(this.parcels) ? this.parcels : [];
+      const rawArchive = this.archive && typeof this.archive === 'object'
+        ? Object.entries(this.archive)
+        : [];
+      this.forceResyncProgress = {
+        parcelsDone: 0, parcelsTotal: rawParcels.length,
+        archiveDone: 0, archiveTotal: rawArchive.length,
+        parcelsFailed: 0, archiveFailed: 0,
+      };
+      await Promise.resolve(); // يفسح المجال للواجهة لعرض الحالة الجديدة
+
+      // قراءة البيانات المحلية وتقسيمها إلى سجلات فردية (طرد/سجل أرشيف لكل tracking)
+      const parcelsRecords = rawParcels
+        .map(p => {
+          if (!p || typeof p !== 'object') return null;
+          const tracking = (p.tracking || p.id || '').trim();
+          if (!tracking) return null;
+          return {
+            tracking,
+            data: {
+              ...this._firestoreSafeDeep(p),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              deleted: false,
+            },
+          };
+        })
+        .filter(Boolean);
+
+      const archiveRecords = rawArchive
+        .map(([tracking, entry]) => {
+          if (!entry || typeof entry !== 'object') return null;
+          if (!tracking || typeof tracking !== 'string') return null;
+          return {
+            tracking,
+            data: {
+              ...this._firestoreSafeDeep(entry),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+          };
+        })
+        .filter(Boolean);
+
+      // كتابة مجموعة سجلات على دفعات صغيرة (100) تُرفع تدريجياً؛
+      // ولو فشلت الدفعة كاملة نعيد المحاولة كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي
+      const writeRecordsProgressive = async (collection, records, updateProgressKey) => {
+        const batchSize = 100;
+        for (let i = 0; i < records.length; i += batchSize) {
+          const chunk = records.slice(i, i + batchSize);
+          const commitChunk = (items) => {
+            const batch = window.db.batch();
+            items.forEach(r => {
+              const ref = window.db.collection('users').doc(uid).collection(collection).doc(r.tracking);
+              batch.set(ref, r.data, { merge: true });
+            });
+            return batch.commit();
+          };
+
+          try {
+            await commitChunk(chunk);
+          } catch (batchErr) {
+            // الدفعة رُفضت كاملة (سجل فاسد/حجم كبير) — نرفع كل سجل منفرداً ونتجاوز المعطوب
+            let failed = 0;
+            for (const r of chunk) {
+              try {
+                await commitChunk([r]);
+              } catch (itemErr) {
+                failed++;
+                console.error(`فشل رفع ${collection}/${r.tracking}:`, itemErr);
+              }
+            }
+            this.forceResyncProgress = {
+              ...this.forceResyncProgress,
+              [updateProgressKey + 'Failed']: (this.forceResyncProgress[updateProgressKey + 'Failed'] || 0) + failed,
+            };
+          }
+          // نُحدّث تقدّم العدد المعالَج فعلياً
+          this.forceResyncProgress = {
+            ...this.forceResyncProgress,
+            [updateProgressKey]: Math.min(i + batchSize, records.length),
+          };
+        }
+      };
+
       await writeRecordsProgressive('parcels_v2', parcelsRecords, 'parcels');
       await writeRecordsProgressive('archive_v2', archiveRecords, 'archive');
 
