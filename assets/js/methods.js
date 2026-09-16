@@ -314,6 +314,97 @@ const appMethods = {
     }
   },
 
+  // ========== Force Resync (تحديث آلية المزامنة) ==========
+  // نافذة إضافية تظهر مرة واحدة لكل جهاز بعد هذا التحديث،
+  // وترفع البيانات المحلية كاملة إلى V2 بموافقة صريحة من المستخدم
+  // (مستقلة تماماً عن migrateToV2Structure/_doLoadFromCloud - لا تغيّر سلوكهما)
+  checkForceResyncNeeded() {
+    const FLAG = 'swipex_force_resync_v1_done';
+    if (localStorage.getItem(FLAG) === 'true') return;
+    if (!firestoreSync.isAvailable()) return;
+
+    const hasLocalData =
+      (Array.isArray(this.parcels) && this.parcels.length > 0) ||
+      (this.archive && Object.keys(this.archive).length > 0);
+
+    if (!hasLocalData) {
+      // لا يوجد شيء محلي ليُرفع (جهاز جديد فعلاً) — لا داعي لإزعاج المستخدم
+      localStorage.setItem(FLAG, 'true');
+      return;
+    }
+
+    this.showForceResyncModal = true;
+  },
+
+  async confirmForceResync() {
+    if (this.forceResyncInProgress) return;
+    this.forceResyncInProgress = true;
+    this.forceResyncError = null;
+
+    const uid = firestoreSync.getUid();
+    if (!uid || !window.db) {
+      this.forceResyncError = 'تعذّر الاتصال بالسحابة';
+      this.forceResyncInProgress = false;
+      return;
+    }
+
+    try {
+      const parcelsList = Array.isArray(this.parcels) ? this.parcels : [];
+      const archiveEntries = this.archive && typeof this.archive === 'object'
+        ? Object.entries(this.archive) : [];
+
+      this.forceResyncProgress = {
+        parcelsDone: 0, parcelsTotal: parcelsList.length,
+        archiveDone: 0, archiveTotal: archiveEntries.length,
+      };
+
+      // رفع الطرود على دفعات من 450 (حد Firestore batch)
+      for (let i = 0; i < parcelsList.length; i += 450) {
+        const batch = window.db.batch();
+        const chunk = parcelsList.slice(i, i + 450);
+        chunk.forEach(p => {
+          const tracking = (p.tracking || p.id || '').trim();
+          if (!tracking) return;
+          const ref = window.db.collection('users').doc(uid).collection('parcels_v2').doc(tracking);
+          batch.set(ref, { ...p, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), deleted: false }, { merge: true });
+        });
+        await batch.commit();
+        this.forceResyncProgress = { ...this.forceResyncProgress, parcelsDone: Math.min(i + 450, parcelsList.length) };
+      }
+
+      // رفع الأرشيف على دفعات من 450
+      for (let i = 0; i < archiveEntries.length; i += 450) {
+        const batch = window.db.batch();
+        const chunk = archiveEntries.slice(i, i + 450);
+        chunk.forEach(([tracking, entry]) => {
+          const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
+          batch.set(ref, { ...entry, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        });
+        await batch.commit();
+        this.forceResyncProgress = { ...this.forceResyncProgress, archiveDone: Math.min(i + 450, archiveEntries.length) };
+      }
+
+      localStorage.setItem('swipex_force_resync_v1_done', 'true');
+      localStorage.setItem('swipex_v2_migrated', 'true'); // توحيد الحالة مع الهجرة القديمة
+      await firestoreSync.updateSyncMeta();
+
+      this.forceResyncInProgress = false;
+      this.showForceResyncModal = false;
+      this.forceResyncProgress = null;
+      this.showToast('تم رفع بياناتك بنجاح إلى السحابة', 'success');
+    } catch (e) {
+      console.error('confirmForceResync:', e);
+      this.forceResyncError = 'حدث خطأ أثناء الرفع — يمكنك إعادة المحاولة';
+      this.forceResyncInProgress = false;
+      // لا نضبط العلم عند الفشل — ستُعرض النافذة مجدداً لإعادة المحاولة لاحقاً
+    }
+  },
+
+  postponeForceResync() {
+    // إغلاق مؤقت بدون ضبط العلم — ستظهر النافذة مجدداً عند فتح التطبيق التالي
+    this.showForceResyncModal = false;
+  },
+
   async migrateToV2Structure({ skipReload = false } = {}) {
     if (localStorage.getItem('swipex_v2_migrated') === 'true') return;
     if (!firestoreSync.isAvailable()) return;
@@ -833,6 +924,9 @@ const appMethods = {
     // تحميل من السحابة (الأساسي) - سيستبدل البيانات المحلية
     console.log("⏳ تحميل البيانات من السحابة...");
     await this.loadFromCloud();
+
+    // بعد اكتمال دورة التحميل/الدمج العادية: فحص ما إذا كانت نافذة "تحديث آلية المزامنة" ضرورية
+    this.checkForceResyncNeeded();
 
     this.showClearDataConfirm = false;
     this.$nextTick(() => {

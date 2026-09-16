@@ -2559,6 +2559,108 @@
             </div>
         </div>
 
+        <!-- Force Resync Modal (تحديث آلية المزامنة) -->
+        <div v-if="showForceResyncModal"
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            @click="!forceResyncInProgress && (showForceResyncModal = false)">
+            <div class="modal-glass rounded-2xl w-full max-w-md p-5" @click.stop>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-cloud-upload-alt text-blue-500"></i>
+                        تحديث آلية المزامنة
+                    </h3>
+                    <button @click="postponeForceResync"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- الشرح قبل بدء الرفع -->
+                <div v-if="!forceResyncInProgress && !forceResyncError" class="mb-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                        حدّث التطبيق طريقة حفظ البيانات في السحابة. بالموافقة، سيتم رفع طرود وأرشيف هذا
+                        الجهاز لضمان ظهورها على كل أجهزتك.
+                    </p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                        العملية لا تحذف أو تعدّل أي بيانات محلية، ويمكن إعادة المحاولة في أي وقت لاحقاً.
+                    </p>
+                </div>
+
+                <!-- تقدم الرفع أثناء التشغيل -->
+                <div v-if="forceResyncInProgress" class="mb-5">
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex items-center justify-between text-sm mb-1">
+                                <span class="text-gray-600 dark:text-gray-300">الطرود</span>
+                                <span class="font-mono text-gray-800 dark:text-gray-100">
+                                    <template v-if="forceResyncProgress">
+                                        {{ forceResyncProgress.parcelsDone }}/{{ forceResyncProgress.parcelsTotal }}
+                                        <i v-if="forceResyncProgress.parcelsDone >= forceResyncProgress.parcelsTotal" class="fas fa-check text-green-500"></i>
+                                    </template>
+                                </span>
+                            </div>
+                            <div v-if="forceResyncProgress && forceResyncProgress.parcelsTotal > 0"
+                                class="w-full h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                <div class="h-full bg-blue-500 transition-all duration-300"
+                                    :style="{ width: Math.round((forceResyncProgress.parcelsDone / forceResyncProgress.parcelsTotal) * 100) + '%' }"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between text-sm mb-1">
+                                <span class="text-gray-600 dark:text-gray-300">الأرشيف</span>
+                                <span class="font-mono text-gray-800 dark:text-gray-100">
+                                    <template v-if="forceResyncProgress">
+                                        {{ forceResyncProgress.archiveDone }}/{{ forceResyncProgress.archiveTotal }}
+                                        <i v-if="forceResyncProgress.archiveDone >= forceResyncProgress.archiveTotal" class="fas fa-check text-green-500"></i>
+                                    </template>
+                                </span>
+                            </div>
+                            <div v-if="forceResyncProgress && forceResyncProgress.archiveTotal > 0"
+                                class="w-full h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                <div class="h-full bg-amber-500 transition-all duration-300"
+                                    :style="{ width: Math.round((forceResyncProgress.archiveDone / forceResyncProgress.archiveTotal) * 100) + '%' }"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- رسالة الخطأ -->
+                <div v-if="forceResyncError" class="mb-5">
+                    <div class="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
+                        <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-red-700 dark:text-red-300 mb-1">
+                                حدث خطأ أثناء الرفع
+                            </div>
+                            <div class="text-xs text-red-600 dark:text-red-400 leading-relaxed">
+                                {{ forceResyncError }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الأزرار -->
+                <div v-if="forceResyncInProgress" class="flex gap-2">
+                    <div class="w-full text-center text-xs text-gray-400 dark:text-gray-500 py-3">
+                        جاري رفع البيانات... برجاء عدم إغلاق النافذة
+                    </div>
+                </div>
+                <div v-else class="flex gap-2">
+                    <button @click="confirmForceResync"
+                        :disabled="forceResyncInProgress"
+                        class="flex-1 px-4 py-3 rounded-xl bg-blue-500 text-white font-bold text-sm hover:bg-blue-600 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-cloud-upload-alt text-xs"></i>
+                        <template v-if="forceResyncError">إعادة المحاولة</template>
+                        <template v-else>رفع البيانات الآن</template>
+                    </button>
+                    <button @click="postponeForceResync"
+                        class="flex-1 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2">
+                        لاحقاً
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Location Picker Modal -->
         <div v-if="showLocationPickerModal && locationPickerParcel"
             class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
