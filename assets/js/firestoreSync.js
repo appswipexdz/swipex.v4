@@ -440,6 +440,116 @@ const firestoreSync = {
             .onSnapshot(snap => {
                 snap.docChanges().forEach(change => onChange(change.doc.id, change.doc.data(), change.type));
             }, e => console.error('listenToArchiveV2:', e));
+    },
+
+    // ============ V2 Paginated Load (قراءة تدريجية) ============
+
+    // قراءة صفحة واحدة (مرتبة حسب documentId) من مجموعة V2
+    async _loadV2Page(collection, pageSize = 250, lastDocSnapshot = null) {
+        const uid = this.getUid();
+        if (!uid || !window.db) return { items: [], lastDoc: null, hasMore: false };
+        try {
+            let query = window.db.collection('users').doc(uid).collection(collection)
+                .orderBy(firebase.firestore.FieldPath.documentId())
+                .limit(pageSize);
+            if (lastDocSnapshot) query = query.startAfter(lastDocSnapshot);
+            const snap = await query.get();
+            const items = snap.docs.map(d => ({ tracking: d.id, ...d.data() }));
+            const lastDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : null;
+            return { items, lastDoc, hasMore: lastDoc !== null };
+        } catch (e) {
+            console.error(`_loadV2Page(${collection}):`, e);
+            return { items: [], lastDoc: null, hasMore: false };
+        }
+    },
+
+    async loadParcelsV2Page(pageSize = 250, lastDocSnapshot = null) {
+        return this._loadV2Page('parcels_v2', pageSize, lastDocSnapshot);
+    },
+
+    async loadArchiveV2Page(pageSize = 250, lastDocSnapshot = null) {
+        return this._loadV2Page('archive_v2', pageSize, lastDocSnapshot);
+    },
+
+    // قراءة كل السجلات صفحة تلو صفحة مع تحديث تدريجي عبر onPage(items)
+    async _loadAllV2Pages(collection, onPage) {
+        let lastDoc = null;
+        let total = 0;
+        try {
+            for (;;) {
+                const { items, lastDoc: ld, hasMore } = await this._loadV2Page(collection, 250, lastDoc);
+                if (items.length) {
+                    total += items.length;
+                    if (typeof onPage === 'function') onPage(items);
+                }
+                if (!hasMore || !ld) break;
+                lastDoc = ld;
+            }
+            return total;
+        } catch (e) {
+            console.error(`_loadAllV2Pages(${collection}):`, e);
+            return total;
+        }
+    },
+
+    async loadAllParcelsV2({ onPage } = {}) {
+        return this._loadAllV2Pages('parcels_v2', onPage);
+    },
+
+    async loadAllArchiveV2({ onPage } = {}) {
+        return this._loadAllV2Pages('archive_v2', onPage);
+    },
+
+    // ============ Device Sync Meta (_syncMeta/{deviceId}) ============
+
+    // معرّف ثابت للجهاز (uuid) محفوظ في localStorage['swipex_device_id']
+    getDeviceId() {
+        try {
+            let id = localStorage.getItem('swipex_device_id');
+            if (!id) {
+                id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+                localStorage.setItem('swipex_device_id', id);
+            }
+            return id;
+        } catch (e) {
+            console.error('firestoreSync.getDeviceId:', e);
+            return 'dev_' + Date.now();
+        }
+    },
+
+    // قراءة users/{uid}/_syncMeta/{deviceId} → { lastSyncedAt: Timestamp } أو null
+    async getSyncMeta() {
+        const uid = this.getUid();
+        if (!uid || !window.db) return null;
+        try {
+            const deviceId = this.getDeviceId();
+            const ref = window.db.collection('users').doc(uid).collection('_syncMeta').doc(deviceId);
+            const snap = await ref.get();
+            if (!snap.exists) return null;
+            return snap.data();
+        } catch (e) {
+            console.error('firestoreSync.getSyncMeta:', e);
+            return null;
+        }
+    },
+
+    // كتابة/تحديث users/{uid}/_syncMeta/{deviceId} بـ { lastSyncedAt: serverTimestamp }
+    async updateSyncMeta() {
+        const uid = this.getUid();
+        if (!uid || !window.db) return false;
+        try {
+            const deviceId = this.getDeviceId();
+            const ref = window.db.collection('users').doc(uid).collection('_syncMeta').doc(deviceId);
+            await ref.set({
+                lastSyncedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            return true;
+        } catch (e) {
+            console.error('firestoreSync.updateSyncMeta:', e);
+            return false;
+        }
     }
 };
 

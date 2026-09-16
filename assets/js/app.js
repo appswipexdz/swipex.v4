@@ -446,24 +446,11 @@ createApp({
                             }
                             
                             let updated = false;
-                            let shouldRefresh = false;
                             
                             snapshot.docChanges().forEach((change) => {
                                 if (change.type === 'modified' || change.type === 'added') {
                                     const doc = change.doc;
                                     const data = doc.data();
-                                    
-                                    // تحديث الطرود
-                                    if (doc.id === 'parcels') {
-                                        const parcels = data.data ? JSON.parse(data.data) : [];
-                                        if (JSON.stringify(parcels) !== JSON.stringify(this.parcels)) {
-                                            console.log('🔄 تحديث الطرود من Firestore:', parcels.length, 'طرد');
-                                            this.parcels = parcels;
-                                            this.detectDuplicates();
-                                            updated = true;
-                                            shouldRefresh = true;
-                                        }
-                                    }
                                     
                                     // تحديث الإعدادات
                                     if (doc.id === 'settings') {
@@ -476,17 +463,6 @@ createApp({
                                                 this.applyTheme();
                                                 updated = true;
                                             }
-                                        }
-                                    }
-                                    
-                                    // تحديث الأرشيف (دمج بدلاً من استبدال) - فقط إذا كانت المزامنة مفعلة
-                                    if (doc.id === 'archive' && this.settings?.archiveSyncEnabled !== false) {
-                                        const remoteArchive = data.data ? JSON.parse(data.data) : null;
-                                        if (remoteArchive && JSON.stringify(remoteArchive) !== JSON.stringify(this.archive)) {
-                                            console.log('🔄 دمج الأرشيف من Firestore مع المحلي');
-                                            const merged = this.mergeArchiveEntries(this.archive, remoteArchive);
-                                            this.archive = this.normalizeArchiveMap(merged);
-                                            updated = true;
                                         }
                                     }
                                     
@@ -505,18 +481,6 @@ createApp({
                             if (updated) {
                                 this.saveFilters();
                                 this.syncLocalStorage();
-                                
-                                // إعادة عرض البيانات للمستخدم فوراً
-                                if (shouldRefresh) {
-                                    this.$nextTick(() => {
-                                        // العودة للصفحة الرئيسية إذا كان المستخدم في صفحة أخرى
-                                        if (this.currentView !== 'main') {
-                                            // تحديث بدون تغيير الصفحة
-                                        }
-                                        console.log('✓ تم تحديث واجهة التطبيق');
-                                    });
-                                }
-                                
                                 console.log('✓ تمت جميع التحديثات من Firestore');
                             }
                         },
@@ -538,7 +502,7 @@ createApp({
                         }
                     );
                 
-                console.log('✓ تم تفعيل Firestore listener للمزامنة الفورية (parcels, settings, archive, tasks)');
+                console.log('✓ تم تفعيل Firestore listener للمزامنة الفورية (settings, tasks)');
             } catch (e) {
                 console.error('❌ فشل تفعيل Firestore listener:', e);
             }

@@ -295,7 +295,26 @@ const appMethods = {
     this.syncLocalStorage();
   },
 
-  async migrateToV2Structure() {
+  // معالج التغييرات اللحظية لعنصر أرشيف فردي (V2)
+  _handleIncomingArchiveChange(id, data, type) {
+    if (!this.archive) this.archive = {};
+    if (type === 'removed') {
+      if (this.archive[id]) { delete this.archive[id]; }
+      return;
+    }
+    if (data && data.deleted) {
+      if (this.archive[id]) { delete this.archive[id]; }
+      return;
+    }
+    const localEntry = this.archive[id];
+    const incomingTs = data && data.updatedAt ? (typeof data.updatedAt.toMillis === 'function' ? data.updatedAt.toMillis() : new Date(data.updatedAt).getTime()) : 0;
+    const localTs = localEntry && localEntry.updatedAt ? new Date(localEntry.updatedAt).getTime() : 0;
+    if (incomingTs > localTs) {
+      this.archive[id] = { ...data, updatedAt: data.updatedAt && data.updatedAt.toMillis ? new Date(data.updatedAt.toMillis()).toISOString() : data.updatedAt };
+    }
+  },
+
+  async migrateToV2Structure({ skipReload = false } = {}) {
     if (localStorage.getItem('swipex_v2_migrated') === 'true') return;
     if (!firestoreSync.isAvailable()) return;
     try {
@@ -310,7 +329,10 @@ const appMethods = {
       }
 
       // ضمان تحميل البيانات المدمجة (محلي + سحابي) قبل القراءة
-      await this.loadFromCloud();
+      // (يُتخطى عند الاستدعاء من داخل _doLoadFromCloud لمنع التكرار/التكرار الذاتي)
+      if (!skipReload) {
+        await this.loadFromCloud();
+      }
 
       // المصدر: this.parcels / this.archive الحاليتان في الذاكرة
       // (وليس قراءة سحابية جديدة) — لأنهما تحويان أي بيانات محلية
@@ -345,6 +367,10 @@ const appMethods = {
 
       localStorage.setItem('swipex_v2_migrated', 'true');
       console.log('✓ اكتملت هجرة البيانات إلى البنية V2 (من الحالة المدموجة محلي+سحابي)');
+
+      // تسجيل أن هذا الجهاز أصبح متزامنًا بالكامل اعتبارًا من الآن
+      // حتى ينتقل في المرة القادمة مباشرة إلى سحب الفروقات بدل تحميل كامل
+      await firestoreSync.updateSyncMeta();
     } catch (e) {
       console.error('❌ فشلت هجرة V2:', e);
     }
@@ -721,22 +747,24 @@ const appMethods = {
     if (firestoreSync.isAvailable()) {
       this.syncStatus = "syncing";
 
-      // دفع الطرود المعدّلة عبر البنية V2
+      // دفع الطرود المعدّلة عبر البنية V2 (سجل منفصل لكل طرد)
       if (this._dirtyParcels && this._dirtyParcels.size) {
         firestoreSync.pushDirtyParcels(this._dirtyParcels, t => this.parcels.find(p => (p.tracking || '').trim() === t) || null);
+      }
+
+      // دفع عناصر الأرشيف المعدّلة عبر البنية V2 (سجل منفصل لكل عنصر)
+      if (this.settings.archiveSyncEnabled && this._dirtyArchive && this._dirtyArchive.size) {
+        firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
       }
 
       const settingsToSave = JSON.parse(
         JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
       );
+      // settings و tasks تبقى كتلة واحدة صغيرة، ولا نكتب parcels/archive ككتلة بعد الآن
       const savePayload = {
-        parcels: this.parcels,
         settings: settingsToSave,
         tasks: this.tasks,
       };
-      if (this.settings.archiveSyncEnabled) {
-        savePayload.archive = this.archive;
-      }
       firestoreSync
         .saveAll(savePayload)
         .then((ok) => {
@@ -960,15 +988,118 @@ const appMethods = {
           setTimeout(() => reject(new Error("CLOUD_TIMEOUT")), 5000),
         );
 
-        // تحميل البيانات و metadata معًا
-        const [cloud, cloudMetadata] = await Promise.race([
-          Promise.all([firestoreSync.loadAll(), firestoreSync.loadCloudMetadata()]),
-          timeoutPromise,
-        ]);
+        // أ. قراءة syncMeta لهذا الجهاز لتحديد نوع التحميل
+        const syncMeta = await firestoreSync.getSyncMeta();
+        const isMigrated = localStorage.getItem('swipex_v2_migrated') === 'true';
+        const isFirstLoad = !syncMeta || !isMigrated;
 
-        loaded = this.applyCloudData(cloud, cloudMetadata);
+        if (isFirstLoad) {
+          // ب. أول تحميل على هذا الجهاز: هجرة → تحميل تدريجي كامل لـ V2
+          //    (قراءة الإعدادات/المهام الصغيرة + البيانات القديمة المجمّدة مرة واحدة للتغذية على الهجرة)
+          const [cloud, cloudMetadata] = await Promise.race([
+            Promise.all([firestoreSync.loadAll(), firestoreSync.loadCloudMetadata()]),
+            timeoutPromise,
+          ]);
+
+          loaded = this.applyCloudData(cloud, cloudMetadata);
+
+          // الهجرة: نسخ state الحالية (دمج محلي+سحابي) إلى V2 (تتخطّى إعادة التحميل داخلياً لتجنب التكرار)
+          await this.migrateToV2Structure({ skipReload: true });
+
+          // تحميل تدريجي للطرود من V2 مع تحديث فوري للواجهة بعد كل صفحة
+          this.initialSyncProgress = { loaded: 0 };
+
+          const onParcelsPage = (items) => {
+            items.forEach((item) => {
+              const tracking = (item.tracking || '').trim();
+              if (!tracking) return;
+              const idx = this.parcels.findIndex(p => (p.tracking || p.id) === tracking);
+              const local = idx >= 0 ? this.parcels[idx] : null;
+              const merged = this.mergeIncomingParcel(local, item);
+              if (merged === null) {
+                if (idx >= 0) this.parcels.splice(idx, 1);
+              } else if (idx >= 0) {
+                this.parcels.splice(idx, 1, merged);
+              } else {
+                this.parcels.push(merged);
+              }
+            });
+            this.initialSyncProgress = { loaded: this.parcels.length };
+          };
+
+          const onArchivePage = (items) => {
+            const incomingMap = {};
+            items.forEach((it) => {
+              const t = (it.tracking || '').trim();
+              if (t && !it.deleted) incomingMap[t] = it;
+            });
+            const normalized = this.normalizeArchiveMap(incomingMap);
+            this.archive = { ...this.archive, ...normalized };
+            this.initialSyncProgress = { loaded: Object.keys(this.archive).length };
+          };
+
+          await Promise.all([
+            firestoreSync.loadAllParcelsV2({ onPage: onParcelsPage }),
+            firestoreSync.loadAllArchiveV2({ onPage: onArchivePage }),
+          ]);
+
+          this.detectDuplicates();
+          this.syncLocalStorage();
+          this.applyTheme();
+          loaded = true;
+
+          // تسجيل اكتمال المزامنة الكاملة لهذا الجهاز
+          await firestoreSync.updateSyncMeta();
+        } else {
+          // ج. تحميل لاحق على جهاز مزامَن مسبقًا: سحب الفروقات فقط منذ آخر مزامنة لهذا الجهاز
+          const lastSyncedAtMillis = syncMeta.lastSyncedAt && typeof syncMeta.lastSyncedAt.toMillis === 'function'
+            ? syncMeta.lastSyncedAt.toMillis()
+            : (syncMeta.lastSyncedAt ? new Date(syncMeta.lastSyncedAt).getTime() : 0);
+
+          // الإعدادات والمهام تبقى كتلة واحدة صغيرة تُقرأ دفعة واحدة (كما كانت)
+          const [cloudMetadata, settings, tasks] = await Promise.race([
+            Promise.all([
+              firestoreSync.loadCloudMetadata(),
+              firestoreSync.loadSettings(),
+              firestoreSync.loadTasks(),
+            ]),
+            timeoutPromise,
+          ]);
+
+          if (settings) this.applyCloudData({ settings }, cloudMetadata);
+          if (tasks && tasks.length) this.applyCloudData({ tasks }, cloudMetadata);
+
+          // فروقات الطرود منذ آخر مزامنة (سريعة حتى مع آلاف السجلات)
+          const changedParcels = await firestoreSync.pullChangedParcels(lastSyncedAtMillis);
+          changedParcels.forEach((item) => this.applyIncomingParcelChange(item.tracking, item, 'modified'));
+
+          // فروقات الأرشيف منذ آخر مزامنة (فقط إن كانت مزامنة الأرشيف مفعّلة)
+          if (this.settings.archiveSyncEnabled) {
+            const changedArchive = await firestoreSync.pullChangedArchive(lastSyncedAtMillis);
+            const incomingMap = {};
+            changedArchive.forEach((it) => {
+              const t = (it.tracking || '').trim();
+              if (t && !it.deleted) incomingMap[t] = it;
+            });
+            if (Object.keys(incomingMap).length) {
+              const merged = this.mergeArchiveEntries(this.archive, incomingMap);
+              this.archive = this.normalizeArchiveMap(merged);
+            }
+          }
+
+          this.detectDuplicates();
+          this.syncLocalStorage();
+          loaded = true;
+
+          // تحديث syncMeta بعد نجاح السحب
+          await firestoreSync.updateSyncMeta();
+        }
+
+        this.initialSyncProgress = null;
         this.syncStatus = loaded ? "synced" : "idle";
+        firestoreSync._initialLoadDone = true;
       } catch (e) {
+        this.initialSyncProgress = null;
         if (e.message === "CLOUD_TIMEOUT") {
           console.log(
             "⏳ تجاوز مهلة التحميل - استخدام البيانات المحلية",
@@ -1289,10 +1420,6 @@ const appMethods = {
       if (this._dirtyArchive) this._dirtyArchive.add(tracking);
       if (this._dirtyParcels) this._dirtyParcels.add(tracking);
     });
-
-    if (this.settings.archiveSyncEnabled && firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
-      firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
-    }
   },
 
   manualArchive() {
@@ -1311,6 +1438,18 @@ const appMethods = {
 
   toggleArchiveSync(enabled) {
     this.settings.archiveSyncEnabled = enabled;
+
+    // تفعيل/تعطيل مستمع الأرشيف V2 حسب الإعداد
+    if (this._v2ArchiveUnsub) {
+      this._v2ArchiveUnsub();
+      this._v2ArchiveUnsub = null;
+    }
+    if (enabled && firestoreSync.isAvailable() && firebase.auth().currentUser) {
+      this._v2ArchiveUnsub = firestoreSync.listenToArchiveV2((id, data, type) => {
+        this._handleIncomingArchiveChange(id, data, type);
+      });
+    }
+
     this.showToast(enabled ? 'تم تفعيل مزامنة الأرشيف مع السحابة' : 'تم إيقاف مزامنة الأرشيف مع السحابة', 'info');
     this.saveData();
   },
@@ -1449,9 +1588,6 @@ const appMethods = {
         });
 
         this.archiveVisibleCount = 30;
-        if (firestoreSync.isAvailable() && this._dirtyArchive && this._dirtyArchive.size) {
-          firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
-        }
         this.saveData();
         this.showToast(`تم استيراد الأرشيف: ${added} جديد، ${updated} محدث`, "success");
       } catch (error) {
@@ -3665,24 +3801,12 @@ const appMethods = {
               console.log("✓ تم تفعيل مستمع V2 للطرود الفردية");
 
               if (this._v2ArchiveUnsub) return;
-              this._v2ArchiveUnsub = firestoreSync.listenToArchiveV2((id, data, type) => {
-                if (!this.archive) this.archive = {};
-                if (type === 'removed') {
-                  if (this.archive[id]) { delete this.archive[id]; }
-                  return;
-                }
-                if (data && data.deleted) {
-                  if (this.archive[id]) { delete this.archive[id]; }
-                  return;
-                }
-                const localEntry = this.archive[id];
-                const incomingTs = data && data.updatedAt ? (typeof data.updatedAt.toMillis === 'function' ? data.updatedAt.toMillis() : new Date(data.updatedAt).getTime()) : 0;
-                const localTs = localEntry && localEntry.updatedAt ? new Date(localEntry.updatedAt).getTime() : 0;
-                if (incomingTs > localTs) {
-                  this.archive[id] = { ...data, updatedAt: data.updatedAt && data.updatedAt.toMillis ? new Date(data.updatedAt.toMillis()).toISOString() : data.updatedAt };
-                }
-              });
-              console.log("✓ تم تفعيل مستمع V2 للأرشيف الفردي");
+              if (this.settings.archiveSyncEnabled !== false) {
+                this._v2ArchiveUnsub = firestoreSync.listenToArchiveV2((id, data, type) => {
+                  this._handleIncomingArchiveChange(id, data, type);
+                });
+                console.log("✓ تم تفعيل مستمع V2 للأرشيف الفردي");
+              }
             });
           }
         } else {
@@ -3784,37 +3908,61 @@ const appMethods = {
 
     try {
       if (firestoreSync.isAvailable()) {
-        // تحميل أولاً ثم حفظ البيانات المدمجة
-        console.log("📥 تحميل التحديثات من Firestore...");
+        // سحب الفروقات أولاً من البنية V2 (منذ آخر مزامنة لهذا الجهاز)
+        console.log("📥 سحب الفروقات من Firestore...");
 
-        const cloud = await Promise.race([
-          firestoreSync.loadAll(),
+        const syncMeta = await firestoreSync.getSyncMeta();
+        const sinceMillis = syncMeta && syncMeta.lastSyncedAt
+          ? (typeof syncMeta.lastSyncedAt.toMillis === 'function'
+              ? syncMeta.lastSyncedAt.toMillis()
+              : new Date(syncMeta.lastSyncedAt).getTime())
+          : 0;
+
+        const [changedParcels, changedArchive] = await Promise.race([
+          Promise.all([
+            firestoreSync.pullChangedParcels(sinceMillis),
+            firestoreSync.pullChangedArchive(sinceMillis),
+          ]),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error("SYNC_LOAD_TIMEOUT")), 8000)
           )
         ]).catch(e => {
           if (e.message === "SYNC_LOAD_TIMEOUT") {
-            console.log("⏳ تجاوزت مهلة التحميل - متابعة بالبيانات المحلية");
-            return null;
+            console.log("⏳ تجاوزت مهلة السحب - متابعة بالبيانات المحلية");
+            return [[], []];
           }
           throw e;
         });
 
-        if (cloud) {
-          this.applyCloudData(cloud);
+        changedParcels.forEach((item) => this.applyIncomingParcelChange(item.tracking, item, 'modified'));
+
+        if (this.settings.archiveSyncEnabled) {
+          const incomingMap = {};
+          changedArchive.forEach((it) => {
+            const t = (it.tracking || '').trim();
+            if (t && !it.deleted) incomingMap[t] = it;
+          });
+          if (Object.keys(incomingMap).length) {
+            const merged = this.mergeArchiveEntries(this.archive, incomingMap);
+            this.archive = this.normalizeArchiveMap(merged);
+          }
         }
 
-        // حفظ البيانات المدمجة
+        // دفع التعديلات المحلية تزايديًا (سجل منفصل لكل طرد/عنصر)
+        if (this._dirtyParcels && this._dirtyParcels.size) {
+          firestoreSync.pushDirtyParcels(this._dirtyParcels, t => this.parcels.find(p => (p.tracking || '').trim() === t) || null);
+        }
+        if (this.settings.archiveSyncEnabled && this._dirtyArchive && this._dirtyArchive.size) {
+          firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
+        }
+
+        // حفظ الإعدادات والمهام فقط (كتلة واحدة صغيرة لكل منهما - لا كتلة طرود/أرشيف)
         console.log("💾 حفظ البيانات المدمجة...");
 
         const syncPayload = {
-          parcels: this.parcels,
           settings: { ...this.settings, _sessionDate: this.sessionDate },
           tasks: this.tasks,
         };
-        if (this.settings.archiveSyncEnabled) {
-          syncPayload.archive = this.archive;
-        }
         const saved = await Promise.race([
           firestoreSync.saveAll(syncPayload),
           new Promise((_, reject) =>
@@ -3827,6 +3975,9 @@ const appMethods = {
           }
           throw e;
         });
+
+        // تحديث syncMeta بعد نجاح المزامنة
+        await firestoreSync.updateSyncMeta();
 
         this.syncStatus = saved ? "synced" : "error";
         this.syncLocalStorage();

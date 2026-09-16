@@ -191,6 +191,16 @@
             </p>
         </div>
 
+        <div v-if="initialSyncProgress" v-cloak class="loading-overlay">
+            <div class="spinner"></div>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
+                جاري مزامنة البيانات من السحابة...
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                تم تحميل {{ initialSyncProgress.loaded }} سجل حتى الآن
+            </p>
+        </div>
+
         <!-- Drawer removed - replaced by bottom nav + top menu -->
 
         <input type="file" ref="fileInput" @change="handleFileUpload" class="hidden" accept=".xlsx, .xls, .csv" />
