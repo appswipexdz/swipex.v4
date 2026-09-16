@@ -2601,7 +2601,7 @@
                                 <span class="font-mono text-gray-800 dark:text-gray-100">
                                     <template v-if="forceResyncProgress">
                                         {{ forceResyncProgress.parcelsDone }}/{{ forceResyncProgress.parcelsTotal }}
-                                        <i v-if="forceResyncProgress.parcelsDone >= forceResyncProgress.parcelsTotal" class="fas fa-check text-green-500"></i>
+                                        <i v-if="forceResyncProgress.parcelsTotal > 0 && forceResyncProgress.parcelsDone >= forceResyncProgress.parcelsTotal" class="fas fa-check text-green-500"></i>
                                     </template>
                                 </span>
                             </div>
@@ -2617,7 +2617,7 @@
                                 <span class="font-mono text-gray-800 dark:text-gray-100">
                                     <template v-if="forceResyncProgress">
                                         {{ forceResyncProgress.archiveDone }}/{{ forceResyncProgress.archiveTotal }}
-                                        <i v-if="forceResyncProgress.archiveDone >= forceResyncProgress.archiveTotal" class="fas fa-check text-green-500"></i>
+                                        <i v-if="forceResyncProgress.archiveTotal > 0 && forceResyncProgress.archiveDone >= forceResyncProgress.archiveTotal" class="fas fa-check text-green-500"></i>
                                     </template>
                                 </span>
                             </div>

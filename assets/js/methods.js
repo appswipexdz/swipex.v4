@@ -410,16 +410,36 @@ const appMethods = {
       };
       if (parcelsCandidates.length + archiveCandidates.length === 0) {
         this.forceResyncStatus = 'لا توجد بيانات محلية لرفعها';
-      } else {
-        this.forceResyncStatus = `جاري رفع الطرود (0/${parcelsCandidates.length})...`;
       }
-      await Promise.resolve(); // يفسح المجال للواجهة لعرض الحالة الجديدة
 
-      // كتابة مجموعة سجلات على دفعات صغيرة (100): نعمق/نتعقم كل دفعة فوراً
+      // مهلة تُتيح للمتصفح رسم إطار فعلي — Promise.resolve وحدها لا تكفي
+      const uiTick = () => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
+      const bumpProgress = (progressKey, doneDelta, failedDelta) => {
+        const prev = this.forceResyncProgress || {};
+        this.forceResyncProgress = {
+          ...prev,
+          [progressKey + 'Done']: (prev[progressKey + 'Done'] || 0) + doneDelta,
+          [progressKey + 'Failed']: (prev[progressKey + 'Failed'] || 0) + failedDelta,
+        };
+      };
+
+      const processedCount = (progressKey) => {
+        const p = this.forceResyncProgress || {};
+        return (p[progressKey + 'Done'] || 0) + (p[progressKey + 'Failed'] || 0);
+      };
+
+      // كتابة مجموعة سجلات على دفعات صغيرة: نعقّم كل دفعة فوراً،
       // ولو فشلت الدفعة كاملة نعيد المحاولة كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي
-      const writeRecordsProgressive = async (collection, candidates, updateProgressKey) => {
-        const batchSize = 100;
-        for (let i = 0; i < candidates.length; i += batchSize) {
+      const writeRecordsProgressive = async (collection, candidates, progressKey, statusLabel) => {
+        const batchSize = 25;
+        const total = candidates.length;
+        if (total === 0) return;
+
+        this.forceResyncStatus = `${statusLabel} (0/${total})...`;
+        await uiTick();
+
+        for (let i = 0; i < total; i += batchSize) {
           const chunkCandidates = candidates.slice(i, i + batchSize);
           const chunk = chunkCandidates.map(c => {
             const safe = this._firestoreSafeDeep(c.raw);
@@ -427,6 +447,7 @@ const appMethods = {
             if (collection === 'parcels_v2') safe.deleted = false;
             return { tracking: c.tracking, data: safe };
           });
+
           const commitChunk = (items) => {
             const batch = window.db.batch();
             items.forEach(r => {
@@ -438,35 +459,30 @@ const appMethods = {
 
           try {
             await commitChunk(chunk);
+            bumpProgress(progressKey, chunk.length, 0);
           } catch (batchErr) {
             console.warn(`⚠ فشلت دفعة ${collection} — محاولة رفع كل سجل منفرداً:`, batchErr && batchErr.message);
-            // الدفعة رُفضت كاملة (سجل فاسد/حجم كبير) — نرفع كل سجل منفرداً ونتجاوز المعطوب
-            let failed = 0;
             for (const r of chunk) {
               try {
                 await commitChunk([r]);
+                bumpProgress(progressKey, 1, 0);
               } catch (itemErr) {
-                failed++;
+                bumpProgress(progressKey, 0, 1);
                 console.error(`فشل رفع ${collection}/${r.tracking}:`, itemErr);
               }
+              // المسار الفردي هو الأبطأ — نحدّث الواجهة لكل سجل
+              this.forceResyncStatus = `${statusLabel} (${processedCount(progressKey)}/${total})...`;
+              await uiTick();
             }
-            this.forceResyncProgress = {
-              ...this.forceResyncProgress,
-              [updateProgressKey + 'Failed']: (this.forceResyncProgress[updateProgressKey + 'Failed'] || 0) + failed,
-            };
           }
-          // نُحدّث تقدّم العدد المعالَج فعلياً
-          this.forceResyncProgress = {
-            ...this.forceResyncProgress,
-            [updateProgressKey]: Math.min(i + batchSize, candidates.length),
-          };
-          await Promise.resolve(); // إتاحة تحديث الواجهة بين الدفعات
+
+          this.forceResyncStatus = `${statusLabel} (${processedCount(progressKey)}/${total})...`;
+          await uiTick();
         }
       };
 
-      await writeRecordsProgressive('parcels_v2', parcelsCandidates, 'parcels');
-      this.forceResyncStatus = `جاري رفع الأرشيف (0/${archiveCandidates.length})...`;
-      await writeRecordsProgressive('archive_v2', archiveCandidates, 'archive');
+      await writeRecordsProgressive('parcels_v2', parcelsCandidates, 'parcels', 'جاري رفع الطرود');
+      await writeRecordsProgressive('archive_v2', archiveCandidates, 'archive', 'جاري رفع الأرشيف');
 
       const totalFailed = (this.forceResyncProgress.parcelsFailed || 0) + (this.forceResyncProgress.archiveFailed || 0);
 
@@ -480,6 +496,7 @@ const appMethods = {
       localStorage.setItem('swipex_v2_migrated', 'true'); // توحيد الحالة مع الهجرة القديمة
       await firestoreSync.updateSyncMeta();
 
+      await new Promise(resolve => setTimeout(resolve, 900)); // إتاحة رؤية الشريطين ممتلئين
       this.forceResyncInProgress = false;
       this.showForceResyncModal = false;
       this.forceResyncProgress = null;
