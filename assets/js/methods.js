@@ -95,6 +95,80 @@ const appMethods = {
     return date + 'T' + time;
   },
 
+  // مساعدة موحّدة لترقيم أي طرد كمُعدَّل محلياً:
+  // تضبط updatedAt + _localUpdatedAt وتضيف tracking إلى _dirtyParcels
+  // حتى يصل التعديل إلى Firestore عبر pushDirtyParcels دون انتظار حقل آخر.
+  markParcelDirty(parcel) {
+    if (!parcel) return null;
+    const tracking = (parcel.tracking || '').trim();
+    parcel.updatedAt = new Date().toISOString();
+    parcel._localUpdatedAt = Date.now();
+    if (tracking && this._dirtyParcels) this._dirtyParcels.add(tracking);
+    return tracking || null;
+  },
+
+  // كتابة localStorage مؤجّلة لتفادي عمليات JSON.stringify المتتالية
+  // أثناء المزامنة اللحظية (تطبيق تسجيلات V2 متتالية دفعة واحدة).
+  _syncLocalStorageTimer: null,
+  debouncedSyncLocalStorage() {
+    if (this._syncLocalStorageTimer) clearTimeout(this._syncLocalStorageTimer);
+    this._syncLocalStorageTimer = setTimeout(() => {
+      this._syncLocalStorageTimer = null;
+      this.syncLocalStorage();
+    }, 400);
+  },
+
+  // تأجيل المزامنة السحابية للخلفية حتى تصبح الواجهة قابلة للاستخدام
+  // (ابدأ فوراً بعد تفرّغ حلقة الأحداث - لا يُنتظر عليها قبل عرض الواجهة).
+  _backgroundSyncQueued: false,
+  _backgroundSyncAttempts: 0,
+  scheduleBackgroundSync() {
+    if (this._backgroundSyncQueued) return;
+    this._backgroundSyncQueued = true;
+    setTimeout(() => {
+      this._backgroundSyncQueued = false;
+      if (firestoreSync.isAvailable()) {
+        this._backgroundSyncAttempts = 0;
+        this.loadFromCloud()
+          .then(() => {
+            if (!this.initialSyncProgress) this.syncStatus = "synced";
+          })
+          .catch((e) => {
+            console.error("❌ فشل المزامنة الخلفية:", e);
+            if (!this.initialSyncProgress) this.syncStatus = "error";
+          });
+      } else if (this._backgroundSyncAttempts < 5 && !document.hidden) {
+        // المصادقة/الاتصال قد لا يزالان قيد التحضير: أعد المحاولة بفترات قصيرة
+        this._backgroundSyncAttempts++;
+        setTimeout(() => this.scheduleBackgroundSync(), 1200);
+      } else {
+        this._backgroundSyncAttempts = 0;
+        firestoreSync._initialLoadDone = true;
+      }
+    }, 0);
+  },
+
+  // تفعيل مستمعات V2 مبكرًا والاستمرار بها في الخلفية
+  initV2Listeners() {
+    if (!firestoreSync.isAvailable()) return;
+    try {
+      if (!this._v2ParcelsUnsub) {
+        this._v2ParcelsUnsub = firestoreSync.listenToParcelsV2((id, data, type) => {
+          this.applyIncomingParcelChange(id, data, type);
+        });
+        console.log("✓ تم تفعيل مستمع V2 للطرود الفردية");
+      }
+      if (this.settings.archiveSyncEnabled !== false && !this._v2ArchiveUnsub) {
+        this._v2ArchiveUnsub = firestoreSync.listenToArchiveV2((id, data, type) => {
+          this._handleIncomingArchiveChange(id, data, type);
+        });
+        console.log("✓ تم تفعيل مستمع V2 للأرشيف الفردي");
+      }
+    } catch (e) {
+      console.error('initV2Listeners:', e);
+    }
+  },
+
   initDeviceId() {
     if (this._deviceId) return;
     let id = localStorage.getItem('swipex_device_id');
@@ -292,7 +366,7 @@ const appMethods = {
     } else {
       this.parcels.push(merged);
     }
-    this.syncLocalStorage();
+    this.debouncedSyncLocalStorage();
   },
 
   // معالج التغييرات اللحظية لعنصر أرشيف فردي (V2)
@@ -860,10 +934,7 @@ const appMethods = {
     if (!parcel) return;
     parcel.location = this.normalizeLocation(parcel.location);
     parcel.location.updatedAt = new Date().toISOString();
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _lt = (parcel.tracking || '').trim();
-    if (_lt && this._dirtyParcels) this._dirtyParcels.add(_lt);
+    this.markParcelDirty(parcel);
     this.syncParcelLocationToArchive(parcel);
     this.debouncedSaveData();
   },
@@ -900,10 +971,7 @@ const appMethods = {
         source: "device",
         updatedAt: new Date().toISOString(),
       });
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _lct = (parcel.tracking || '').trim();
-      if (_lct && this._dirtyParcels) this._dirtyParcels.add(_lct);
+      this.markParcelDirty(parcel);
       this.syncParcelLocationToArchive(parcel);
       this.saveData();
       this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
@@ -1034,10 +1102,7 @@ const appMethods = {
       source: 'map',
       updatedAt: new Date().toISOString(),
     });
-    this.locationPickerParcel.updatedAt = new Date().toISOString();
-    this.locationPickerParcel._localUpdatedAt = Date.now();
-    const _mpt = (this.locationPickerParcel.tracking || '').trim();
-    if (_mpt && this._dirtyParcels) this._dirtyParcels.add(_mpt);
+    this.markParcelDirty(this.locationPickerParcel);
     this.syncParcelLocationToArchive(this.locationPickerParcel);
     this.saveData();
     this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
@@ -1058,10 +1123,7 @@ const appMethods = {
   clearParcelLocation(parcel) {
     if (!parcel) return;
     parcel.location = this.createEmptyLocation();
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _clt = (parcel.tracking || '').trim();
-    if (_clt && this._dirtyParcels) this._dirtyParcels.add(_clt);
+    this.markParcelDirty(parcel);
     this.syncParcelLocationToArchive(parcel);
     this.saveData();
   },
@@ -1139,12 +1201,12 @@ const appMethods = {
       }
     });
 
-    // تحميل محلي كخطوة أولية فقط (سيتم استبداله من السحابة)
+    // Local-First: قراءة localStorage ووضعها في reactive state فوراً
     const saved = localStorage.getItem("swipex_pro_v2");
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        // تحميل البيانات المحلية كبيانات مؤقتة
+        // تحميل البيانات المحلية كبيانات أولية (لم تعد "مؤقتة" تُستبدل لاحقاً)
         this.parcels = (data.parcels || []).map((parcel) =>
           this.normalizeParcelRecord(parcel),
         );
@@ -1161,7 +1223,7 @@ const appMethods = {
         this.normalizeTagSettings();
         if (!this.settings.themeMode) this.settings.themeMode = "auto";
         console.log(
-          "✓ تم تحميل البيانات المحلية (مؤقتة):",
+          "✓ تم تحميل البيانات المحلية:",
           this.parcels.length,
           "طرد",
         );
@@ -1172,12 +1234,11 @@ const appMethods = {
       console.log("⚠ لا توجد بيانات محلية - سيتم التحميل من السحابة فقط");
     }
 
-    // تطبيق الثيم فوراً حتى لو المحلي
+    // تطبيق الثيم فوراً على البيانات المحلية
     this.applyTheme();
 
-    // تحميل من السحابة (الأساسي) - سيستبدل البيانات المحلية
-    console.log("⏳ تحميل البيانات من السحابة...");
-    await this.loadFromCloud();
+    // المزامنة السحابية تعمل في الخلفية دون انتظارها قبل عرض الواجهة
+    this.scheduleBackgroundSync();
 
     // بعد اكتمال دورة التحميل/الدمج العادية: فحص ما إذا كانت نافذة "تحديث آلية المزامنة" ضرورية
     this.checkForceResyncNeeded();
@@ -1237,32 +1298,51 @@ const appMethods = {
     }
   },
 
-  applyCloudData(cloud, cloudMetadata = null) {
+  applyCloudData(cloud, cloudMetadata = null, localData = null) {
     let loaded = false;
-    
-    // تحميل البيانات المحلية
-    const localSaved = localStorage.getItem("swipex_pro_v2");
-    const localData = localSaved ? JSON.parse(localSaved) : null;
+    let parcelsChanged = false;
+
+    // استخدام النسخة الممرَّرة من المحلي (إن وُجِدت) لتجنّب إعادة قراءة/تحليل
+    // localStorage في كل استدعاء (خاصة في المسار التزايدي عند استدعائها
+    // مرة للإعدادات ومرة للمهام).
+    let localDataCache = localData;
+    if (localDataCache === null) {
+      const raw = localStorage.getItem("swipex_pro_v2");
+      if (raw) {
+        try { localDataCache = JSON.parse(raw); } catch (e) { localDataCache = null; }
+      }
+    }
 
     if (cloud) {
-      // اختيار الطرود الأحدث
+      // اختيار الطرود الأحدث مع حماية التعديلات المحلية على مستوى كل طرد:
+      // دمج كل طرد عبر mergeIncomingParcel (النسخة الأحدث تفوز محلياً أو سحابياً).
       if (cloud.parcels) {
-        const selectedParcels = localData?.parcels
-          ? this.selectLatestVersion(localData, { parcels: cloud.parcels }, cloudMetadata, 'parcels').parcels
+        const selectedParcels = localDataCache?.parcels
+          ? this.selectLatestVersion(localDataCache, { parcels: cloud.parcels }, cloudMetadata, 'parcels').parcels
           : cloud.parcels;
         if (selectedParcels && selectedParcels.length > 0) {
-          this.parcels = selectedParcels.map((parcel) =>
-            this.normalizeParcelRecord(parcel),
-          );
+          const selectedIds = new Set(selectedParcels.map(p => (p.tracking || p.id) || ''));
+          const mergedList = selectedParcels.map((cp) => {
+            const inLocal = this.parcels.find(p => (p.tracking || p.id) === (cp.tracking || cp.id));
+            return inLocal ? this.mergeIncomingParcel(inLocal, cp) : this.normalizeParcelRecord(cp);
+          }).filter(Boolean);
+          // إبقاء أي تعديلات محلية حديثة (لم تصل للسحابة بعد) غير موجودة في القائمة المختارة
+          this.parcels.forEach((lp) => {
+            if (lp._localUpdatedAt && !selectedIds.has((lp.tracking || lp.id) || '')) {
+              mergedList.push(lp);
+            }
+          });
+          this.parcels = mergedList.map((parcel) => this.normalizeParcelRecord(parcel));
+          parcelsChanged = true;
           loaded = true;
-          console.log("✓ تم تطبيق الطرود الأحدثة:", selectedParcels.length);
+          console.log("✓ تم دمج الطرود الأحدثة:", mergedList.length);
         }
       }
-      
+
       // اختيار الإعدادات الأحدثة
       if (cloud.settings && typeof cloud.settings === "object") {
-        const selectedSettings = localData?.settings
-          ? this.selectLatestVersion(localData, { settings: cloud.settings }, cloudMetadata, 'settings').settings
+        const selectedSettings = localDataCache?.settings
+          ? this.selectLatestVersion(localDataCache, { settings: cloud.settings }, cloudMetadata, 'settings').settings
           : cloud.settings;
         if (selectedSettings) {
           const { _sessionDate, ...restSettings } = selectedSettings;
@@ -1272,40 +1352,55 @@ const appMethods = {
               this.sessionDate = _sessionDate;
             }
           }
-          this.settings = { ...this.settings, ...restSettings };
-          this.normalizeTagSettings();
+          const nextSettings = { ...this.settings, ...restSettings };
+          // لا نعيد تعيين الإعدادات إلا عند تغيّر فعلي (تفادي إعادة التجهيز الثقيلة)
+          if (JSON.stringify(nextSettings) !== JSON.stringify(this.settings)) {
+            this.settings = nextSettings;
+            this.normalizeTagSettings();
+          }
+          loaded = true;
           console.log("✓ تم تطبيق الإعدادات الأحدثة");
         }
       }
-      
+
       // اختيار الأرشيف الأحدث مع دمج على مستوى كل طرد
       if (cloud.archive && typeof cloud.archive === "object") {
-        if (localData?.archive) {
-          const merged = this.mergeArchiveEntries(localData.archive, cloud.archive);
-          this.archive = this.normalizeArchiveMap(merged);
+        if (localDataCache?.archive) {
+          const merged = this.mergeArchiveEntries(localDataCache.archive, cloud.archive);
+          const normalized = this.normalizeArchiveMap(merged);
+          if (JSON.stringify(normalized) !== JSON.stringify(this.archive)) {
+            this.archive = normalized;
+          }
           console.log("✓ تم دمج الأرشيف (محلي + سحابي)");
         } else {
-          this.archive = this.normalizeArchiveMap(cloud.archive);
+          const normalized = this.normalizeArchiveMap(cloud.archive);
+          if (JSON.stringify(normalized) !== JSON.stringify(this.archive)) {
+            this.archive = normalized;
+          }
           console.log("✓ تم تطبيق الأرشيف من السحابة");
         }
+        loaded = true;
       }
-      
+
       // اختيار المهام الأحدثة
       if (cloud.tasks && cloud.tasks.length > 0) {
-        const selectedTasks = localData?.tasks
-          ? this.selectLatestVersion(localData, { tasks: cloud.tasks }, cloudMetadata, 'tasks').tasks
+        const selectedTasks = localDataCache?.tasks
+          ? this.selectLatestVersion(localDataCache, { tasks: cloud.tasks }, cloudMetadata, 'tasks').tasks
           : cloud.tasks;
         if (selectedTasks) {
-          this.tasks = selectedTasks;
+          if (JSON.stringify(selectedTasks) !== JSON.stringify(this.tasks)) {
+            this.tasks = selectedTasks;
+          }
+          loaded = true;
           console.log("✓ تم تطبيق المهام الأحدثة:", selectedTasks.length);
         }
       }
     }
-    
+
     if (loaded) {
       this.syncLocalStorage();
       this.applyTheme();
-      this.detectDuplicates();
+      if (parcelsChanged) this.detectDuplicates();
       this.showClearDataConfirm = false;
       console.log("✓ اكتملت عملية تحميل البيانات من السحابة");
     }
@@ -1330,6 +1425,16 @@ const appMethods = {
   async _doLoadFromCloud() {
     let loaded = false;
 
+    // قراءة المحلي مرة واحدة وإعادة استخدامه عبر استدعاءات applyCloudData
+    // (بدل إعادة تحليل localStorage في كل مكوّن)، مع التعامل مع تالف JSON
+    let localDataCache = null;
+    try {
+      const raw = localStorage.getItem("swipex_pro_v2");
+      if (raw) localDataCache = JSON.parse(raw);
+    } catch (e) {
+      localDataCache = null;
+    }
+
     if (firestoreSync.isAvailable()) {
       this.syncStatus = "syncing";
       try {
@@ -1350,7 +1455,7 @@ const appMethods = {
             timeoutPromise,
           ]);
 
-          loaded = this.applyCloudData(cloud, cloudMetadata);
+          loaded = this.applyCloudData(cloud, cloudMetadata, localDataCache);
 
           // الهجرة: نسخ state الحالية (دمج محلي+سحابي) إلى V2 (تتخطّى إعادة التحميل داخلياً لتجنب التكرار)
           await this.migrateToV2Structure({ skipReload: true });
@@ -1415,8 +1520,8 @@ const appMethods = {
             timeoutPromise,
           ]);
 
-          if (settings) this.applyCloudData({ settings }, cloudMetadata);
-          if (tasks && tasks.length) this.applyCloudData({ tasks }, cloudMetadata);
+          if (settings) this.applyCloudData({ settings }, cloudMetadata, localDataCache);
+          if (tasks && tasks.length) this.applyCloudData({ tasks }, cloudMetadata, localDataCache);
 
           // فروقات الطرود منذ آخر مزامنة (سريعة حتى مع آلاف السجلات)
           const changedParcels = await firestoreSync.pullChangedParcels(lastSyncedAtMillis);
@@ -1595,10 +1700,7 @@ const appMethods = {
     if (fav.name) { parcel.receiver = fav.name; applied = true; }
     if (fav.municipality) { parcel.municipality = fav.municipality; applied = true; }
     if (applied) {
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _fvt = (parcel.tracking || '').trim();
-      if (_fvt && this._dirtyParcels) this._dirtyParcels.add(_fvt);
+      this.markParcelDirty(parcel);
       this.saveData();
       this.showToast('تم تطبيق بيانات المفضلة', 'success');
     } else {
@@ -2041,6 +2143,7 @@ const appMethods = {
           recipientAddress: newParcel.recipientAddress || latestArchivedEvent.recipientAddress || "",
         };
         merged.updatedAt = new Date().toISOString();
+        this.markParcelDirty(merged);
         processedParcels.push(this.normalizeParcelRecord(merged));
         stats.updated++;
       } else {
@@ -2055,6 +2158,7 @@ const appMethods = {
           location: this.normalizeLocation(newParcel.location),
         };
         created.updatedAt = new Date().toISOString();
+        this.markParcelDirty(created);
         processedParcels.push(this.normalizeParcelRecord(created));
         stats.new++;
       }
@@ -2159,11 +2263,8 @@ const appMethods = {
     const parcel = this.customerHistoryParcel;
     parcel.tag = item.tag || '';
     parcel.notes = item.notes || '';
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
+    this.markParcelDirty(parcel);
 
-    const tracking = (parcel.tracking || '').trim();
-    if (tracking && this._dirtyParcels) this._dirtyParcels.add(tracking);
     this.saveData();
     this.showToast('تم نسخ التمييز والملاحظة إلى الطرد الحالي', 'success');
   },
@@ -2365,6 +2466,10 @@ const appMethods = {
       chosenClass: "shadow-2xl",
       dragClass: "cursor-grabbing",
       onEnd: (evt) => {
+        // أثناء المزامنة الأولية تتغيّر القوائم من الخلفية؛ تجنّب إعادة الترتيب
+        // اعتماداً على فهارس قد تصبح خاطئة (المستخدم يستطيع السحب بعد اكتمالها).
+        if (this.initialSyncProgress) return;
+
         const movedParcel = this.filteredParcels[evt.oldIndex];
         const targetParcel = this.filteredParcels[evt.newIndex];
 
@@ -2487,11 +2592,8 @@ const appMethods = {
       const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
         parcel.status = newStatus;
-        parcel.updatedAt = new Date().toISOString();
-        parcel._localUpdatedAt = Date.now();
         this.statusModalParcel = null;
-        const _t = (parcel.tracking || '').trim();
-        if (_t && this._dirtyParcels) this._dirtyParcels.add(_t);
+        this.markParcelDirty(parcel);
         this.saveData();
         if (newStatus === "تم التسليم") this.triggerConfetti();
         return;
@@ -2504,11 +2606,8 @@ const appMethods = {
     }
 
     parcel.status = newStatus;
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
     this.statusModalParcel = null;
-    const _t2 = (parcel.tracking || '').trim();
-    if (_t2 && this._dirtyParcels) this._dirtyParcels.add(_t2);
+    this.markParcelDirty(parcel);
     this.saveData();
 
     if (newStatus === "تم التسليم") {
@@ -2551,10 +2650,7 @@ const appMethods = {
 
     // تغيير الحالة
     parcel.status = newStatus;
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _ct = (parcel.tracking || '').trim();
-    if (_ct && this._dirtyParcels) this._dirtyParcels.add(_ct);
+    this.markParcelDirty(parcel);
     this.saveData();
 
     if (newStatus === "تم التسليم") {
@@ -2573,10 +2669,7 @@ const appMethods = {
     } else {
       parcel.smsSent = true;
     }
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _ct2 = (parcel.tracking || '').trim();
-    if (_ct2 && this._dirtyParcels) this._dirtyParcels.add(_ct2);
+    this.markParcelDirty(parcel);
     this.saveData();
     window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
 
@@ -2588,10 +2681,7 @@ const appMethods = {
     if (!this.statusSmsConfirmParcel) return;
 
     this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
-    this.statusSmsConfirmParcel.updatedAt = new Date().toISOString();
-    this.statusSmsConfirmParcel._localUpdatedAt = Date.now();
-    const _ot = (this.statusSmsConfirmParcel.tracking || '').trim();
-    if (_ot && this._dirtyParcels) this._dirtyParcels.add(_ot);
+    this.markParcelDirty(this.statusSmsConfirmParcel);
     this.saveData();
 
     if (this.statusSmsConfirmStatus === "تم التسليم") {
@@ -2637,10 +2727,8 @@ const appMethods = {
   confirmDelete() {
     if (this.deleteConfirmId) {
       const _dp = this.parcels.find((p) => p.id === this.deleteConfirmId);
-      if (_dp) _dp._localUpdatedAt = Date.now();
-      const _dt = _dp ? (_dp.tracking || '').trim() : '';
+      if (_dp) this.markParcelDirty(_dp);
       this.parcels = this.parcels.filter((p) => p.id !== this.deleteConfirmId);
-      if (_dt && this._dirtyParcels) this._dirtyParcels.add(_dt);
       this.saveData([this.deleteConfirmId]);
       this.detectDuplicates();
     }
@@ -2697,10 +2785,7 @@ const appMethods = {
       parcel.wilaya = this.editParcel.wilaya;
       parcel.phone = this.editParcel.phone;
       parcel.phone2 = this.editParcel.phone2;
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const t = (parcel.tracking || '').trim();
-      if (t && this._dirtyParcels) this._dirtyParcels.add(t);
+      this.markParcelDirty(parcel);
       this.saveData();
       this.detectDuplicates();
     }
@@ -2733,10 +2818,7 @@ const appMethods = {
       parcel.phone2 = this.editParcel.phone2;
       parcel.amount = this.pendingPriceChange.new;
 
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const t = (parcel.tracking || '').trim();
-      if (t && this._dirtyParcels) this._dirtyParcels.add(t);
+      this.markParcelDirty(parcel);
       this.saveData();
       this.detectDuplicates();
     }
@@ -2791,8 +2873,7 @@ const appMethods = {
       _localUpdatedAt: Date.now(),
     };
     this.parcels.unshift(newP);
-    const t = (newP.tracking || '').trim();
-    if (t && this._dirtyParcels) this._dirtyParcels.add(t);
+    this.markParcelDirty(newP);
     this.saveData();
     this.detectDuplicates();
     this.showAddModal = false;
@@ -2829,6 +2910,10 @@ const appMethods = {
   confirmClearAllData() {
     // حذف فقط الطرود الظاهرة (المفلترة)
     const visibleIds = new Set(this.filteredParcels.map(p => p.id));
+    // ترقيم الطرود المزالة كمحذوفة حتى تُحذف من السحابة عند المزامنة
+    this.parcels.forEach((p) => {
+      if (visibleIds.has(p.id)) this.markParcelDirty(p);
+    });
     this.parcels = this.parcels.filter(p => !visibleIds.has(p.id));
     
     // حفظ البيانات دون حذف الأرشيف والإعدادات
@@ -3003,10 +3088,7 @@ const appMethods = {
 
   sendSmsAndMark(parcel) {
     parcel.smsSent = true;
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _smt = (parcel.tracking || '').trim();
-    if (_smt && this._dirtyParcels) this._dirtyParcels.add(_smt);
+    this.markParcelDirty(parcel);
     this.saveData();
     window.location.href = this.getSmsLink(parcel);
   },
@@ -3058,10 +3140,7 @@ const appMethods = {
       const real = this.parcels.find((p) => p.id === parcel.id);
       if (real) {
         real.smsSent = true;
-        real.updatedAt = new Date().toISOString();
-        real._localUpdatedAt = Date.now();
-        const _bsmt = (real.tracking || '').trim();
-        if (_bsmt && this._dirtyParcels) this._dirtyParcels.add(_bsmt);
+        this.markParcelDirty(real);
         this.saveData();
       }
     }
@@ -3103,10 +3182,7 @@ const appMethods = {
             ? parcel.notes + " " + transcript
             : transcript;
     
-          parcel.updatedAt = new Date().toISOString();
-          parcel._localUpdatedAt = Date.now();
-          const _srt2 = (parcel.tracking || '').trim();
-          if (_srt2 && this._dirtyParcels) this._dirtyParcels.add(_srt2);
+          this.markParcelDirty(parcel);
           this.saveData();
         }
         this.activeListeningId = null;
@@ -3534,9 +3610,7 @@ const appMethods = {
       parcel.reminderTime =
         this.reminderTime.hour + ":" + this.reminderTime.minute;
       parcel.reminderTriggered = false;
-      parcel._localUpdatedAt = Date.now();
-      const _srt = (parcel.tracking || '').trim();
-      if (_srt && this._dirtyParcels) this._dirtyParcels.add(_srt);
+      this.markParcelDirty(parcel);
       this.saveData();
     }
     this.showReminderPicker = false;
@@ -3562,10 +3636,7 @@ const appMethods = {
       parcel.reminderTime = null;
       parcel.reminderTriggered = false;
 
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _rmt = (parcel.tracking || '').trim();
-      if (_rmt && this._dirtyParcels) this._dirtyParcels.add(_rmt);
+      this.markParcelDirty(parcel);
       this.saveData();
     }
   },
@@ -3967,10 +4038,7 @@ const appMethods = {
     if (parcel) {
       this.pauseSmartTagSorting(500);
       parcel.tag = tagName;
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _tgt = (parcel.tracking || '').trim();
-      if (_tgt && this._dirtyParcels) this._dirtyParcels.add(_tgt);
+      this.markParcelDirty(parcel);
       this.saveData();
       this.resumeSmartTagSorting();
       this.showTagPicker = false;
@@ -3988,10 +4056,7 @@ const appMethods = {
     if (parcel) {
       this.pauseSmartTagSorting(500);
       parcel.tag = null;
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _rtt = (parcel.tracking || '').trim();
-      if (_rtt && this._dirtyParcels) this._dirtyParcels.add(_rtt);
+      this.markParcelDirty(parcel);
       this.saveData();
       this.resumeSmartTagSorting();
       this.scrollParcelIntoViewAfterUpdate(parcel.id);
@@ -4150,7 +4215,10 @@ const appMethods = {
             this.initFirestoreListener();
             this._firestoreLoaded = true;
 
-            // هجرة البيانات إلى البنية V2 + تفعيل المستمع الفردي
+            // تفعيل مستمعات V2 الفردية مبكراً (في الخلفية) بدل انتظار انتهاء الهجرة
+            this.initV2Listeners();
+
+            // هجرة البيانات إلى البنية V2 + المستمع الفردي (الاحتياطي لو لم يُفعّل أعلاه)
             this.migrateToV2Structure().then(() => {
               if (this._v2ParcelsUnsub) return;
               this._v2ParcelsUnsub = firestoreSync.listenToParcelsV2((id, data, type) => {
@@ -4625,10 +4693,7 @@ const appMethods = {
 
   focusChangeStatus(parcel, newStatus) {
     parcel.status = newStatus;
-    parcel.updatedAt = new Date().toISOString();
-    parcel._localUpdatedAt = Date.now();
-    const _fst = (parcel.tracking || '').trim();
-    if (_fst && this._dirtyParcels) this._dirtyParcels.add(_fst);
+    this.markParcelDirty(parcel);
     this.saveData();
     if (newStatus === "تم التسليم") {
       this.triggerConfetti();
@@ -4646,9 +4711,7 @@ const appMethods = {
 
   focusSms(parcel) {
     parcel.smsSent = true;
-    parcel._localUpdatedAt = Date.now();
-    const _fsmt = (parcel.tracking || '').trim();
-    if (_fsmt && this._dirtyParcels) this._dirtyParcels.add(_fsmt);
+    this.markParcelDirty(parcel);
     this.saveData();
     window.location.href = this.getSmsLink(parcel);
   },
@@ -4667,11 +4730,7 @@ const appMethods = {
   focusSaveNote(parcel) {
     this.focusEditingNotes = false;
     if (parcel) {
-
-      parcel.updatedAt = new Date().toISOString();
-      parcel._localUpdatedAt = Date.now();
-      const _fsnt = (parcel.tracking || '').trim();
-      if (_fsnt && this._dirtyParcels) this._dirtyParcels.add(_fsnt);
+      this.markParcelDirty(parcel);
     }
     this.saveData();
   },

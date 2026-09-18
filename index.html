@@ -191,7 +191,7 @@
             </p>
         </div>
 
-        <div v-if="initialSyncProgress" v-cloak class="loading-overlay">
+        <div v-if="initialSyncProgress" v-cloak class="loading-overlay loading-overlay-nonblocking">
             <div class="spinner"></div>
             <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
                 جاري مزامنة البيانات من السحابة...
@@ -718,7 +718,7 @@
                                                 </label>
                                                 <div class="relative">
                                                     <textarea v-model="parcel.notes"
-                                                        @input="parcel.updatedAt = new Date().toISOString(); debouncedSaveData()"
+                                                        @input="markParcelDirty(parcel); debouncedSaveData()"
                                                         @blur="saveData()" rows="2"
                                                         class="w-full p-2.5 pl-28 rounded-xl glass-input text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-amber-400 outline-none"
                                                         placeholder="اكتب ملاحظة..."></textarea>
@@ -808,7 +808,7 @@
                                                     class="mt-1 flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400">
                                                     <i class="fas fa-paper-plane"></i>
                                                     <span>تم مراسلة المستلم عبر SMS</span>
-                                                    <button @click="parcel.smsSent = false; saveData()"
+                                                    <button @click="parcel.smsSent = false; markParcelDirty(parcel); saveData()"
                                                         class="text-red-400 hover:text-red-600">
                                                         <i class="fas fa-times"></i>
                                                     </button>
@@ -2384,7 +2384,7 @@
                 </p>
                 <div class="relative">
                     <textarea v-model="noteModalParcel.notes"
-                        @input="noteModalParcel.updatedAt = new Date().toISOString(); debouncedSaveData()" rows="3"
+                        @input="markParcelDirty(noteModalParcel); debouncedSaveData()" rows="3"
                         class="w-full p-3 pl-28 rounded-xl glass-input text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-amber-400 outline-none resize-none"
                         placeholder="اكتب ملاحظة..."></textarea>
                     <div class="absolute left-2 bottom-2 flex items-center gap-1">
@@ -4147,7 +4147,7 @@
                                     class="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-2 text-sm text-purple-600 dark:text-purple-400 mb-3">
                                     <i class="fas fa-paper-plane"></i>
                                     <span>تم مراسلته عبر SMS</span>
-                                    <button v-if="item.offset === 0" @click="item.parcel.smsSent = false; saveData()"
+                                    <button v-if="item.offset === 0" @click="item.parcel.smsSent = false; markParcelDirty(item.parcel); saveData()"
                                         class="mr-auto text-red-400 hover:text-red-600">
                                         <i class="fas fa-times text-xs"></i>
                                     </button>

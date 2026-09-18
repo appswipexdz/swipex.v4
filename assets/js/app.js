@@ -227,9 +227,10 @@ createApp({
         // انتظار تأكيد المصادقة قبل تحميل البيانات
         const startLoad = () => {
             console.log('⏳ جاري تحميل البيانات...');
+            // loadData أصبح محلياً أولاً: يعرض البيانات فوراً ويجدول المزامنة
+            // السحابية في الخلفية (لا ينتظرها - syncStatus يُضبط من داخل المزامنة).
             this.loadData().then(() => {
-                console.log('✓ اكتمل تحميل البيانات');
-                this.syncStatus = 'synced';
+                console.log('✓ اكتمل تحميل البيانات المحلية');
             }).catch((e) => {
                 console.error('❌ فشل تحميل البيانات:', e);
                 this.syncStatus = 'error';
@@ -398,6 +399,11 @@ createApp({
                 if (!this.firestoreUnsub) {
                     console.log('🔄 تفعيل المستمع الفوري...');
                     this.initFirestoreListener();
+                }
+                
+                // تفعيل مستمعات V2 مبكراً عند توفر الاتصال (إن لم تكن مفعّلة)
+                if (typeof this.initV2Listeners === 'function') {
+                    this.initV2Listeners();
                 }
                 
                 // مزامنة فورية عند استعادة الاتصال (فقط بعد اكتمال التحميل الأولي)

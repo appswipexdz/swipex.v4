@@ -322,6 +322,37 @@ body.dark-mode::after {
     background: rgba(15, 23, 42, 0.7);
 }
 
+/* مزامنة الخلفية: شريط إشعار لا يحجب الواجهة أثناء المزامنة التلقائية */
+.loading-overlay-nonblocking {
+    inset: auto 0 0 0;
+    top: auto;
+    height: auto;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    padding: 10px 16px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: none;
+    z-index: 9980;
+}
+.loading-overlay-nonblocking .spinner {
+    width: 22px;
+    height: 22px;
+    border-width: 3px;
+    margin-bottom: 0;
+}
+.loading-overlay-nonblocking h3 {
+    font-size: 0.95rem;
+}
+.loading-overlay-nonblocking p {
+    font-size: 0.8rem;
+    margin-top: 0;
+}
+.dark-mode .loading-overlay-nonblocking {
+    background: rgba(15, 23, 42, 0.85);
+}
+
 .spinner {
     width: 50px;
     height: 50px;
