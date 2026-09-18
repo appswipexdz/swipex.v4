@@ -3901,22 +3901,29 @@ const appMethods = {
 
   addStatusGroup() {
     this.normalizeStatusGroups();
-    this.settings.statusGroups.push({
+    const newGroup = {
       id: 'sg' + Date.now() + Math.random().toString(36).slice(2, 6),
       name: 'تجميع جديد',
       icon: 'fa-layer-group',
       color: '#6b7280',
       layout: 'column',
       statuses: [],
-    });
+    };
+    this.settings.statusGroups.push(newGroup);
+    this.expandedStatusGroupId = newGroup.id;
     this.saveSettings();
     this.showToast('تم إنشاء تجميع جديد', 'success');
   },
 
   removeStatusGroup(id) {
     this.settings.statusGroups = (this.settings.statusGroups || []).filter((g) => g.id !== id);
+    if (this.expandedStatusGroupId === id) this.expandedStatusGroupId = null;
     this.saveSettings();
     this.showToast('تم حذف التجميع', 'info');
+  },
+
+  toggleStatusGroupExpand(groupId) {
+    this.expandedStatusGroupId = this.expandedStatusGroupId === groupId ? null : groupId;
   },
 
   availableStatusesForGroup(group) {

@@ -78,6 +78,7 @@ showYalidineMenu: false,
     },
     newCustomStatus: { name: '', color: '#9ca3af', icon: 'fa-tag' },
     statusGroupSelection: {},
+    expandedStatusGroupId: null,
     // نافذة تأكيد تغيير الحالة مع SMS
     showStatusSmsConfirm: false,
     statusSmsConfirmParcel: null,

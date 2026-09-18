@@ -1923,18 +1923,28 @@
                             <div v-for="(group, gi) in settings.statusGroups" :key="group.id"
                                 class="mb-3 rounded-xl glass-panel p-3">
                                 <!-- رأس التجميع -->
-                                <div class="flex items-center gap-2 mb-2">
+                                <div class="flex items-center gap-2" :class="expandedStatusGroupId === group.id ? 'mb-2' : ''">
+                                    <button @click="toggleStatusGroupExpand(group.id)"
+                                        class="text-gray-400 hover:text-cyan-600 transition flex-shrink-0">
+                                        <i class="fas text-xs transition-transform"
+                                            :class="expandedStatusGroupId === group.id ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    </button>
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white flex-shrink-0"
                                         :style="{ backgroundColor: group.color }">
                                         <i class="fas text-xs" :class="group.icon"></i>
                                     </div>
                                     <input v-model="group.name" @blur="saveSettings()" placeholder="اسم التجميع"
                                         class="flex-1 p-2 rounded-lg glass-input text-sm font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-cyan-500" />
+                                    <span v-if="expandedStatusGroupId !== group.id"
+                                        class="text-[10px] text-gray-400 flex-shrink-0">{{ group.statuses.length }} حالة</span>
                                     <button @click="removeStatusGroup(group.id)"
-                                        class="text-gray-400 hover:text-red-500 transition">
+                                        class="text-gray-400 hover:text-red-500 transition flex-shrink-0">
                                         <i class="fas fa-trash-alt text-xs"></i>
                                     </button>
                                 </div>
+
+                                <!-- محتوى التجميع (يُطوى/يُظهَر) -->
+                                <div v-if="expandedStatusGroupId === group.id">
                                 <!-- لون التجميع -->
                                 <div class="flex flex-wrap gap-1.5 mb-2">
                                     <button v-for="c in ['#ef4444','#f97316','#eab308','#10b981','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#6b7280']"
@@ -2003,6 +2013,7 @@
                                         {{ s.name }}
                                     </option>
                                 </select>
+                                </div>
                             </div>
                         </div>
                     </div>
