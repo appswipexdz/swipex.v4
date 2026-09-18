@@ -3045,14 +3045,18 @@ const appMethods = {
   },
 
   focusWhatsApp(parcel) {
+    if (this._lastWhatsAppOpenAt && Date.now() - this._lastWhatsAppOpenAt < 1500) return;
     const url = this.getWhatsAppUrl(parcel, false);
     if (!url) return;
+    this._lastWhatsAppOpenAt = Date.now();
     window.open(url, "_blank");
   },
 
   focusWhatsAppWithText(parcel) {
+    if (this._lastWhatsAppOpenAt && Date.now() - this._lastWhatsAppOpenAt < 1500) return;
     const url = this.getWhatsAppUrl(parcel, true);
     if (!url) return;
+    this._lastWhatsAppOpenAt = Date.now();
     window.open(url, "_blank");
   },
 

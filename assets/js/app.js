@@ -223,6 +223,17 @@ createApp({
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
             if (this.settings.themeMode === 'auto') this.applyTheme();
         });
+
+        // إصلاح: تصفير حالة الضغط المستمر على زر واتساب إن عاد التطبيق للواجهة
+        // بعد أن قاطع نظام التشغيل تسلسل اللمس (بسبب التحويل لتطبيق واتساب)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                if (typeof this.clearWhatsappLongPressTimer === 'function') {
+                    this.clearWhatsappLongPressTimer();
+                }
+                this.whatsappLongPressTriggered = false;
+            }
+        });
         
         // انتظار تأكيد المصادقة قبل تحميل البيانات
         const startLoad = () => {
