@@ -412,95 +412,58 @@ const appMethods = {
         this.forceResyncStatus = 'لا توجد بيانات محلية لرفعها';
       }
 
-      // مهلة تُتيح للمتصفح رسم إطار فعلي — Promise.resolve وحدها لا تكفي
-      const uiTick = () => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-
-      const bumpProgress = (progressKey, doneDelta, failedDelta) => {
+      // ضبط تقدم الشريطين من الاستدعاء المشترك
+      const bumpProgress = (progressKey) => (p) => {
         const prev = this.forceResyncProgress || {};
         this.forceResyncProgress = {
           ...prev,
-          [progressKey + 'Done']: (prev[progressKey + 'Done'] || 0) + doneDelta,
-          [progressKey + 'Failed']: (prev[progressKey + 'Failed'] || 0) + failedDelta,
+          [progressKey + 'Done']: (prev[progressKey + 'Done'] || 0) + (p.doneDelta || 0),
+          [progressKey + 'Failed']: (prev[progressKey + 'Failed'] || 0) + (p.failedDelta || 0),
         };
       };
 
-      const processedCount = (progressKey) => {
-        const p = this.forceResyncProgress || {};
-        return (p[progressKey + 'Done'] || 0) + (p[progressKey + 'Failed'] || 0);
-      };
+      // الرفع عبر العملية المشتركة الآمنة: تُعتبر المحاولة منتهية حتى مع فشل جزئي،
+      // ولا يُسقط سجلٌ فاسد الباقي (تعقيم + إعادة محاولة فردية عند فشل الدفعة)
+      const parcelsResult = await this.pushRecordsProgressive('parcels_v2', parcelsCandidates, {
+        onProgress: bumpProgress('parcels'),
+        onStatus: (text) => { this.forceResyncStatus = 'جاري رفع الطرود ' + text; },
+      });
+      const archiveResult = await this.pushRecordsProgressive('archive_v2', archiveCandidates, {
+        onProgress: bumpProgress('archive'),
+        onStatus: (text) => { this.forceResyncStatus = 'جاري رفع الأرشيف ' + text; },
+      });
 
-      // كتابة مجموعة سجلات على دفعات صغيرة: نعقّم كل دفعة فوراً،
-      // ولو فشلت الدفعة كاملة نعيد المحاولة كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي
-      const writeRecordsProgressive = async (collection, candidates, progressKey, statusLabel) => {
-        const batchSize = 25;
-        const total = candidates.length;
-        if (total === 0) return;
-
-        this.forceResyncStatus = `${statusLabel} (0/${total})...`;
-        await uiTick();
-
-        for (let i = 0; i < total; i += batchSize) {
-          const chunkCandidates = candidates.slice(i, i + batchSize);
-          const chunk = chunkCandidates.map(c => {
-            const safe = this._firestoreSafeDeep(c.raw);
-            safe.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-            if (collection === 'parcels_v2') safe.deleted = false;
-            return { tracking: c.tracking, data: safe };
-          });
-
-          const commitChunk = (items) => {
-            const batch = window.db.batch();
-            items.forEach(r => {
-              const ref = window.db.collection('users').doc(uid).collection(collection).doc(r.tracking);
-              batch.set(ref, r.data, { merge: true });
-            });
-            return batch.commit();
-          };
-
-          try {
-            await commitChunk(chunk);
-            bumpProgress(progressKey, chunk.length, 0);
-          } catch (batchErr) {
-            console.warn(`⚠ فشلت دفعة ${collection} — محاولة رفع كل سجل منفرداً:`, batchErr && batchErr.message);
-            for (const r of chunk) {
-              try {
-                await commitChunk([r]);
-                bumpProgress(progressKey, 1, 0);
-              } catch (itemErr) {
-                bumpProgress(progressKey, 0, 1);
-                console.error(`فشل رفع ${collection}/${r.tracking}:`, itemErr);
-              }
-              // المسار الفردي هو الأبطأ — نحدّث الواجهة لكل سجل
-              this.forceResyncStatus = `${statusLabel} (${processedCount(progressKey)}/${total})...`;
-              await uiTick();
-            }
-          }
-
-          this.forceResyncStatus = `${statusLabel} (${processedCount(progressKey)}/${total})...`;
-          await uiTick();
-        }
-      };
-
-      await writeRecordsProgressive('parcels_v2', parcelsCandidates, 'parcels', 'جاري رفع الطرود');
-      await writeRecordsProgressive('archive_v2', archiveCandidates, 'archive', 'جاري رفع الأرشيف');
-
-      const totalFailed = (this.forceResyncProgress.parcelsFailed || 0) + (this.forceResyncProgress.archiveFailed || 0);
-
-      if (totalFailed > 0) {
-        throw new Error(`تعذّر رفع ${totalFailed} سجل — يمكنك إعادة المحاولة (لا يلزم رفع الناجح مجدداً)`);
-      }
-
-      this.forceResyncStatus = 'اكتمل الرفع بنجاح';
-
+      // ضبط أعلام الاكتمال دائماً بعد انتهاء المحاولة (ناجحة كلياً أو جزئياً) —
+      // حتى لا تُعاد النافذة مع كل فتح وتُرفع كل البيانات من جديد
       localStorage.setItem('swipex_force_resync_v1_done', 'true');
       localStorage.setItem('swipex_v2_migrated', 'true'); // توحيد الحالة مع الهجرة القديمة
       await firestoreSync.updateSyncMeta();
+
+      // الاحتفاظ بقائمة السجلات الفاشلة لإعادة محاولتها فقط من الإعدادات
+      const parcelsFailedList = parcelsResult.failedTrackings.map(t => String(t));
+      const archiveFailedList = archiveResult.failedTrackings.map(t => String(t));
+      const hasFailed = parcelsFailedList.length + archiveFailedList.length > 0;
+      if (hasFailed) {
+        localStorage.setItem('swipex_force_resync_failed_ids', JSON.stringify({
+          parcels: parcelsFailedList,
+          archive: archiveFailedList,
+        }));
+      } else {
+        localStorage.removeItem('swipex_force_resync_failed_ids');
+      }
+      this.updateForceResyncFailedCount();
 
       await new Promise(resolve => setTimeout(resolve, 900)); // إتاحة رؤية الشريطين ممتلئين
       this.forceResyncInProgress = false;
       this.showForceResyncModal = false;
       this.forceResyncProgress = null;
-      this.showToast('تم رفع بياناتك بنجاح إلى السحابة', 'success');
+
+      if (hasFailed) {
+        const hasFailedCount = parcelsFailedList.length + archiveFailedList.length;
+        this.showToast(`تم الرفع، لكن تعذّر رفع ${hasFailedCount} سجل — يمكنك إعادة المحاولة من الإعدادات`, 'warning');
+      } else {
+        this.showToast('تم رفع بياناتك بنجاح إلى السحابة', 'success');
+      }
     } catch (e) {
       console.error('confirmForceResync:', e);
       this.forceResyncError = e && e.message ? e.message : 'حدث خطأ أثناء الرفع — يمكنك إعادة المحاولة';
@@ -508,6 +471,187 @@ const appMethods = {
       this.forceResyncInProgress = false;
       // لا نضبط العلم عند الفشل — ستُعرض النافذة مجدداً لإعادة المحاولة لاحقاً
     }
+  },
+
+  // ===== رفع آمن مشترك: يُستخدمه "تحديث آلية المزامنة" والمزامنة اليدوية وإعادة المحاولة =====
+  // يرفع مجموعة سجلات على دفعات صغيرة (batchSize 25): يُعقَّم كل سجل فوراً،
+  // ولو فشلت الدفعة كاملة يُعاد كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي.
+  // لا يكتب أي شيء في forceResync* مباشرة — كل الاتصال عبر خيارين اختياريين:
+  //   onProgress({ doneDelta, failedDelta, failedTracking })
+  //   onStatus(text)
+  // يُرجع { done, failed, failedTrackings }
+  async pushRecordsProgressive(collection, candidates, { onProgress, onStatus } = {}) {
+    const batchSize = 25;
+    const total = candidates.length;
+    let done = 0;
+    let failed = 0;
+    const failedTrackings = [];
+
+    const uid = firestoreSync.getUid();
+    if (!window.db || !uid || total === 0) return { done, failed, failedTrackings };
+
+    const notifyProgress = (doneDelta, failedDelta, failedTracking) => {
+      done += doneDelta;
+      failed += failedDelta;
+      if (typeof onProgress === 'function') {
+        onProgress({ doneDelta, failedDelta, failedTracking });
+      }
+    };
+
+    // مهلة تُتيح للمتصفح رسم إطار فعلي — Promise.resolve وحدها لا تكفي
+    const uiTick = () => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
+    if (typeof onStatus === 'function') onStatus(`(0/${total})...`);
+    await uiTick();
+
+    for (let i = 0; i < total; i += batchSize) {
+      const chunkCandidates = candidates.slice(i, i + batchSize);
+      // تعقيم فوري لكل دفعة قبل بناء batch (يرفض Firestore الحقول undefined/NaN)
+      const chunk = chunkCandidates.map(c => {
+        const safe = this._firestoreSafeDeep(c.raw);
+        safe.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+        if (collection === 'parcels_v2') safe.deleted = false;
+        return { tracking: c.tracking, data: safe };
+      });
+
+      const commitChunk = (items) => {
+        const batch = window.db.batch();
+        items.forEach(r => {
+          const ref = window.db.collection('users').doc(uid).collection(collection).doc(r.tracking);
+          batch.set(ref, r.data, { merge: true });
+        });
+        return batch.commit();
+      };
+
+      try {
+        await commitChunk(chunk);
+        notifyProgress(chunk.length, 0);
+      } catch (batchErr) {
+        console.warn(`⚠ فشلت دفعة ${collection} — محاولة رفع كل سجل منفرداً:`, batchErr && batchErr.message);
+        for (const r of chunk) {
+          try {
+            await commitChunk([r]);
+            notifyProgress(1, 0);
+          } catch (itemErr) {
+            notifyProgress(0, 1, r.tracking);
+            failedTrackings.push(r.tracking);
+            console.error(`فشل رفع ${collection}/${r.tracking}:`, itemErr);
+          }
+          // المسار الفردي هو الأبطأ — نحدّث الواجهة لكل سجل
+          if (typeof onStatus === 'function') onStatus(`(${done + failed}/${total})...`);
+          await uiTick();
+        }
+      }
+
+      if (typeof onStatus === 'function') onStatus(`(${done + failed}/${total})...`);
+      await uiTick();
+    }
+
+    return { done, failed, failedTrackings };
+  },
+
+  async retryFailedForceResyncRecords() {
+    if (this.forceResyncRetryInProgress) return;
+
+    let stored = null;
+    try {
+      stored = JSON.parse(localStorage.getItem('swipex_force_resync_failed_ids') || 'null');
+    } catch (e) {
+      stored = null;
+    }
+    const prev = stored && typeof stored === 'object' ? stored : { parcels: [], archive: [] };
+    const parcelsFailed = Array.isArray(prev.parcels) ? prev.parcels : [];
+    const archiveFailed = Array.isArray(prev.archive) ? prev.archive : [];
+
+    if (!firestoreSync.isAvailable()) {
+      this.showToast('السحابة غير متاحة', 'error');
+      return;
+    }
+    const uid = firestoreSync.getUid();
+    if (!uid || !window.db) {
+      this.showToast('تعذّر الاتصال بالسحابة', 'error');
+      return;
+    }
+
+    const parcelsSet = new Set(parcelsFailed.map(t => String(t).trim()).filter(Boolean));
+    const archiveSet = new Set(archiveFailed.map(t => String(t).trim()).filter(Boolean));
+
+    // نبني قوائم خفيفة (tracking + المرجع) للفاشل الموجود محلياً فقط
+    const parcelsCandidates = (Array.isArray(this.parcels) ? this.parcels : [])
+      .filter(p => p && typeof p === 'object'
+        && parcelsSet.has(String(p.tracking || p.id || '').trim()))
+      .map(p => {
+        const tracking = String(p.tracking || p.id).trim();
+        return tracking ? { tracking, raw: p } : null;
+      })
+      .filter(Boolean);
+
+    const archiveCandidates = (this.archive && typeof this.archive === 'object'
+      ? Object.entries(this.archive)
+      : [])
+      .filter(([tracking, entry]) => entry && typeof entry === 'object'
+        && tracking && typeof tracking === 'string'
+        && archiveSet.has(tracking.trim()))
+      .map(([tracking, entry]) => ({ tracking: tracking.trim(), raw: entry }));
+
+    if (parcelsCandidates.length + archiveCandidates.length === 0) {
+      // كل السجلات المتعثرة زالت محلياً — لا داعي للإبقاء على القائمة
+      localStorage.removeItem('swipex_force_resync_failed_ids');
+      this.updateForceResyncFailedCount();
+      this.showToast('لا توجد سجلات متعثرة لإعادة رفعها', 'info');
+      return;
+    }
+
+    this.forceResyncRetryInProgress = true;
+    this.showToast('جاري إعادة رفع ' + (parcelsCandidates.length + archiveCandidates.length) + ' سجل متعثر...', 'info');
+    try {
+      const parcelsResult = await this.pushRecordsProgressive('parcels_v2', parcelsCandidates, {
+        onStatus: (text) => { this.forceResyncStatus = 'جاري إعادة رفع الطرود ' + text; },
+      });
+      const archiveResult = await this.pushRecordsProgressive('archive_v2', archiveCandidates, {
+        onStatus: (text) => { this.forceResyncStatus = 'جاري إعادة رفع الأرشيف ' + text; },
+      });
+
+      const newParcels = parcelsResult.failedTrackings.map(t => String(t));
+      const newArchive = archiveResult.failedTrackings.map(t => String(t));
+      const failedRemaining = newParcels.length + newArchive.length;
+      if (failedRemaining > 0) {
+        localStorage.setItem('swipex_force_resync_failed_ids', JSON.stringify({
+          parcels: newParcels,
+          archive: newArchive,
+        }));
+      } else {
+        localStorage.removeItem('swipex_force_resync_failed_ids');
+      }
+      this.updateForceResyncFailedCount();
+
+      if (failedRemaining > 0) {
+        this.showToast(`تعذّر رفع ${failedRemaining} سجل — أعد المحاولة لاحقاً`, 'warning');
+      } else {
+        const doneCount = parcelsResult.done + archiveResult.done;
+        this.showToast(`تم رفع ${doneCount} سجل متعثر بنجاح`, 'success');
+      }
+    } catch (e) {
+      console.error('retryFailedForceResyncRecords:', e);
+      this.showToast('حدث خطأ أثناء إعادة الرفع — حاول مرة أخرى', 'error');
+    } finally {
+      this.forceResyncRetryInProgress = false;
+    }
+  },
+
+  updateForceResyncFailedCount() {
+    let count = 0;
+    try {
+      const raw = JSON.parse(localStorage.getItem('swipex_force_resync_failed_ids') || 'null');
+      if (raw && typeof raw === 'object') {
+        count = (Array.isArray(raw.parcels) ? raw.parcels.length : 0)
+          + (Array.isArray(raw.archive) ? raw.archive.length : 0);
+      }
+    } catch (e) {
+      count = 0;
+    }
+    this.forceResyncFailedCount = count;
+    return count;
   },
 
   postponeForceResync() {
@@ -1037,6 +1181,7 @@ const appMethods = {
 
     // بعد اكتمال دورة التحميل/الدمج العادية: فحص ما إذا كانت نافذة "تحديث آلية المزامنة" ضرورية
     this.checkForceResyncNeeded();
+    this.updateForceResyncFailedCount();
 
     this.showClearDataConfirm = false;
     this.$nextTick(() => {
@@ -1673,21 +1818,30 @@ const appMethods = {
       return;
     }
     const uid = firestoreSync.getUid();
-    if (!uid) {
+    if (!uid || !window.db) {
       this.showToast("غير مسجل الدخول", "error");
       return;
     }
-    this.showToast("جاري مزامنة " + keys.length + " عنصر...", "info");
+
+    // نبني قوائم خفيفة (tracking + المرجع) ثم نرفع عبر العملية المشتركة الآمنة
+    // (تعقيم + دفعات صغيرة + إعادة محاولة فردية عند فشل الدفعة)
+    const candidates = Object.entries(this.archive)
+      .filter(([tracking, entry]) => entry && typeof entry === 'object'
+        && tracking && typeof tracking === 'string' && tracking.trim())
+      .map(([tracking, entry]) => ({ tracking: tracking.trim(), raw: entry }));
+
+    if (!candidates.length) {
+      this.showToast("الأرشيف فارغ", "info");
+      return;
+    }
+    this.showToast("جاري مزامنة " + candidates.length + " عنصر...", "info");
     try {
-      for (let i = 0; i < keys.length; i += 450) {
-        const batch = window.db.batch();
-        keys.slice(i, i + 450).forEach(tracking => {
-          const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
-          batch.set(ref, { ...this.archive[tracking], updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        });
-        await batch.commit();
+      const result = await this.pushRecordsProgressive('archive_v2', candidates);
+      if (result.failed > 0) {
+        this.showToast(`تم رفع ${result.done} من ${result.done + result.failed} إلى السحابة — تعذّر رفع ${result.failed} سجل`, 'warning');
+      } else {
+        this.showToast("تم مزامنة " + result.done + " عنصر إلى السحابة", "success");
       }
-      this.showToast("تم مزامنة " + keys.length + " عنصر إلى السحابة", "success");
     } catch (e) {
       console.error('syncArchiveToCloud:', e);
       this.showToast("فشلت المزامنة", "error");

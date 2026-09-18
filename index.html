@@ -2236,6 +2236,12 @@
                             <i class="fas fa-archive"></i>
                             عرض الأرشيف
                         </button>
+                        <button v-if="forceResyncFailedCount > 0" @click="retryFailedForceResyncRecords"
+                            :disabled="forceResyncRetryInProgress"
+                            class="w-full bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 dark:text-orange-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            إعادة محاولة رفع السجلات المتعثرة ({{ forceResyncFailedCount }})
+                        </button>
                         <button @click="clearAllData"
                             class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
                             <i class="fas fa-trash-alt"></i>
