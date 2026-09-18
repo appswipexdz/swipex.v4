@@ -887,58 +887,6 @@ const appMethods = {
       .toLowerCase();
   },
 
-  syncParcelLocationToArchive(parcel) {
-    const tracking = (parcel?.tracking || '').trim();
-    if (!tracking || !parcel) return;
-
-    const location = this.normalizeLocation(parcel.location);
-    const existing = this.archive[tracking];
-    const events = existing ? this.getArchiveEvents(existing) : [];
-    const latest = {
-      status: parcel.status || "دون إجراء",
-      notes: parcel.notes || "",
-      tag: parcel.tag || null,
-      location,
-      lastUpdate: new Date().toISOString(),
-      amount: parcel.amount || 0,
-      municipality: parcel.municipality || "",
-      receiver: parcel.receiver || "",
-      phone: parcel.phone || "",
-      phone2: parcel.phone2 || "",
-      smsSent: parcel.smsSent || false,
-      senderSmsSent: parcel.senderSmsSent || false,
-      sender: parcel.sender || "",
-      type: parcel.type || "",
-      content: parcel.content || "",
-      createdDate: parcel.createdDate || parcel.insertedAt || "",
-      senderPhone: parcel.senderPhone || "",
-      recipientAddress: parcel.recipientAddress || "",
-      isMultiPiece: parcel.isMultiPiece || false,
-      piecesCount: typeof parcel.piecesCount === "number" ? parcel.piecesCount : 1,
-      subTrackings: Array.isArray(parcel.subTrackings) ? parcel.subTrackings : [],
-      openingAllowed: typeof parcel.openingAllowed === "boolean"
-        ? parcel.openingAllowed
-        : null,
-    };
-
-    if (events.length) {
-      events[0] = { ...events[0], ...latest };
-    } else {
-      events.push(latest);
-    }
-    this.archive[tracking] = { events, latest: events[0] };
-    if (this._dirtyArchive) this._dirtyArchive.add(tracking);
-  },
-
-  touchParcelLocation(parcel) {
-    if (!parcel) return;
-    parcel.location = this.normalizeLocation(parcel.location);
-    parcel.location.updatedAt = new Date().toISOString();
-    this.markParcelDirty(parcel);
-    this.syncParcelLocationToArchive(parcel);
-    this.debouncedSaveData();
-  },
-
   async saveParcelCurrentLocation(parcel) {
     if (!parcel) return;
 
@@ -972,7 +920,6 @@ const appMethods = {
         updatedAt: new Date().toISOString(),
       });
       this.markParcelDirty(parcel);
-      this.syncParcelLocationToArchive(parcel);
       this.saveData();
       this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
     } catch (error) {
@@ -1103,7 +1050,6 @@ const appMethods = {
       updatedAt: new Date().toISOString(),
     });
     this.markParcelDirty(this.locationPickerParcel);
-    this.syncParcelLocationToArchive(this.locationPickerParcel);
     this.saveData();
     this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
     this.closeLocationPicker();
@@ -1124,7 +1070,6 @@ const appMethods = {
     if (!parcel) return;
     parcel.location = this.createEmptyLocation();
     this.markParcelDirty(parcel);
-    this.syncParcelLocationToArchive(parcel);
     this.saveData();
   },
 
@@ -1187,6 +1132,53 @@ const appMethods = {
     }
   },
 
+  cleanupPhantomArchiveEntries() {
+    const FLAG = 'swipex_phantom_archive_cleanup_v1_done';
+    if (localStorage.getItem(FLAG) === 'true') return;
+
+    const activeTrackings = new Set(
+      (this.parcels || []).map(p => (p.tracking || '').trim()).filter(Boolean)
+    );
+    const phantomTrackings = Object.keys(this.archive || {})
+      .filter(tracking => activeTrackings.has(tracking));
+
+    if (phantomTrackings.length === 0) {
+      localStorage.setItem(FLAG, 'true');
+      return;
+    }
+
+    console.log(`🧹 تنظيف ${phantomTrackings.length} سجل أرشيف وهمي (طرود لا تزال نشطة):`, phantomTrackings);
+
+    phantomTrackings.forEach(tracking => {
+      delete this.archive[tracking];
+    });
+
+    // حذف النسخ السحابية المقابلة أيضاً، بدفعات، إن كانت السحابة متاحة
+    if (firestoreSync.isAvailable() && window.db) {
+      const uid = firestoreSync.getUid();
+      if (uid) {
+        (async () => {
+          try {
+            for (let i = 0; i < phantomTrackings.length; i += 450) {
+              const batch = window.db.batch();
+              phantomTrackings.slice(i, i + 450).forEach(tracking => {
+                const ref = window.db.collection('users').doc(uid).collection('archive_v2').doc(tracking);
+                batch.delete(ref);
+              });
+              await batch.commit();
+            }
+          } catch (e) {
+            console.error('cleanupPhantomArchiveEntries (cloud delete):', e);
+          }
+        })();
+      }
+    }
+
+    localStorage.setItem(FLAG, 'true');
+    this.syncLocalStorage();
+    this.showToast(`تم تنظيف ${phantomTrackings.length} سجل مكرر من الأرشيف`, 'info');
+  },
+
   async loadData() {
     const tempKeys = [
       "showScanner",
@@ -1243,6 +1235,9 @@ const appMethods = {
     // بعد اكتمال دورة التحميل/الدمج العادية: فحص ما إذا كانت نافذة "تحديث آلية المزامنة" ضرورية
     this.checkForceResyncNeeded();
     this.updateForceResyncFailedCount();
+
+    // تنظيف السجلات الوهمية (طرود نشطة نسجّلت في الأرشيف بالخطأ) — مرة واحدة لكل جهاز
+    this.cleanupPhantomArchiveEntries();
 
     this.showClearDataConfirm = false;
     this.$nextTick(() => {
