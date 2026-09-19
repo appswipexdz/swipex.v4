@@ -338,7 +338,7 @@
                         </div>
                         <button @click="startVoiceSearch()"
                             class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center border border-amber-400/30"
-                            :class="{'animate-pulse ring-2 ring-red-400': voiceSearchActive}">
+                            :class="voiceSearchActive ? 'animate-pulse ring-2 ring-emerald-400' : 'ring-2 ring-red-400'">
                             <i class="fas fa-microphone text-lg"></i>
                         </button>
                         <button @click="openScanner('search')"
@@ -695,7 +695,7 @@
                                                 <button v-if="!parcel.notes" @click.stop="toggleSpeech(parcel)"
                                                     class="bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/30 px-2.5 py-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-red-500 transition h-8">
                                                     <i class="fas fa-microphone"
-                                                        :class="{'text-red-500 animate-pulse': activeListeningId === parcel.id}"></i>
+                                                        :class="activeListeningId === parcel.id ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                                                 </button>
                                                 <button v-if="settings.tagsEnabled && !parcel.tag"
                                                     @click.stop="openTagPicker(parcel.id)"
@@ -741,7 +741,7 @@
                                                         <button @click="toggleSpeech(parcel)"
                                                             class="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                                             <i class="fas fa-microphone"
-                                                                :class="{'text-red-500 animate-pulse': activeListeningId === parcel.id}"></i>
+                                                                :class="activeListeningId === parcel.id ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -2416,7 +2416,7 @@
                         <button @click="toggleSpeech(noteModalParcel)"
                             class="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                             <i class="fas fa-microphone"
-                                :class="{'text-red-500 animate-pulse': activeListeningId === noteModalParcel.id}"></i>
+                                :class="activeListeningId === noteModalParcel.id ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                         </button>
                     </div>
                 </div>
@@ -3889,7 +3889,7 @@
                             <button @click="toggleTaskSpeech" type="button"
                                 class="absolute left-2 bottom-2 text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                 <i class="fas fa-microphone"
-                                    :class="{'text-red-500 animate-pulse': isListeningForTask}"></i>
+                                    :class="isListeningForTask ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                             </button>
                         </div>
                     </div>
@@ -3956,7 +3956,7 @@
                             <button @click="toggleEditTaskSpeech" type="button"
                                 class="absolute left-2 bottom-2 text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                 <i class="fas fa-microphone"
-                                    :class="{'text-red-500 animate-pulse': isListeningForEditTask}"></i>
+                                    :class="isListeningForEditTask ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                             </button>
                         </div>
                     </div>
@@ -4169,8 +4169,8 @@
                                     <div v-if="!focusEditingNotes && !item.parcel.notes && !item.parcel.tag"
                                         @click="focusSpeech(item.parcel)"
                                         class="bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                                        <i class="fas fa-microphone text-gray-400 text-lg"
-                                            :class="{'text-red-500 animate-pulse': activeListeningId === item.parcel.id}"></i>
+                                        <i class="fas fa-microphone text-lg"
+                                            :class="activeListeningId === item.parcel.id ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                                         <span class="text-sm text-gray-400 mr-2">ملاحظة صوتية</span>
                                     </div>
                                     <div v-if="!focusEditingNotes && (item.parcel.notes || item.parcel.tag)"
@@ -4198,7 +4198,7 @@
                                             <button @click="focusSpeech(item.parcel)" type="button"
                                                 class="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                                 <i class="fas fa-microphone"
-                                                    :class="{'text-red-500 animate-pulse': activeListeningId === item.parcel.id}"></i>
+                                                    :class="activeListeningId === item.parcel.id ? 'text-emerald-500 animate-pulse' : 'text-red-500'"></i>
                                             </button>
                                             <button @click="focusSaveNote(item.parcel)" type="button"
                                                 class="text-gray-400 hover:text-green-500 transition p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
