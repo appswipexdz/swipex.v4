@@ -327,6 +327,7 @@ const appMethods = {
     const normalized = {
       ...parcel,
       location: this.normalizeLocation(parcel.location),
+      sortOrder: typeof parcel.sortOrder === "number" ? parcel.sortOrder : 0,
       // توافق رجعي: حقول الطرود متعددة القطع بقيم افتراضية آمنة
       isMultiPiece: !!parcel.isMultiPiece,
       piecesCount: typeof parcel.piecesCount === "number" ? parcel.piecesCount : 1,
@@ -344,6 +345,26 @@ const appMethods = {
       }
     }
     return normalized;
+  },
+
+  // تُعيد ترقيم sortOrder بحسب الترتيب الحالي الفعلي لمصفوفة this.parcels،
+  // وتُعلّم كـ"معدَّل" فقط الطرود التي تغيّرت قيمتها فعلاً (لتقليل عدد الكتابات)
+  reassignParcelSortOrder() {
+    this.parcels.forEach((p, idx) => {
+      if (p.sortOrder !== idx) {
+        p.sortOrder = idx;
+        this.markParcelDirty(p);
+      }
+    });
+  },
+
+  // تُعيد ترتيب this.parcels بحسب sortOrder (فرز مستقر: العناصر متساوية القيمة
+  // تحافظ على ترتيبها النسبي الحالي، بحسب سلوك Array.prototype.sort القياسي)
+  sortParcelsByOrder() {
+    this.parcels.sort(
+      (a, b) => (typeof a.sortOrder === "number" ? a.sortOrder : 0) -
+                (typeof b.sortOrder === "number" ? b.sortOrder : 0)
+    );
   },
 
   mergeIncomingParcel(localParcel, incoming) {
@@ -366,6 +387,7 @@ const appMethods = {
     } else {
       this.parcels.push(merged);
     }
+    this.sortParcelsByOrder();
     this.debouncedSyncLocalStorage();
   },
 
@@ -1202,6 +1224,12 @@ const appMethods = {
         this.parcels = (data.parcels || []).map((parcel) =>
           this.normalizeParcelRecord(parcel),
         );
+        // ترحيل لمرة واحدة: تحويل الترتيب المحلي الحالي إلى قيم sortOrder صريحة
+        // تُدفَع للسحابة عند أول حفظ، لتصبح الأساس الذي تعتمد عليه بقية الأجهزة
+        if (localStorage.getItem('swipex_sortorder_migration_v1_done') !== 'true') {
+          this.reassignParcelSortOrder();
+          localStorage.setItem('swipex_sortorder_migration_v1_done', 'true');
+        }
         this.archive = this.normalizeArchiveMap(data.archive || {});
         this.sessionDate = data.sessionDate || null;
         const savedSettings = data.settings || {};
@@ -1493,6 +1521,7 @@ const appMethods = {
           ]);
 
           this.detectDuplicates();
+          this.sortParcelsByOrder();
           this.syncLocalStorage();
           this.applyTheme();
           loaded = true;
@@ -2164,6 +2193,7 @@ const appMethods = {
     this.parcels = processedParcels.map((parcel) =>
       this.normalizeParcelRecord(parcel),
     );
+    this.reassignParcelSortOrder();
     this.detectDuplicates();
 
     const phoneCount = {};
@@ -2484,6 +2514,7 @@ const appMethods = {
         ) {
           const item = this.parcels.splice(oldGlobalIndex, 1)[0];
           this.parcels.splice(newGlobalIndex, 0, item);
+          this.reassignParcelSortOrder();
           this.saveData();
         }
       },
@@ -2495,6 +2526,7 @@ const appMethods = {
     if (idx > 0) {
       const item = this.parcels.splice(idx, 1)[0];
       this.parcels.splice(idx - 1, 0, item);
+      this.reassignParcelSortOrder();
       this.saveData();
     }
   },
@@ -2504,6 +2536,7 @@ const appMethods = {
     if (idx !== -1 && idx < this.parcels.length - 1) {
       const item = this.parcels.splice(idx, 1)[0];
       this.parcels.splice(idx + 1, 0, item);
+      this.reassignParcelSortOrder();
       this.saveData();
     }
   },
@@ -2868,6 +2901,7 @@ const appMethods = {
       _localUpdatedAt: Date.now(),
     };
     this.parcels.unshift(newP);
+    this.reassignParcelSortOrder();
     this.markParcelDirty(newP);
     this.saveData();
     this.detectDuplicates();
