@@ -211,6 +211,7 @@ showYalidineMenu: false,
     firestoreUnsub: null,
     // لوحة الإحصائيات
     showDashboard: false,
+    showDailySummaryDetails: false,
     showGuide: false,
     guideExpanded: {},
     // وضع التركيز

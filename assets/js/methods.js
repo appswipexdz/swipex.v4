@@ -4676,6 +4676,13 @@ const appMethods = {
     return { total, delivered, remaining, cancelled, percentage, segments };
   },
 
+  getFilteredParcelsSummary() {
+    const list = this.filteredParcels || [];
+    const count = list.length;
+    const amount = list.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    return { count, amount };
+  },
+
   // ========== Focus Mode ==========
   enterFocusMode() {
     if (this.filteredParcels.length === 0) return;
