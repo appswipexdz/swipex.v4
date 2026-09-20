@@ -410,28 +410,6 @@ const appMethods = {
     }
   },
 
-  // ========== Force Resync (تحديث آلية المزامنة) ==========
-  // نافذة إضافية تظهر مرة واحدة لكل جهاز بعد هذا التحديث،
-  // وترفع البيانات المحلية كاملة إلى V2 بموافقة صريحة من المستخدم
-  // (مستقلة تماماً عن migrateToV2Structure/_doLoadFromCloud - لا تغيّر سلوكهما)
-  checkForceResyncNeeded() {
-    const FLAG = 'swipex_force_resync_v1_done';
-    if (localStorage.getItem(FLAG) === 'true') return;
-    if (!firestoreSync.isAvailable()) return;
-
-    const hasLocalData =
-      (Array.isArray(this.parcels) && this.parcels.length > 0) ||
-      (this.archive && Object.keys(this.archive).length > 0);
-
-    if (!hasLocalData) {
-      // لا يوجد شيء محلي ليُرفع (جهاز جديد فعلاً) — لا داعي لإزعاج المستخدم
-      localStorage.setItem(FLAG, 'true');
-      return;
-    }
-
-    this.showForceResyncModal = true;
-  },
-
   // تعقيم عميق لأي قيمة قبل الإرسال إلى Firestore:
   // يزيل undefined/NaN/Infinity/الدوال/الكائنات الدائرية التي يرفضها Firestore
   // (مثل multiPieceCode: undefined الناتجة من استيراد PDF) وتُسقط دفعة كاملة إذا بقي أي منها
@@ -458,121 +436,10 @@ const appMethods = {
     return null; // وظائف/أنواع أخرى
   },
 
-  async confirmForceResync() {
-    if (this.forceResyncInProgress) return;
-    this.forceResyncInProgress = true;
-    this.forceResyncError = null;
-    this.forceResyncProgress = null;
-    this.forceResyncStatus = 'جارٍ تجهيز البيانات...';
-
-    try {
-      const uid = firestoreSync.getUid();
-      if (!uid || !window.db) {
-        this.forceResyncError = 'تعذّر الاتصال بالسحابة';
-        this.forceResyncInProgress = false;
-        return;
-      }
-
-      // مؤشرات سريعة: نبني قوائم خفيفة (tracking + المرجع) فقط دون نسخ عميق
-      // حتى لا يتجمد المعالج على نسخ الأرشيف كامل قبل أول دفعة
-      const parcelsCandidates = (Array.isArray(this.parcels) ? this.parcels : [])
-        .map(p => {
-          if (!p || typeof p !== 'object') return null;
-          const tracking = (p.tracking || p.id || '').trim();
-          if (!tracking) return null;
-          return { tracking, raw: p };
-        })
-        .filter(Boolean);
-
-      const archiveCandidates = (this.archive && typeof this.archive === 'object'
-        ? Object.entries(this.archive)
-        : [])
-        .map(([tracking, entry]) => {
-          if (!entry || typeof entry !== 'object') return null;
-          if (!tracking || typeof tracking !== 'string' || !tracking.trim()) return null;
-          return { tracking, raw: entry };
-        })
-        .filter(Boolean);
-
-      console.log('🔵 Force Resync: بيانات جاهزة للرفع', {
-        parcels: parcelsCandidates.length,
-        archive: archiveCandidates.length,
-      });
-
-      this.forceResyncProgress = {
-        parcelsDone: 0, parcelsTotal: parcelsCandidates.length,
-        archiveDone: 0, archiveTotal: archiveCandidates.length,
-        parcelsFailed: 0, archiveFailed: 0,
-      };
-      if (parcelsCandidates.length + archiveCandidates.length === 0) {
-        this.forceResyncStatus = 'لا توجد بيانات محلية لرفعها';
-      }
-
-      // ضبط تقدم الشريطين من الاستدعاء المشترك
-      const bumpProgress = (progressKey) => (p) => {
-        const prev = this.forceResyncProgress || {};
-        this.forceResyncProgress = {
-          ...prev,
-          [progressKey + 'Done']: (prev[progressKey + 'Done'] || 0) + (p.doneDelta || 0),
-          [progressKey + 'Failed']: (prev[progressKey + 'Failed'] || 0) + (p.failedDelta || 0),
-        };
-      };
-
-      // الرفع عبر العملية المشتركة الآمنة: تُعتبر المحاولة منتهية حتى مع فشل جزئي،
-      // ولا يُسقط سجلٌ فاسد الباقي (تعقيم + إعادة محاولة فردية عند فشل الدفعة)
-      const parcelsResult = await this.pushRecordsProgressive('parcels_v2', parcelsCandidates, {
-        onProgress: bumpProgress('parcels'),
-        onStatus: (text) => { this.forceResyncStatus = 'جاري رفع الطرود ' + text; },
-      });
-      const archiveResult = await this.pushRecordsProgressive('archive_v2', archiveCandidates, {
-        onProgress: bumpProgress('archive'),
-        onStatus: (text) => { this.forceResyncStatus = 'جاري رفع الأرشيف ' + text; },
-      });
-
-      // ضبط أعلام الاكتمال دائماً بعد انتهاء المحاولة (ناجحة كلياً أو جزئياً) —
-      // حتى لا تُعاد النافذة مع كل فتح وتُرفع كل البيانات من جديد
-      localStorage.setItem('swipex_force_resync_v1_done', 'true');
-      localStorage.setItem('swipex_v2_migrated', 'true'); // توحيد الحالة مع الهجرة القديمة
-      await firestoreSync.updateSyncMeta();
-
-      // الاحتفاظ بقائمة السجلات الفاشلة لإعادة محاولتها فقط من الإعدادات
-      const parcelsFailedList = parcelsResult.failedTrackings.map(t => String(t));
-      const archiveFailedList = archiveResult.failedTrackings.map(t => String(t));
-      const hasFailed = parcelsFailedList.length + archiveFailedList.length > 0;
-      if (hasFailed) {
-        localStorage.setItem('swipex_force_resync_failed_ids', JSON.stringify({
-          parcels: parcelsFailedList,
-          archive: archiveFailedList,
-        }));
-      } else {
-        localStorage.removeItem('swipex_force_resync_failed_ids');
-      }
-      this.updateForceResyncFailedCount();
-
-      await new Promise(resolve => setTimeout(resolve, 900)); // إتاحة رؤية الشريطين ممتلئين
-      this.forceResyncInProgress = false;
-      this.showForceResyncModal = false;
-      this.forceResyncProgress = null;
-
-      if (hasFailed) {
-        const hasFailedCount = parcelsFailedList.length + archiveFailedList.length;
-        this.showToast(`تم الرفع، لكن تعذّر رفع ${hasFailedCount} سجل — يمكنك إعادة المحاولة من الإعدادات`, 'warning');
-      } else {
-        this.showToast('تم رفع بياناتك بنجاح إلى السحابة', 'success');
-      }
-    } catch (e) {
-      console.error('confirmForceResync:', e);
-      this.forceResyncError = e && e.message ? e.message : 'حدث خطأ أثناء الرفع — يمكنك إعادة المحاولة';
-      this.forceResyncStatus = 'فشل الرفع';
-      this.forceResyncInProgress = false;
-      // لا نضبط العلم عند الفشل — ستُعرض النافذة مجدداً لإعادة المحاولة لاحقاً
-    }
-  },
-
-  // ===== رفع آمن مشترك: يُستخدمه "تحديث آلية المزامنة" والمزامنة اليدوية وإعادة المحاولة =====
+  // ===== رفع آمن مشترك: يستخدمه زر "مزامنة" اليدوي في الأرشيف =====
   // يرفع مجموعة سجلات على دفعات صغيرة (batchSize 25): يُعقَّم كل سجل فوراً،
   // ولو فشلت الدفعة كاملة يُعاد كل سجل منفرداً حتى لا يُسقط سجلٌ فاسد الباقي.
-  // لا يكتب أي شيء في forceResync* مباشرة — كل الاتصال عبر خيارين اختياريين:
+  // لا يكتب أي شيء في بيانات الحالة مباشرة — كل الاتصال عبر خيارين اختياريين:
   //   onProgress({ doneDelta, failedDelta, failedTracking })
   //   onStatus(text)
   // يُرجع { done, failed, failedTrackings }
@@ -644,115 +511,6 @@ const appMethods = {
     }
 
     return { done, failed, failedTrackings };
-  },
-
-  async retryFailedForceResyncRecords() {
-    if (this.forceResyncRetryInProgress) return;
-
-    let stored = null;
-    try {
-      stored = JSON.parse(localStorage.getItem('swipex_force_resync_failed_ids') || 'null');
-    } catch (e) {
-      stored = null;
-    }
-    const prev = stored && typeof stored === 'object' ? stored : { parcels: [], archive: [] };
-    const parcelsFailed = Array.isArray(prev.parcels) ? prev.parcels : [];
-    const archiveFailed = Array.isArray(prev.archive) ? prev.archive : [];
-
-    if (!firestoreSync.isAvailable()) {
-      this.showToast('السحابة غير متاحة', 'error');
-      return;
-    }
-    const uid = firestoreSync.getUid();
-    if (!uid || !window.db) {
-      this.showToast('تعذّر الاتصال بالسحابة', 'error');
-      return;
-    }
-
-    const parcelsSet = new Set(parcelsFailed.map(t => String(t).trim()).filter(Boolean));
-    const archiveSet = new Set(archiveFailed.map(t => String(t).trim()).filter(Boolean));
-
-    // نبني قوائم خفيفة (tracking + المرجع) للفاشل الموجود محلياً فقط
-    const parcelsCandidates = (Array.isArray(this.parcels) ? this.parcels : [])
-      .filter(p => p && typeof p === 'object'
-        && parcelsSet.has(String(p.tracking || p.id || '').trim()))
-      .map(p => {
-        const tracking = String(p.tracking || p.id).trim();
-        return tracking ? { tracking, raw: p } : null;
-      })
-      .filter(Boolean);
-
-    const archiveCandidates = (this.archive && typeof this.archive === 'object'
-      ? Object.entries(this.archive)
-      : [])
-      .filter(([tracking, entry]) => entry && typeof entry === 'object'
-        && tracking && typeof tracking === 'string'
-        && archiveSet.has(tracking.trim()))
-      .map(([tracking, entry]) => ({ tracking: tracking.trim(), raw: entry }));
-
-    if (parcelsCandidates.length + archiveCandidates.length === 0) {
-      // كل السجلات المتعثرة زالت محلياً — لا داعي للإبقاء على القائمة
-      localStorage.removeItem('swipex_force_resync_failed_ids');
-      this.updateForceResyncFailedCount();
-      this.showToast('لا توجد سجلات متعثرة لإعادة رفعها', 'info');
-      return;
-    }
-
-    this.forceResyncRetryInProgress = true;
-    this.showToast('جاري إعادة رفع ' + (parcelsCandidates.length + archiveCandidates.length) + ' سجل متعثر...', 'info');
-    try {
-      const parcelsResult = await this.pushRecordsProgressive('parcels_v2', parcelsCandidates, {
-        onStatus: (text) => { this.forceResyncStatus = 'جاري إعادة رفع الطرود ' + text; },
-      });
-      const archiveResult = await this.pushRecordsProgressive('archive_v2', archiveCandidates, {
-        onStatus: (text) => { this.forceResyncStatus = 'جاري إعادة رفع الأرشيف ' + text; },
-      });
-
-      const newParcels = parcelsResult.failedTrackings.map(t => String(t));
-      const newArchive = archiveResult.failedTrackings.map(t => String(t));
-      const failedRemaining = newParcels.length + newArchive.length;
-      if (failedRemaining > 0) {
-        localStorage.setItem('swipex_force_resync_failed_ids', JSON.stringify({
-          parcels: newParcels,
-          archive: newArchive,
-        }));
-      } else {
-        localStorage.removeItem('swipex_force_resync_failed_ids');
-      }
-      this.updateForceResyncFailedCount();
-
-      if (failedRemaining > 0) {
-        this.showToast(`تعذّر رفع ${failedRemaining} سجل — أعد المحاولة لاحقاً`, 'warning');
-      } else {
-        const doneCount = parcelsResult.done + archiveResult.done;
-        this.showToast(`تم رفع ${doneCount} سجل متعثر بنجاح`, 'success');
-      }
-    } catch (e) {
-      console.error('retryFailedForceResyncRecords:', e);
-      this.showToast('حدث خطأ أثناء إعادة الرفع — حاول مرة أخرى', 'error');
-    } finally {
-      this.forceResyncRetryInProgress = false;
-    }
-  },
-
-  updateForceResyncFailedCount() {
-    let count = 0;
-    try {
-      const raw = JSON.parse(localStorage.getItem('swipex_force_resync_failed_ids') || 'null');
-      if (raw && typeof raw === 'object') {
-        count = (Array.isArray(raw.parcels) ? raw.parcels.length : 0)
-          + (Array.isArray(raw.archive) ? raw.archive.length : 0);
-      }
-    } catch (e) {
-      count = 0;
-    }
-    this.forceResyncFailedCount = count;
-    return count;
-  },
-
-  postponeForceResync() {
-    // إغلاق مؤقت بدون ضبط العلم — ستظهر النافذة مجدداً عند فتح التطبيق التالي
-    this.showForceResyncModal = false;
   },
 
   async migrateToV2Structure({ skipReload = false } = {}) {
@@ -1259,10 +1017,6 @@ const appMethods = {
 
     // المزامنة السحابية تعمل في الخلفية دون انتظارها قبل عرض الواجهة
     this.scheduleBackgroundSync();
-
-    // بعد اكتمال دورة التحميل/الدمج العادية: فحص ما إذا كانت نافذة "تحديث آلية المزامنة" ضرورية
-    this.checkForceResyncNeeded();
-    this.updateForceResyncFailedCount();
 
     // تنظيف السجلات الوهمية (طرود نشطة نسجّلت في الأرشيف بالخطأ) — مرة واحدة لكل جهاز
     this.cleanupPhantomArchiveEntries();
