@@ -2994,8 +2994,11 @@ const appMethods = {
 
   openYalidine(tracking, parcel) {
     // البطاقة متعددة القطع تُفتح بكود المجموعة الموحّد (CMP-...)
-    const realTracking = parcel && parcel.isMultiPiece ? (parcel.tracking || tracking) : tracking;
+    let realTracking = parcel && parcel.isMultiPiece ? (parcel.tracking || tracking) : tracking;
     if (!realTracking) return;
+    // منصة ياليدين حساسة لحالة الأحرف: كود المجموعة المتعدد القطع يُقرأ بصيغة
+    // "cmp-..." (أحرف صغيرة) وليس "CMP-..." — نضبط البادئة قبل فتح الرابط
+    realTracking = String(realTracking).replace(/^CMP/i, "cmp");
     window.open(
       `https://yalidine.app/app/livraison/livrer_un_colis.php?tracking=${realTracking}`,
       "_blank",
