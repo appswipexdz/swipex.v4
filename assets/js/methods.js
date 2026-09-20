@@ -2977,12 +2977,21 @@ const appMethods = {
         }
         this.activeListeningId = null;
       };
+      this.recognition.onstart = () => {
+        this.micConnected = true;
+      };
       this.recognition.onend = () => {
         this.activeListeningId = null;
+        this.micConnected = false;
       };
       this.recognition.onerror = (event) => {
         console.error("Speech error", event.error);
+        this.micConnected = false;
         this.activeListeningId = null;
+        const isConnectivityError = ['network', 'audio-capture', 'service-not-allowed'].includes(event.error);
+        if (isConnectivityError) {
+          this.showToast('تعذّر الاتصال بخدمة التعرف الصوتي — تحقّق من الإنترنت', 'error');
+        }
       };
     } else {
       alert("عذرًا، متصفحك لا يدعم خاصية تحويل الصوت إلى نص.");
@@ -3024,9 +3033,24 @@ const appMethods = {
     this._voiceSearchRec.onresult = (event) => {
       this.filters.search = event.results[0][0].transcript;
       this.voiceSearchActive = false;
+      this.micConnected = false;
     };
-    this._voiceSearchRec.onend = () => { this.voiceSearchActive = false; };
-    this._voiceSearchRec.onerror = () => { this.voiceSearchActive = false; };
+    this._voiceSearchRec.onstart = () => {
+      this.micConnected = true;
+    };
+    this._voiceSearchRec.onend = () => {
+      this.voiceSearchActive = false;
+      this.micConnected = false;
+    };
+    this._voiceSearchRec.onerror = (event) => {
+      console.error("Voice search speech error", event.error);
+      this.voiceSearchActive = false;
+      this.micConnected = false;
+      const isConnectivityError = ['network', 'audio-capture', 'service-not-allowed'].includes(event.error);
+      if (isConnectivityError) {
+        this.showToast('تعذّر الاتصال بخدمة التعرف الصوتي — تحقّق من الإنترنت', 'error');
+      }
+    };
     this._voiceSearchRec.start();
   },
 
