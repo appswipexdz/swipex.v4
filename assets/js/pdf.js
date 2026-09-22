@@ -460,7 +460,7 @@ const pdfFunctions = {
             finalParcels.sort((a, b) =>
                 (a.municipality || "").localeCompare(b.municipality || "", "ar")
             );
-            this.findAndMerge(finalParcels);
+            await this.findAndMerge(finalParcels);
             this.saveData();
             this.$nextTick(() => {
                 this.initSortable();

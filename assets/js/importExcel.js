@@ -4,7 +4,7 @@ const importExcelFunctions = {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: "array" });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -52,7 +52,7 @@ const importExcelFunctions = {
                 };
             });
 
-            this.findAndMerge(newParcels);
+            await this.findAndMerge(newParcels);
             this.saveData();
             this.$nextTick(() => {
                 this.initSortable();

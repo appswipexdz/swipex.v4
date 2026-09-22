@@ -870,6 +870,7 @@ const appMethods = {
         parcels: this.parcels,
         archive: this.archive,
         settings: this.settings,
+        settingsUpdatedAt: this._settingsLocalUpdatedAt || null,
         sessionDate: this.sessionDate,
         lastUpdate: new Date().toISOString(),
       }),
@@ -889,18 +890,22 @@ const appMethods = {
         firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
       }
 
-      const settingsToSave = JSON.parse(
-        JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
-      );
-      // settings و tasks تبقى كتلة واحدة صغيرة، ولا نكتب parcels/archive ككتلة بعد الآن
-      const savePayload = {
-        settings: settingsToSave,
-        tasks: this.tasks,
-      };
+      const savePayload = { tasks: this.tasks };
+      // الإعدادات تُرسَل فقط إن تغيّرت فعلاً منذ آخر إرسال ناجح، وبعد اكتمال أول تحميل للجلسة
+      if (this._settingsDirty && firestoreSync._initialLoadDone) {
+        savePayload.settings = JSON.parse(
+          JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
+        );
+      }
+
       firestoreSync
         .saveAll(savePayload)
         .then((ok) => {
           this.syncStatus = ok ? "synced" : "error";
+          if (ok && savePayload.settings) {
+            this._settingsDirty = false;
+            this._settingsLocalUpdatedAt = new Date().toISOString();
+          }
           console.log(
             ok ? "✓ تم حفظ البيانات في Firestore" : "❌ فشل حفظ البيانات",
           );
@@ -990,6 +995,7 @@ const appMethods = {
         }
         this.archive = this.normalizeArchiveMap(data.archive || {});
         this.sessionDate = data.sessionDate || null;
+        this._settingsLocalUpdatedAt = data.settingsUpdatedAt || null;
         const savedSettings = data.settings || {};
         if (
           typeof savedSettings.darkMode !== "undefined" &&
@@ -1048,7 +1054,12 @@ const appMethods = {
     }
 
     // الحصول على timestamps
-    const localTimestamp = localData?.lastUpdate ? new Date(localData.lastUpdate).getTime() : 0;
+    // الإعدادات وحدها لها طابع زمني خاص (settingsUpdatedAt) يُحدَّث فقط عند تغيّر إعداد فعلي.
+    // مقارنة الإعدادات بطابع lastUpdate العام (الذي يتغيّر مع أي تعديل طرد) كانت تُرجّح
+    // نسخة محلية قديمة أو افتراضية على نسخة السحابة الصحيحة — لذلك نستخدم الخاص بها فقط.
+    const localTimestamp = collectionName === 'settings'
+      ? (localData?.settingsUpdatedAt ? new Date(localData.settingsUpdatedAt).getTime() : 0)
+      : (localData?.lastUpdate ? new Date(localData.lastUpdate).getTime() : 0);
     
     let cloudTimestamp = 0;
     if (cloudMetadata) {
@@ -1354,6 +1365,7 @@ const appMethods = {
         parcels: this.parcels,
         archive: this.archive,
         settings: this.settings,
+        settingsUpdatedAt: this._settingsLocalUpdatedAt || null,
         sessionDate: this.sessionDate,
         lastUpdate: new Date().toISOString(),
       }),
@@ -1441,6 +1453,7 @@ const appMethods = {
   saveSettings() {
     this.normalizeStatusGroups();
     this.normalizeTagSettings();
+    this._settingsDirty = true;
     this.saveData();
   },
 
@@ -1651,6 +1664,34 @@ const appMethods = {
     });
   },
 
+  // أرشفة ذرّية لليوم السابق عند بدء يوم جديد:
+  // - ينتظر اكتمال أول تحميل للإعدادات من السحابة (حتى لا نعمل على نسخة محلية فقط)
+  // - يقارن sessionDate بتاريخ اليوم
+  // - عند تغيّر اليوم: يُرشيف الطرود الحالية ويحفظ فوراً (الطرد يُعلَّم deleted:true
+  //   عبر _dirtyArchive + _dirtyParcels في archiveCurrentParcels) ثم يبدأ جلسة جديدة
+  async ensureCurrentWorkDay() {
+    if (firestoreSync._initialLoadDone === false && this._cloudLoadPromise) {
+      await this._cloudLoadPromise;
+    }
+    const today = this.getTodayString();
+    let archived = 0;
+    if (this.sessionDate && this.sessionDate !== today && this.parcels.length > 0) {
+      console.log("📦 أرشفة " + this.parcels.length + " طرد من يوم " + this.sessionDate + "...");
+      this.archiveCurrentParcels();
+      archived = this.parcels.length;
+      this.parcels = [];
+      this.sessionDate = today;
+      this._settingsDirty = true;
+      this.saveData();
+      console.log("✓ تم أرشفة " + archived + " طرد وحفظها");
+    }
+    if (!this.sessionDate) {
+      this.sessionDate = today;
+      this._settingsDirty = true;
+    }
+    return archived;
+  },
+
   manualArchive() {
     if (this.parcels.length === 0) {
       this.showToast("لا توجد طرود لأرشفتها", "info");
@@ -1661,6 +1702,7 @@ const appMethods = {
     this.archiveCurrentParcels();
     this.parcels = [];
     this.sessionDate = this.getTodayString();
+    this._settingsDirty = true;
     this.saveData();
     this.showToast("تم أرشفة " + count + " طرد بنجاح", "success");
   },
@@ -1680,7 +1722,7 @@ const appMethods = {
     }
 
     this.showToast(enabled ? 'تم تفعيل مزامنة الأرشيف مع السحابة' : 'تم إيقاف مزامنة الأرشيف مع السحابة', 'info');
-    this.saveData();
+    this.saveSettings();
   },
 
   async syncArchiveToCloud() {
@@ -1842,7 +1884,7 @@ const appMethods = {
     reader.readAsArrayBuffer(file);
   },
 
-  findAndMerge(newParcels) {
+  async findAndMerge(newParcels) {
     let stats = {
       total: newParcels.length,
       new: 0,
@@ -1850,28 +1892,9 @@ const appMethods = {
       duplicates: 0,
       archived: 0,
     };
-    const today = this.getTodayString();
 
-    // إذا كان يوم جديد → أرشف الطرود القديمة وابدأ من جديد
-    if (
-      this.sessionDate &&
-      this.sessionDate !== today &&
-      this.parcels.length > 0
-    ) {
-      console.log("📦 أرشفة " + this.parcels.length + " طرد من يوم " + this.sessionDate + "...");
-      this.archiveCurrentParcels();
-      stats.archived = this.parcels.length;
-      this.parcels = [];
-      this.sessionDate = today;
-      // حفظ فوري للأرشيف قبل متابعة الاستيراد
-      this.saveData();
-      console.log("✓ تم أرشفة " + stats.archived + " طرد وحفظها");
-    }
-
-    // تعيين تاريخ الجلسة إذا لم يكن موجوداً
-    if (!this.sessionDate) {
-      this.sessionDate = today;
-    }
+    // إذا كان يوم جديد → أرشف الطرود القديمة وابدأ من جديد (بشكل ذرّي مع حفظ فوري)
+    stats.archived = await this.ensureCurrentWorkDay();
 
     // بناء خريطة الطرود الحالية بـ tracking
     const existingMap = new Map();
@@ -3672,7 +3695,7 @@ const appMethods = {
     this.parcels.forEach((p) => {
       if (p.status === statusName) p.status = "دون إجراء";
     });
-    this.saveData();
+    this.saveSettings();
   },
 
   openStatusOrderModal() {
@@ -3799,7 +3822,7 @@ const appMethods = {
         p.tag = null;
       }
     });
-    this.saveData();
+    this.saveSettings();
   },
 
   openTagPicker(parcelId) {
