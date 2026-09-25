@@ -11,7 +11,10 @@ appState.drawerOpen = false;
 
 const { createApp } = Vue;
 
-createApp({
+// الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
+const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
+
+const appOptions = {
     data() {
         return appState;
     },
@@ -274,6 +277,31 @@ createApp({
         setTimeout(() => this.initSortable(), 500);
         this.detectDuplicates();
         this.initNotifications();
+
+        // إجراءات قادمة من صفحات أخرى عبر hash (من قائمة ⋮ الموحّدة / زر +)
+        this.runHashAction();
+
+        // ============ التنقل الداخلي ============
+        // الصفحة الحالية + اعتراض روابط الصفحات الداخلية + زر الرجوع في المتصفح
+        this.__currentPageFile = (window.location.pathname.split('/').pop() || 'index.html');
+
+        document.addEventListener('click', (e) => {
+            const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href || a.target === '_blank' || a.hasAttribute('download')) return;
+            if (/^(https?:|mailto:|tel:|javascript:|data:|#)/i.test(href)) return;
+            const file = href.split('#')[0].split('?')[0].split('/').pop();
+            if (ROUTABLE_PAGES.indexOf(file) === -1) return;
+            e.preventDefault();
+            this.navigate(href);
+        });
+
+        window.addEventListener('popstate', () => {
+            const file = (window.location.pathname.split('/').pop() || 'index.html');
+            if (file === this.__currentPageFile) return;
+            this.navigate(window.location.pathname.split('/').pop() + window.location.hash, { push: false });
+        });
         
         // إخفاء شاشة التحميل بعد تحميل الصفحة
         const hideLoadingScreen = () => {
@@ -333,7 +361,7 @@ createApp({
         let pullStartTouchCount = 0;
 
         document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0 && this.currentView === 'main' && !this.showFilters) {
+            if (window.scrollY === 0 && this.appPage === 'home' && !this.showFilters) {
                 if (e.touches.length === 2) {
                     const touchYs = Array.from(e.touches).map(t => t.clientY);
                     pullStartY = Math.min(...touchYs);
@@ -483,9 +511,10 @@ createApp({
                                         }
                                     }
                                     
-                                    // تحديث المهام
+                                    // تحديث المهام (تُوحَّد للشكل الجديد قبل الاستخدام)
                                     if (doc.id === 'tasks') {
-                                        const remoteTasks = data.data ? JSON.parse(data.data) : [];
+                                        const rawTasks = data.data ? JSON.parse(data.data) : [];
+                                        const remoteTasks = (window.taskStore ? window.taskStore.normalizeList(rawTasks) : rawTasks);
                                         if (JSON.stringify(remoteTasks) !== JSON.stringify(this.tasks)) {
                                             console.log('🔄 تحديث المهام من Firestore:', remoteTasks.length, 'مهمة');
                                             this.tasks = remoteTasks;
@@ -523,6 +552,165 @@ createApp({
             } catch (e) {
                 console.error('❌ فشل تفعيل Firestore listener:', e);
             }
+        },
+
+        // ============================================
+        // التنقل داخل التطبيق بدون إعادة تحميل الصفحة
+        // ============================================
+        // نُبدّل دالة render للجذر نفسه (وليس لمكوّن ابن) حتى تبقى
+        // حالة التطبيق واحدة: لا إعادة تحميل، لا إعادة اشتراك في Firestore،
+        // كل مراجع القالب و $refs تبقى على الجذر.
+        navigate(url, options) {
+            const opts = options || {};
+            const target = String(url || 'index.html');
+            const [rawPath, hash] = target.split('#');
+            const file = (rawPath || 'index.html').split('?')[0].split('/').pop();
+
+            if (ROUTABLE_PAGES.indexOf(file) === -1) {
+                window.location.href = target;
+                return Promise.resolve(false);
+            }
+
+            const onCurrentPage = (file === this.__currentPageFile);
+            if (onCurrentPage && !hash) {
+                this.closePageOverlays();
+                return Promise.resolve(false);
+            }
+            if (this.__navBusy) return Promise.resolve(false);
+            this.__navBusy = true;
+
+            return fetch(file, { credentials: 'same-origin' })
+                .then((res) => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.text();
+                })
+                .then((html) => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const host = doc.getElementById('app');
+                    if (!host) throw new Error('لا يوجد #app في ' + file);
+                    // Vue.compile في نسخة المتصفح تُعيد دالة العرض مباشرة.
+                    // نلفّ محتوى الصفحة بجذر يحمل :key متغيّراً حتى يفكّ Vue الشجرة
+                    // القديمة بالكامل (unmount) ويركّب شجرة جديدة بدل إعادة استخدام
+                    // المكوّنات ذات الـ props الثابتة مثل swipex-header.
+                    const pageMarkup = '<div class="swipex-page-root" style="display: contents" :key="pageKey">'
+                        + host.innerHTML + '</div>';
+                    const pageRender = Vue.compile(pageMarkup);
+                    if (typeof pageRender !== 'function') throw new Error('فشل ترجمة قالب ' + file);
+                    const page = (doc.body && doc.body.dataset && doc.body.dataset.page)
+                        || file.replace(/\.html$/, '');
+
+                    this.closePageOverlays();
+                    this.__currentPageFile = file;
+                    document.body.dataset.page = page;
+                    this.appPage = page;
+                    this.pageKey = page;
+                    if (doc.title) document.title = doc.title;
+
+                    if (opts.push !== false && window.history && window.history.pushState) {
+                        window.history.pushState({ swipexPage: page }, '', target);
+                    }
+
+                    // تبديل قالب الجذر ثم إجباره على إعادة الرسم
+                    // (تصفير كاش العرض ضروري لأن كل قالب يحجز خانات خاصة به)
+                    this.$.render = pageRender;
+                    this.$.renderCache = [];
+                    window.scrollTo(0, 0);
+                    this.$.update();
+
+                    if (hash) {
+                        window.location.hash = hash;
+                        this.$nextTick(() => this.runHashAction());
+                    }
+                    return true;
+                })
+                .catch((e) => {
+                    console.warn('تعذّر التنقل السريع، سيتم التحميل الكامل:', e);
+                    window.location.href = target;
+                    return false;
+                })
+                .finally(() => { this.__navBusy = false; });
+        },
+
+        // إغلاق كل القوائم/اللوحات المفتوحة قبل تبديل الصفحة
+        closePageOverlays() {
+            const flags = [
+                'showTopMenu', 'showYalidineMenu', 'showFabMenu',
+                'showNotificationsPanel', 'showNotificationHistory',
+                'drawerOpen', 'showFilters', 'headerHidden', 'showTagsDropdown',
+            ];
+            flags.forEach((k) => { this[k] = false; });
+        },
+
+        // تنفيذ إجراء قادم من صفحة أخرى عبر hash (مثال: index.html#export)
+        runHashAction() {
+            const hash = String(window.location.hash || '').replace('#', '').toLowerCase();
+            if (!hash) return;
+            const actions = {
+                'pdf': () => this.triggerPdfInput && this.triggerPdfInput(),
+                'excel': () => this.triggerFileInput && this.triggerFileInput(),
+                'export': () => this.exportExcel && this.exportExcel(),
+                'guide': () => { this.showGuide = true; },
+                'dashboard': () => this.openDashboard && this.openDashboard(),
+                'add-parcel': () => { this.showAddModal = true; },
+                'focus': () => this.enterFocusMode && this.enterFocusMode(),
+                'bulk-sms': () => this.openBulkSmsModal && this.openBulkSmsModal(),
+            };
+            const fn = actions[hash];
+            if (fn) {
+                this.$nextTick(() => {
+                    try { fn(); } catch (e) { console.error('فشل تنفيذ إجراء الصفحة:', hash, e); }
+                });
+            }
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
         }
     }
-}).mount("#app");
+};
+
+// ============================================
+// دمج ميزات الصفحات (مثل نظام المهام) في خيارات التطبيق
+// يتم الدمج في نفس نسخة appState للحفاظ على المراجع المشتركة
+// ============================================
+const FEATURE_PACKS = ['tasksFeature'];
+FEATURE_PACKS.forEach((packName) => {
+    const pack = window[packName];
+    if (!pack || typeof pack !== 'object') return;
+
+    if (typeof pack.data === 'function') {
+        const baseData = appOptions.data;
+        appOptions.data = function () {
+            const base = (typeof baseData === 'function' ? baseData.call(this) : baseData) || {};
+            return Object.assign(base, pack.data.call(this));
+        };
+    }
+    ['computed', 'watch', 'methods'].forEach((key) => {
+        if (pack[key]) appOptions[key] = Object.assign({}, appOptions[key], pack[key]);
+    });
+    ['mounted', 'beforeUnmount', 'unmounted'].forEach((hook) => {
+        if (typeof pack[hook] !== 'function') return;
+        const baseHook = appOptions[hook];
+        appOptions[hook] = function () {
+            if (typeof baseHook === 'function') baseHook.call(this);
+            pack[hook].call(this);
+        };
+    });
+});
+
+const swipexApp = createApp(appOptions);
+
+// App Shell المشترك (الهيدر + الشريط السفلي + زر + العائم + المودالات المشتركة)
+if (window.SwipexShell && typeof window.SwipexShell.install === 'function') {
+    window.SwipexShell.install(swipexApp);
+}
+
+// نلفّ محتوى #app بجذر يحمل :key حتى يتم فكّ الشجرة بالكامل عند كل تنقل
+// (نفس الآلية المستخدمة في navigate أعلاه)
+(function wrapInitialPage() {
+    const host = document.getElementById('app');
+    if (!host) return;
+    appOptions.template = '<div class="swipex-page-root" style="display: contents" :key="pageKey">'
+        + host.innerHTML + '</div>';
+})();
+
+swipexApp.mount("#app");

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="مهام التوصيل - SwiPex Pro" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SwiPex Pro" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <title>المهام - SwiPex Pro</title>
+
+    <!-- Local Libraries (Offline Support) -->
+    <script src="assets/libs/vue.global.min.js"></script>
+    <script src="assets/libs/tailwindcss.js"></script>
+    <script>
+        tailwind.config = { darkMode: "class" };
+    </script>
+    <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
+    <link href="assets/libs/cairo-font.css" rel="stylesheet" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body class="text-gray-800 antialiased" data-page="tasks">
+    <div id="app" class="pb-20">
+        <!-- Page Loading Screen -->
+        <div v-if="isPageLoading"
+            class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white dark:bg-gray-900">
+            <div
+                class="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-t-red-600 rounded-full animate-spin">
+            </div>
+            <p class="mt-6 text-gray-600 dark:text-gray-400 font-semibold">
+                جاري تحميل التطبيق...
+            </p>
+        </div>
+
+        <div v-if="initialSyncProgress" v-cloak class="loading-overlay loading-overlay-nonblocking">
+            <div class="spinner"></div>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
+                جاري مزامنة البيانات من السحابة...
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                تم تحميل {{ initialSyncProgress.loaded }} سجل حتى الآن
+            </p>
+        </div>
+
+        <!-- ============ صفحة المهام ============ -->
+        <div class="min-h-screen">
+
+            <!-- Header موحّد -->
+            <swipex-header title="المهام" icon="fa-list-check">
+                <template #actions>
+                    <swipex-top-menu></swipex-top-menu>
+                </template>
+            </swipex-header>
+
+            <!-- ملخّص + فلاتر -->
+            <div class="px-3 mt-3">
+                <div class="glass-panel rounded-2xl p-3 flex items-center gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">إجمالي المهام</div>
+                        <div class="text-2xl font-extrabold text-gray-800 dark:text-white leading-tight">
+                            {{ taskCounts.all }}
+                        </div>
+                    </div>
+                    <div class="text-center px-2">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">معلّقة</div>
+                        <div class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 leading-tight">
+                            {{ taskCounts.pending }}
+                        </div>
+                    </div>
+                    <div class="text-center px-2">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">مكتملة</div>
+                        <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
+                            {{ taskCounts.completed }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- شريط التركيز: عند فتح تذكير مهمة من الإشعارات -->
+            <div v-if="taskFocusId" class="px-3 mt-2">
+                <div
+                    class="rounded-2xl p-3 flex items-center gap-3 border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/25">
+                    <i class="fas fa-bell text-blue-600 dark:text-blue-400"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-bold text-blue-700 dark:text-blue-300">مهمة التذكير</div>
+                        <div class="text-sm font-bold text-gray-800 dark:text-gray-100 truncate">
+                            {{ focusedTask ? focusedTask.title : 'مهمة غير موجودة' }}
+                        </div>
+                    </div>
+                    <button @click="clearTaskFocus"
+                        class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition flex-shrink-0 flex items-center gap-1">
+                        عرض الكل
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- البحث -->
+            <div class="px-3 mt-2">
+                <div class="relative">
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input v-model="taskSearch" type="text" placeholder="بحث في المهام..."
+                        class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                </div>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="px-3 mt-2 flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none">
+                <button @click="taskFilter = 'all'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    taskFilter === 'all' ? 'bg-blue-600 text-white border-blue-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    الكل ({{ taskCounts.all }})
+                </button>
+                <button @click="taskFilter = 'pending'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    taskFilter === 'pending' ? 'bg-amber-500 text-white border-amber-400' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    معلّقة ({{ taskCounts.pending }})
+                </button>
+                <button @click="taskFilter = 'completed'" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    taskFilter === 'completed' ? 'bg-emerald-600 text-white border-emerald-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    مكتملة ({{ taskCounts.completed }})
+                </button>
+            </div>
+
+            <!-- قائمة المهام -->
+            <div class="p-3 space-y-3 pb-28">
+
+                <!-- حالة فارغة -->
+                <div v-if="taskList.length === 0"
+                    class="text-center py-16 text-gray-500 dark:text-gray-400">
+                    <div
+                        class="w-20 h-20 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-list-check text-3xl text-blue-400"></i>
+                    </div>
+                    <p class="font-bold text-gray-700 dark:text-gray-300">لا توجد مهام</p>
+                    <p class="text-sm mt-1">
+                        {{ taskSearch ? 'لا توجد نتائج للبحث' : 'اضغط على زر + لإنشاء مهمة جديدة' }}
+                    </p>
+                </div>
+
+                <!-- بطاقة مهمة -->
+                <div v-for="task in taskList" :key="task.id" class="task-card"
+                    :class="{ 'is-dragging': swipeDragging && String(swipeId) === String(task.id), 'is-exiting': isExiting(task, 'delete'), 'is-completing': isExiting(task, 'complete'), 'task-done-flash': String(flashId) === String(task.id) }">
+
+                    <!-- طبقة الإجراء خلف البطاقة -->
+                    <div class="task-swipe-action complete"
+                        :style="{ opacity: taskCompleteProgress(task) }">
+                        <i class="fas fa-check-circle"></i>
+                        <span>إتمام</span>
+                    </div>
+                    <div class="task-swipe-action delete" :style="{ opacity: taskDeleteProgress(task) }">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>حذف</span>
+                    </div>
+
+                    <!-- جسم البطاقة -->
+                    <div class="task-card-body glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm"
+                        :style="taskSwipeStyle(task)"
+                        @touchstart="onTaskTouchStart($event, task)" @touchmove="onTaskTouchMove($event)"
+                        @touchend="onTaskTouchEnd($event, task)" @touchcancel="onTaskTouchCancel()">
+
+                        <div class="p-4" @click="openEditTask(task)">
+                            <div class="flex items-start gap-3">
+                                <!-- إكمال سريع -->
+                                <button @click.stop="toggleTask(task)" class="task-check mt-0.5"
+                                    :class="{ done: task.status === 'completed' }"
+                                    :aria-label="task.status === 'completed' ? 'إرجاع للمعلّقة' : 'إكمال المهمة'">
+                                    <i v-if="task.status === 'completed'" class="fas fa-check text-xs"></i>
+                                </button>
+
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="task-priority" :class="'task-priority-' + task.priority">
+                                            <i class="fas" :class="priorityMeta(task.priority).icon"></i>
+                                            {{ priorityMeta(task.priority).label }}
+                                        </span>
+                                        <span v-if="isOverdue(task)"
+                                            class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            متأخرة
+                                        </span>
+                                        <span v-else-if="isDueToday(task)"
+                                            class="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                                            اليوم
+                                        </span>
+                                    </div>
+
+                                    <h3 class="mt-2 font-bold text-gray-800 dark:text-gray-100 text-base leading-snug"
+                                        :class="{ 'task-title-done': task.status === 'completed' }">
+                                        {{ task.title || 'مهمة بدون عنوان' }}
+                                    </h3>
+
+                                    <p v-if="task.description"
+                                        class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+                                        :class="{ 'task-title-done': task.status === 'completed' }">
+                                        {{ task.description }}
+                                    </p>
+
+                                    <p v-if="task.notes"
+                                        class="mt-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg">
+                                        <i class="fas fa-sticky-note text-[10px]"></i>
+                                        {{ task.notes }}
+                                    </p>
+
+                                    <!-- الطرد المرتبط -->
+                                    <button v-if="task.tracking" @click.stop="goToLinkedParcel(task)"
+                                        class="mt-2 inline-flex items-center gap-1.5 text-xs font-bold font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                                        <i class="fas fa-box"></i>
+                                        {{ task.tracking }}
+                                        <i class="fas fa-arrow-left text-[9px] opacity-60"></i>
+                                    </button>
+
+                                    <!-- التاريخ / الوقت -->
+                                    <div class="mt-2 flex items-center gap-3 flex-wrap text-[11px] text-gray-400">
+                                        <span v-if="task.dueDate" class="flex items-center gap-1">
+                                            <i class="fas fa-calendar-day"></i>
+                                            {{ formatTaskDate(task.dueDate) }}
+                                        </span>
+                                        <span v-if="task.dueTime" class="flex items-center gap-1 text-amber-500">
+                                            <i class="fas fa-clock"></i>
+                                            {{ task.dueTime }}
+                                        </span>
+                                        <span v-if="task.status === 'completed' && task.completedAt"
+                                            class="flex items-center gap-1 text-emerald-500">
+                                            <i class="fas fa-check-double"></i>
+                                            {{ formatTaskDate(task.completedAt) }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <i class="fas fa-chevron-left text-gray-300 dark:text-gray-600 text-xs mt-1"></i>
+                            </div>
+                        </div>
+
+                        <!-- شريط تأكيد الحذف (بعد Swipe Left) -->
+                        <div v-if="String(deleteArmedId) === String(task.id)" class="px-4 pb-4"
+                            @click.stop>
+                            <div class="task-delete-bar">
+                                <i class="fas fa-triangle-exclamation text-red-500"></i>
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex-1">
+                                    هل تريد حذف "{{ task.title || 'مهمة' }}"؟
+                                </span>
+                                <button @click="cancelDelete"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                    تراجع
+                                </button>
+                                <button @click="confirmDeleteTask(task)"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition shadow">
+                                    تأكيد الحذف
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- زر إنشاء مهمة (بديل واضح بجانب زر + العائم) -->
+                <button v-if="!showTaskComposer" @click="openNewTask" class="task-fab-inline">
+                <i class="fas fa-plus"></i>
+                مهمة جديدة
+            </button>
+        </div>
+
+        <!-- ============ Undo ============ -->
+        <transition name="toast">
+            <div v-if="showUndo"
+                class="fixed z-[160] left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-800/95 text-white shadow-2xl backdrop-blur-md"
+                style="bottom: calc(96px + env(safe-area-inset-bottom))">
+                <i class="fas fa-undo text-sm"></i>
+                <span class="text-sm font-bold">تم تنفيذ الإجراء</span>
+                <button @click="undoTaskAction"
+                    class="text-sm font-extrabold text-blue-300 hover:text-blue-200 transition px-2">
+                    تراجع
+                </button>
+            </div>
+        </transition>
+
+        <!-- ============ سلة محذوفات المهام ============ -->
+        <div v-if="deletedTasksCount > 0" class="px-3 pb-6">
+            <button @click="showTrash = !showTrash"
+                class="w-full py-3 rounded-xl glass-panel text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700">
+                <i class="fas fa-trash-restore"></i>
+                سلة المحذوفات ({{ deletedTasksCount }})
+            </button>
+            <div v-if="showTrash" class="mt-2 space-y-2">
+                <div v-for="t in deletedTasks" :key="t.id"
+                    class="glass-panel rounded-xl p-3 flex items-center gap-2 border border-red-200 dark:border-red-900/40">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-bold text-gray-500 dark:text-gray-400 line-through truncate">
+                            {{ t.title || 'مهمة' }}
+                        </div>
+                    </div>
+                    <button @click="restoreTask(t)"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                        استرجاع
+                    </button>
+                    <button @click="deleteTaskPermanently(t)"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition">
+                        حذف نهائي
+                    </button>
+                </div>
+                <button @click="emptyTrashTasks"
+                    class="w-full py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i>
+                    إفراغ السلة
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ App Shell (Bottom Nav + FAB + الإشعارات) ============ -->
+        <swipex-shell></swipex-shell>
+    </div>
+
+    <!-- Custom Scripts -->
+    <!-- Firebase SDK -->
+    <script src="assets/libs/xlsx.full.min.js"></script>
+    <script src="assets/libs/Sortable.min.js"></script>
+    <script src="assets/libs/quagga.min.js"></script>
+    <script src="assets/libs/pdf.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="assets/js/firebase-init.js"></script>
+    <script src="assets/js/state.js"></script>
+    <script src="assets/js/firestoreSync.js"></script>
+    <script src="assets/js/taskStore.js"></script>
+    <script src="assets/js/scanner.js"></script>
+    <script src="assets/js/pdf.js"></script>
+    <script src="assets/js/importExcel.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="assets/js/methods.js"></script>
+    <script src="assets/js/shell.js"></script>
+    <script src="assets/js/tasks.js"></script>
+    <script src="assets/js/app.js"></script>
+
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker
+                    .register("./sw.js")
+                    .then((reg) => console.log("SW registered"))
+                    .catch((err) => console.log("SW failed:", err));
+            });
+        }
+    </script>
+</body>
+
+</html>

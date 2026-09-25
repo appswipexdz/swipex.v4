@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // assets/js/methods.js
 // جميع دوال التطبيق الرئيسية
 // ============================================
@@ -1176,11 +1176,13 @@ const appMethods = {
           ? this.selectLatestVersion(localDataCache, { tasks: cloud.tasks }, cloudMetadata, 'tasks').tasks
           : cloud.tasks;
         if (selectedTasks) {
-          if (JSON.stringify(selectedTasks) !== JSON.stringify(this.tasks)) {
-            this.tasks = selectedTasks;
+          // توحيد الشكل (ترحيل تلقائي من الشكل القديم) قبل المقارنة والتخزين
+          const normalizedTasks = (window.taskStore ? window.taskStore.normalizeList(selectedTasks) : selectedTasks);
+          if (JSON.stringify(normalizedTasks) !== JSON.stringify(this.tasks)) {
+            this.tasks = normalizedTasks;
           }
           loaded = true;
-          console.log("✓ تم تطبيق المهام الأحدثة:", selectedTasks.length);
+          console.log("✓ تم تطبيق المهام الأحدثة:", normalizedTasks.length);
         }
       }
     }
@@ -2738,8 +2740,7 @@ const appMethods = {
     // حفظ البيانات دون حذف الأرشيف والإعدادات
     this.saveData();
     this.showClearDataConfirm = false;
-    this.currentView = "main";
-    
+
     // إعادة تهيئة Sortable بعد الحذف
     this.$nextTick(() => {
       this.initSortable();
@@ -3234,7 +3235,8 @@ const appMethods = {
       try {
         const data = JSON.parse(saved);
         this.notifications = data.notifications || [];
-        this.tasks = data.tasks || [];
+        // توحيد شكل المهام (ترحيل تلقائي من الشكل القديم عند أول تحميل)
+        this.tasks = (window.taskStore ? window.taskStore.normalizeList(data.tasks || []) : (data.tasks || []));
       } catch (e) {
         console.error("خطأ في تحميل الإشعارات:", e);
       }
@@ -3262,10 +3264,15 @@ const appMethods = {
       now.getMinutes().toString().padStart(2, "0");
 
     this.parcels.forEach((parcel) => {
+      // التذكيرات التي أنشأها زر الساعة أصبحت مهام، فالمهمة هي التي تُطلق الإشعار
+      const ownedByTask = this.tasks.some(
+        (t) => t.parcelId === parcel.id && (t.dueTime || t.reminderTime),
+      );
       if (
         parcel.reminderTime &&
         parcel.reminderTime === currentTime &&
-        !parcel.reminderTriggered
+        !parcel.reminderTriggered &&
+        !ownedByTask
       ) {
         const message = parcel.notes || "تذكير للطرد";
         const fullMessage = `${parcel.receiver || ""}\n${message}`;
@@ -3287,25 +3294,30 @@ const appMethods = {
       }
     });
 
+    // تذكير المهام: يعتمد على dueTime في الشكل الجديد ( reminderTime للبيانات القديمة)
     this.tasks.forEach((task) => {
+      const reminderTime = task.dueTime || task.reminderTime;
       if (
-        task.reminderTime &&
-        task.reminderTime === currentTime &&
+        task.status !== "deleted" &&
+        reminderTime &&
+        reminderTime === currentTime &&
         !task.triggered
       ) {
+        const taskText = task.title || task.description || "مهمة";
         this.addNotification({
           type: "task",
           title: "تذكير بمهمة",
-          message: task.description,
+          message: taskText,
           taskId: task.id,
+          tracking: task.tracking || "",
           time: now.toISOString(),
         });
         task.triggered = true;
         this.saveNotificationsData();
-        this.showBrowserNotification("مهمة", task.description);
+        this.showBrowserNotification("مهمة", taskText);
 
         // إرسال إشعار للـ Service Worker
-        this.sendPushNotification("مهمة", task.description);
+        this.sendPushNotification("مهمة", taskText);
       }
     });
 
@@ -3333,7 +3345,10 @@ const appMethods = {
     if (!("serviceWorker" in navigator)) return;
     const reminders = [];
     this.parcels.forEach((p) => {
-      if (p.reminderTime && !p.reminderTriggered) {
+      const ownedByTask = this.tasks.some(
+        (t) => t.parcelId === p.id && (t.dueTime || t.reminderTime),
+      );
+      if (p.reminderTime && !p.reminderTriggered && !ownedByTask) {
         reminders.push({
           type: "parcel",
           id: p.id,
@@ -3345,12 +3360,13 @@ const appMethods = {
       }
     });
     this.tasks.forEach((t) => {
-      if (t.reminderTime && !t.triggered) {
+      const reminderTime = t.dueTime || t.reminderTime;
+      if (t.status !== "deleted" && reminderTime && !t.triggered) {
         reminders.push({
           type: "task",
           id: t.id,
-          description: t.description,
-          time: t.reminderTime,
+          description: t.title || t.description || "مهمة",
+          time: reminderTime,
         });
       }
     });
@@ -3417,11 +3433,22 @@ const appMethods = {
 
   goToNotificationParcel(notif) {
     this.markNotificationRead(notif.id);
+    this.showNotificationsPanel = false;
+    this.showNotificationHistory = false;
+
+    // تذكير بمهمة ⇒ افتح صفحة المهام وهي معروضة على تلك المهمة وحدها
+    if (notif.type === "task" && notif.taskId != null) {
+      if (typeof this.focusTaskById === "function") {
+        this.focusTaskById(notif.taskId);
+      }
+      if (typeof this.navigate === "function") this.navigate("tasks.html");
+      return;
+    }
+
     if (notif.tracking) {
       this.filters.search = notif.tracking;
       this.filters.municipality = "";
       this.filters.status = "";
-      this.showNotificationsPanel = false;
     }
   },
 
@@ -3440,8 +3467,16 @@ const appMethods = {
   },
 
   // ========== Reminder Picker ==========
+  // زر الساعة في بطاقة الطرد: يفتح نافذة إنشاء مهمة كاملة مربوطة بالطرد،
+  // والتذكير الناتج هو نفسه مهمة تظهر في صفحة المهام.
   openReminderPicker(parcelId) {
     this.reminderPickerParcelId = parcelId;
+    if (typeof this.openParcelTask === "function") {
+      this.openParcelTask(parcelId);
+      return;
+    }
+
+    // بديل احتياطي في حال عدم تحميل نظام المهام
     const parcel = this.parcels.find((p) => p.id === parcelId);
     if (parcel && parcel.reminderTime) {
       const [hour, minute] = parcel.reminderTime.split(":");
@@ -3456,171 +3491,28 @@ const appMethods = {
     this.showReminderPicker = true;
   },
 
-  saveReminder() {
-    const parcel = this.parcels.find(
-      (p) => p.id === this.reminderPickerParcelId,
-    );
-    if (parcel) {
-      parcel.reminderTime =
-        this.reminderTime.hour + ":" + this.reminderTime.minute;
-      parcel.reminderTriggered = false;
-      this.markParcelDirty(parcel);
-      this.saveData();
-    }
-    this.showReminderPicker = false;
-    this.reminderPickerParcelId = null;
-  },
-
-  updateReminderTime(value) {
-    if (value) {
-      const [hour, minute] = value.split(":");
-      this.reminderTime.hour = hour;
-      this.reminderTime.minute = minute;
-    }
-  },
-
-  cancelReminder() {
-    this.showReminderPicker = false;
-    this.reminderPickerParcelId = null;
-  },
-
   removeParcelReminder(parcelId) {
     const parcel = this.parcels.find((p) => p.id === parcelId);
     if (parcel) {
       parcel.reminderTime = null;
       parcel.reminderTriggered = false;
 
+      // حذف المهمة المرتبطة التي أُنشئت من زر التذكير
+      if (typeof this.tasks !== "undefined" && Array.isArray(this.tasks)) {
+        const before = this.tasks.length;
+        this.tasks = this.tasks.filter(
+          (t) => !(t.parcelId === parcelId && t.title && String(t.title).indexOf("متابعة الطرد") === 0),
+        );
+        if (this.tasks.length !== before && typeof this.persistTasks === "function") {
+          this.persistTasks();
+        }
+      }
+
       this.markParcelDirty(parcel);
       this.saveData();
     }
   },
 
-  // ========== Tasks ==========
-  openAddTaskModal() {
-    this.newTask = { description: "", reminderTime: "" };
-    this.showAddTaskModal = true;
-    this.drawerOpen = false;
-  },
-
-  addTask() {
-    if (!this.newTask.description.trim()) return;
-
-    const task = {
-      id: Date.now(),
-      description: this.newTask.description,
-      reminderTime: this.newTask.reminderTime || null,
-      triggered: false,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.tasks.unshift(task);
-    this.saveNotificationsData();
-    this.showAddTaskModal = false;
-    this.isListeningForTask = false;
-    this.newTask = { description: "", reminderTime: "" };
-  },
-
-  toggleTaskSpeech() {
-    if (!this.recognition) {
-      this.initSpeech();
-      if (!this.recognition) return;
-    }
-
-    if (this.isListeningForTask) {
-      this.recognition.stop();
-      this.isListeningForTask = false;
-    } else {
-      if (this.activeListeningId) this.recognition.stop();
-      this.activeListeningId = null;
-      this.isListeningForTask = true;
-      this.isListeningForEditTask = false;
-
-      this.recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        this.newTask.description = this.newTask.description
-          ? this.newTask.description + " " + transcript
-          : transcript;
-        this.isListeningForTask = false;
-      };
-      this.recognition.onend = () => {
-        this.isListeningForTask = false;
-      };
-      this.recognition.start();
-    }
-  },
-
-  toggleEditTaskSpeech() {
-    if (!this.recognition) {
-      this.initSpeech();
-      if (!this.recognition) return;
-    }
-
-    if (this.isListeningForEditTask) {
-      this.recognition.stop();
-      this.isListeningForEditTask = false;
-    } else {
-      if (this.activeListeningId) this.recognition.stop();
-      this.activeListeningId = null;
-      this.isListeningForEditTask = true;
-      this.isListeningForTask = false;
-
-      this.recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        this.editingTask.description = this.editingTask.description
-          ? this.editingTask.description + " " + transcript
-          : transcript;
-        this.isListeningForEditTask = false;
-      };
-      this.recognition.onend = () => {
-        this.isListeningForEditTask = false;
-      };
-      this.recognition.start();
-    }
-  },
-
-  toggleTaskComplete(taskId) {
-    const task = this.tasks.find((t) => t.id === taskId);
-    if (task) {
-      task.completed = !task.completed;
-      this.saveNotificationsData();
-    }
-  },
-
-  deleteTask(taskId) {
-    this.tasks = this.tasks.filter((t) => t.id !== taskId);
-    this.saveNotificationsData();
-    this.showEditTaskModal = false;
-    this.editingTask = null;
-  },
-
-  openEditTaskModal(task) {
-    this.editingTask = { ...task };
-    this.showEditTaskModal = true;
-  },
-
-  saveEditTask() {
-    const task = this.tasks.find((t) => t.id === this.editingTask.id);
-    if (task) {
-      task.description = this.editingTask.description;
-      task.reminderTime = this.editingTask.reminderTime;
-      task.triggered = false;
-      this.saveNotificationsData();
-    }
-    this.showEditTaskModal = false;
-    this.editingTask = null;
-  },
-
-  toggleEditingTaskComplete() {
-    if (this.editingTask) {
-      const task = this.tasks.find((t) => t.id === this.editingTask.id);
-      if (task) {
-        task.completed = !task.completed;
-        this.editingTask.completed = task.completed;
-        this.saveNotificationsData();
-      }
-    }
-  },
 
   formatNotificationTime(isoString) {
     if (!isoString) return "";
@@ -4421,15 +4313,10 @@ const appMethods = {
   },
 
   openArchive() {
-    this.currentView = 'archive';
-    this.archiveVisibleCount = 30;
-    this.archiveSearch = '';
-    this.archiveStatusFilter = '';
+    // الأرشيف صفحة مستقلة الآن
     this.showTopMenu = false;
     this.showDashboard = false;
-    this.$nextTick(() => {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    });
+    window.location.href = 'archive.html';
   },
 
   getDashboardStats() {

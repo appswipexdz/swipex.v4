@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="الأرشيف - SwiPex Pro" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SwiPex Pro" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <title>الأرشيف - SwiPex Pro</title>
+
+    <!-- Local Libraries (Offline Support) -->
+    <script src="assets/libs/vue.global.min.js"></script>
+    <script src="assets/libs/tailwindcss.js"></script>
+    <script>
+        tailwind.config = { darkMode: "class" };
+    </script>
+    <script src="assets/libs/xlsx.full.min.js"></script>
+    <script src="assets/libs/Sortable.min.js"></script>
+    <script src="assets/libs/quagga.min.js"></script>
+    <script src="assets/libs/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdf.worker.min.js";
+    </script>
+    <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
+    <link href="assets/libs/cairo-font.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body class="text-gray-800 antialiased" data-page="archive">
+    <div id="app" class="pb-20">
+        <!-- Page Loading Screen -->
+        <div v-if="isPageLoading"
+            class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white dark:bg-gray-900">
+            <div
+                class="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-t-red-600 rounded-full animate-spin">
+            </div>
+            <p class="mt-6 text-gray-600 dark:text-gray-400 font-semibold">
+                جاري تحميل التطبيق...
+            </p>
+        </div>
+
+        <div v-if="isProcessingPdf" v-cloak class="loading-overlay">
+            <div class="spinner"></div>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
+                جاري تحليل ملف PDF...
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {{ pdfProgress }}
+            </p>
+        </div>
+
+        <div v-if="initialSyncProgress" v-cloak class="loading-overlay loading-overlay-nonblocking">
+            <div class="spinner"></div>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
+                جاري مزامنة البيانات من السحابة...
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                تم تحميل {{ initialSyncProgress.loaded }} سجل حتى الآن
+            </p>
+        </div>
+
+        <input type="file" ref="fileInput" @change="handleFileUpload" class="hidden" accept=".xlsx, .xls, .csv" />
+        <input type="file" ref="pdfInput" @change="handlePdfUpload" class="hidden" accept=".pdf" />
+
+        <!-- ============ صفحة الأرشيف ============ -->
+        <div class="min-h-screen">
+
+            <!-- Header موحّد -->
+            <swipex-header title="الأرشيف" icon="fa-archive">
+                <template #actions>
+                    <swipex-top-menu></swipex-top-menu>
+                </template>
+            </swipex-header>
+
+            <!-- Search in Archive -->
+            <div class="mx-3 mt-3">
+                <div class="relative">
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input v-model="archiveSearch" @input="archiveVisibleCount = 30" type="text"
+                        placeholder="بحث بالتتبع، الاسم، الهاتف، أو الملاحظات..."
+                        class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                </div>
+            </div>
+
+            <!-- Archive Import / Export / Sync -->
+            <div class="mx-3 mt-2 grid grid-cols-3 gap-2">
+                <button @click="exportArchive"
+                    class="py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition flex items-center justify-center gap-2 border border-emerald-200 dark:border-emerald-800/50">
+                    <i class="fas fa-file-export"></i>
+                    <span>تصدير</span>
+                </button>
+                <button @click="openArchiveImport"
+                    class="py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition flex items-center justify-center gap-2 border border-blue-200 dark:border-blue-800/50">
+                    <i class="fas fa-file-import"></i>
+                    <span>استيراد</span>
+                </button>
+                <button @click="syncArchiveToCloud"
+                    class="py-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-bold text-sm hover:bg-purple-100 dark:hover:bg-purple-900/30 transition flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800/50">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                    <span>مزامنة</span>
+                </button>
+                <input ref="archiveImportInput" type="file"
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"
+                    @change="handleArchiveImport" />
+            </div>
+
+            <!-- Archive Sync Toggle -->
+            <div class="mx-3 mt-2 glass-panel rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/30">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-cloud-arrow-up text-purple-500"></i>
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">مزامنة الأرشيف مع
+                            السحابة</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" :checked="settings.archiveSyncEnabled"
+                            @change="toggleArchiveSync($event.target.checked)" class="sr-only peer" />
+                        <div class="w-12 h-7 rounded-full transition-all relative overflow-hidden"
+                            :class="settings.archiveSyncEnabled ? 'bg-purple-500' : 'bg-gray-300'">
+                            <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all"
+                                :class="settings.archiveSyncEnabled ? 'left-1' : 'right-1'"></span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Archive Filter Pills -->
+            <div class="mx-3 mt-2 flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none">
+                <button @click="archiveStatusFilter = ''; archiveVisibleCount = 30" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    !archiveStatusFilter ? 'bg-purple-600 text-white border-purple-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    الكل
+                </button>
+                <button @click="archiveStatusFilter = 'تم التسليم'; archiveVisibleCount = 30" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'تم التسليم' ? 'bg-green-600 text-white border-green-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    تم التسليم
+                </button>
+                <button @click="archiveStatusFilter = 'إلغاء الطلبية'; archiveVisibleCount = 30" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'إلغاء الطلبية' ? 'bg-red-600 text-white border-red-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    إلغاء
+                </button>
+                <button @click="archiveStatusFilter = 'لا يرد'; archiveVisibleCount = 30" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'لا يرد' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    لا يرد
+                </button>
+                <button @click="archiveStatusFilter = 'رقم خاطئ'; archiveVisibleCount = 30" :class="[
+                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
+                    archiveStatusFilter === 'رقم خاطئ' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ]">
+                    رقم خاطئ
+                </button>
+            </div>
+
+            <!-- Archive Stats -->
+            <div class="mx-3 mt-2 glass-panel rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/30">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-archive text-purple-500 ml-1"></i>
+                        يعرض {{ Math.min(archiveVisibleCount, filteredArchive.length) }}
+                        من {{ filteredArchive.length }} طرد
+                    </span>
+                    <span class="text-xs text-gray-400">الأرشيف: {{ archiveList.length }}</span>
+                </div>
+            </div>
+
+            <!-- Archive List -->
+            <div class="p-3 space-y-3 pb-24">
+                <div v-if="filteredArchive.length === 0" class="text-center py-16 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-archive text-5xl mb-4 block opacity-30"></i>
+                    <p class="font-bold">لا توجد طرود مؤرشفة</p>
+                    <p class="text-sm mt-1">
+                        الطرود تُؤرشف تلقائياً عند استيراد ملف جديد في يوم جديد
+                    </p>
+                </div>
+
+                <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking"
+                    class="glass-panel rounded-xl p-4 border-r-4" :class="{
+                    'border-green-500': item.status === 'تم التسليم',
+                    'border-red-500': item.status === 'إلغاء الطلبية',
+                    'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                    'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                }">
+                    <!-- السطر 1: رقم التتبع (يمين) | زر السجل (يسار) -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span @click.stop="item.isMultiPiece === true ? openMultiPieceModal(item) : copyTracking(item.tracking)"
+                                class="text-white px-2 py-0.5 rounded-lg text-xs font-mono font-bold cursor-pointer hover:brightness-110 transition"
+                                :class="item.isMultiPiece === true ? 'bg-blue-600' : 'bg-gray-800 dark:bg-gray-900'"
+                                :title="item.isMultiPiece === true ? 'طرد متعدد القطع — اضغط لعرض الأرقام الفرعية' : 'نسخ رقم التتبع'">
+                                <i class="fas fa-copy text-[9px] ml-1 opacity-60" v-if="item.isMultiPiece !== true"></i>
+                                <i class="fas fa-layer-group text-[9px] ml-1 opacity-80" v-else></i>
+                                {{ item.tracking }}
+                            </span>
+                            <button v-if="canOpenParcelLocation(item)" @click="openParcelLocation(item)"
+                                class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition flex items-center justify-center">
+                                <i class="fas fa-map-marker-alt text-xs"></i>
+                            </button>
+                            <span v-if="item.openingAllowed === true"
+                                class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"
+                                title="فتح الطرد مسموح">
+                                <i class="fas fa-box-open text-xs text-green-500"></i>
+                            </span>
+                            <span v-else-if="item.openingAllowed === false"
+                                class="w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center"
+                                title="فتح الطرد غير مسموح">
+                                <i class="fas fa-box text-xs text-red-500"></i>
+                            </span>
+                        </div>
+                        <button v-if="item.events && item.events.length > 1" @click.stop="openArchiveHistory(item)"
+                            type="button"
+                            class="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition flex items-center justify-center shadow-sm relative">
+                            <i class="fas fa-history text-[11px]"></i>
+                            <span
+                                class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] text-white font-bold flex items-center justify-center">{{
+                                item.events.length }}</span>
+                        </button>
+                    </div>
+
+                    <!-- السطر 2: اسم المستلم + الهاتف (يمين) | الحالة (يسار) -->
+                    <div class="flex items-center justify-between mb-3 gap-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span
+                                class="text-white w-8 h-8 rounded-2xl text-xs font-bold flex items-center justify-center shadow-md flex-shrink-0"
+                                :class="{
+                                    'type-ecommerce': item.type === 'E-COMMERCE',
+                                    'type-particulier': item.type === 'PARTICULIER',
+                                    'type-economique': item.type === 'ECONOMIQUE',
+                                    'type-echange': item.type === 'AVEC ÉCHANGE',
+                                    'type-classique': item.type === 'CLASSIQUE',
+                                    'type-accuse': item.type === 'AVEC ACCUSÉ',
+                                    'type-default': !item.type || item.type === 'غير محدد'
+                                }">
+                                {{ item.type ? item.type.charAt(0) : '?' }}
+                            </span>
+                            <div class="min-w-0">
+                                <div class="font-bold text-gray-800 dark:text-gray-100 text-sm truncate">
+                                    {{ item.receiver }}
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+                                    <a v-if="item.phone" :href="'tel:' + item.phone"
+                                        class="text-blue-600 dark:text-blue-400 hover:underline">{{ item.phone }}</a>
+                                    <span v-if="item.phone2">
+                                        |
+                                        <a :href="'tel:' + item.phone2"
+                                            class="text-blue-600 dark:text-blue-400 hover:underline">{{ item.phone2
+                                            }}</a></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-bold flex-shrink-0">
+                            <span class="w-2 h-2 rounded-full" :class="{
+                                'bg-green-500': item.status === 'تم التسليم',
+                                'bg-red-500': item.status === 'إلغاء الطلبية',
+                                'bg-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
+                                'bg-gray-400': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
+                            }"></span>
+                            <span class="text-gray-600 dark:text-gray-300">{{ item.status }}</span>
+                        </div>
+                    </div>
+
+                    <!-- السطر 3: البلدية (يمين) | المبلغ (يسار) -->
+                    <div class="flex items-center justify-between mb-3 gap-3">
+                        <div v-if="item.municipality"
+                            class="text-xs text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-lg font-bold truncate min-w-0">
+                            {{ item.municipality }}
+                        </div>
+                        <div v-else class="min-w-0"></div>
+                        <div v-if="item.amount > 0"
+                            class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-xl text-base font-bold whitespace-nowrap flex-shrink-0">
+                            {{ formatCurrency(item.amount) }}
+                        </div>
+                    </div>
+
+                    <!-- السطر 4: التمييز + الملاحظة في سطر واحد -->
+                    <div v-if="item.tag || item.notes" class="flex items-center gap-2 mb-3 overflow-hidden">
+                        <div v-if="item.tag"
+                            class="text-xs font-bold whitespace-nowrap flex-shrink-0 px-2 py-1 rounded-lg text-white"
+                            :style="getTagBadgeStyle(item.tag)">
+                            {{ getTagNameForDisplay(item.tag) }}
+                        </div>
+                        <div v-if="item.notes"
+                            class="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg truncate min-w-0">
+                            <i class="fas fa-sticky-note text-[10px] ml-1"></i>
+                            {{ item.notes }}
+                        </div>
+                    </div>
+
+                    <!-- السطر 5: التاريخ والوقت (أسفل البطاقة) -->
+                    <div class="text-[11px] text-gray-400 text-left">
+                        {{ formatDate(item.statusUpdatedAt || item.lastUpdate) }}
+                    </div>
+                </div>
+
+                <button v-if="archiveVisibleCount < filteredArchive.length" @click="archiveVisibleCount += 30"
+                    class="w-full py-3 rounded-xl glass-panel text-purple-600 dark:text-purple-400 font-bold text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800/50">
+                    <i class="fas fa-chevron-down"></i>
+                    عرض المزيد ({{ filteredArchive.length - archiveVisibleCount }}
+                    متبقي)
+                </button>
+            </div>
+        </div>
+
+        <!-- ============ App Shell (Bottom Nav + الإشعارات) ============ -->
+        <swipex-shell></swipex-shell>
+    </div>
+
+    <!-- Custom Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="assets/js/firebase-init.js"></script>
+    <script src="assets/js/state.js"></script>
+    <script src="assets/js/firestoreSync.js"></script>
+    <script src="assets/js/taskStore.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="assets/js/scanner.js"></script>
+    <script src="assets/js/pdf.js"></script>
+    <script src="assets/js/importExcel.js"></script>
+    <script src="assets/js/methods.js"></script>
+    <script src="assets/js/shell.js"></script>
+    <script src="assets/js/tasks.js"></script>
+    <script src="assets/js/app.js"></script>
+
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker
+                    .register("./sw.js")
+                    .then((reg) => console.log("SW registered"))
+                    .catch((err) => console.log("SW failed:", err));
+            });
+        }
+    </script>
+</body>
+
+</html>

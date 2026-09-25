@@ -1,5 +1,4 @@
 const appState = {
-    currentView: 'main',
     filters: { search: "", municipality: "", status: "", tag: "", favorite: false },
     showFilters: false,
     whatsappLongPressTimer: null,
@@ -106,18 +105,13 @@ showYalidineMenu: false,
     // نظام الإشعارات والتذكيرات
     showNotificationsPanel: false,
     notifications: [],
+    // نظام المهام الجديد (الشكل الكامل في assets/js/taskStore.js)
     tasks: [],
-    showAddTaskModal: false,
-    newTask: { description: '', reminderTime: '' },
     showReminderPicker: false,
     reminderPickerParcelId: null,
     reminderTime: { hour: '12', minute: '00' },
     notificationCheckInterval: null,
-    showEditTaskModal: false,
-    editingTask: null,
     showNotificationHistory: false,
-    isListeningForTask: false,
-    isListeningForEditTask: false,
     isPageLoading: true,
     toasts: [], // نظام الإشعارات المؤقتة
     statusList: [
@@ -191,6 +185,13 @@ showYalidineMenu: false,
     },
     _firestoreLoaded: false,
     syncStatus: 'idle',
+    // مفتاح تبديل الصفحة: يُستخدم كـ :key على جذر القالب
+    // Force Vue to fully unmount/remount the page tree on SPA navigation,
+    // otherwise components with static props (swipex-header) are reused stale.
+    pageKey: 'home',
+    // الصفحة الحالية — حالة تفاعلية وليست خاصية محسوبة، لأن
+    // document.body.dataset غير تفاعلية فكانت القيمة تُخزَّن ولا تتحدث بعد تنقل SPA.
+    appPage: (typeof document !== 'undefined' && document.body && document.body.dataset && document.body.dataset.page) || 'home',
     _dirtyParcels: new Set(),
     _dirtyArchive: new Set(),
     _settingsDirty: false,
@@ -235,9 +236,8 @@ showYalidineMenu: false,
     bulkSmsQueue: [],
     bulkSmsIndex: 0,
     bulkSmsSending: false,
-    // Bottom Navigation
-    activeTab: 'parcels',
-    // Top Menu (three dots)
+    // Bottom Navigation (تعريفها في assets/js/shell.js)
+    // Top Menu (three dots) — معرّف في assets/js/shell.js
     showTopMenu: false,
     // Progress bar compact mode
     progressBarCompact: false,
