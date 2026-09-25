@@ -3623,6 +3623,11 @@ const appMethods = {
     const name = String(this.newTagForm?.name || "").trim();
     if (!name) return;
 
+    if (this.newTagForm?.scope === "municipality" && !String(this.newTagForm?.municipality || "").trim()) {
+      this.showToast('يرجى إدخال اسم البلدية لهذا التمييز', 'error');
+      return;
+    }
+
     let tagName = name;
     if (!tagName.startsWith("@")) {
       tagName = "@" + tagName;
@@ -3843,6 +3848,15 @@ const appMethods = {
     const name = String(this.quickTagForm?.name || "").trim();
     if (!name) return;
 
+    const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
+    const scope = this.quickTagForm?.scope === "municipality" ? "municipality" : "global";
+    const municipality = scope === "municipality" ? (parcel?.municipality || this.quickTagForm?.municipality || "") : "";
+
+    if (scope === "municipality" && !municipality.trim()) {
+      this.showToast('يرجى إدخال اسم البلدية لهذا التمييز', 'error');
+      return;
+    }
+
     let tagName = name;
     if (!tagName.startsWith("@")) {
       tagName = "@" + tagName;
@@ -3857,10 +3871,6 @@ const appMethods = {
     if (!this.settings.tagOrder.includes(tagName)) {
       this.settings.tagOrder.push(tagName);
     }
-
-    const parcel = this.parcels.find((p) => p.id === this.tagPickerParcelId);
-    const scope = this.quickTagForm?.scope === "municipality" ? "municipality" : "global";
-    const municipality = scope === "municipality" ? (parcel?.municipality || this.quickTagForm?.municipality || "") : "";
 
     this.settings.tagMetadata = this.settings.tagMetadata || {};
     this.settings.tagMetadata[tagName] = {
