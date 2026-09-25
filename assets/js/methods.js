@@ -2397,8 +2397,10 @@ const appMethods = {
       // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسله
       const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
-        parcel.status = newStatus;
-        parcel.statusUpdatedAt = new Date().toISOString();
+        if (parcel.status !== newStatus) {
+          parcel.status = newStatus;
+          parcel.statusUpdatedAt = new Date().toISOString();
+        }
         this.statusModalParcel = null;
         this.markParcelDirty(parcel);
         this.saveData();
@@ -2412,8 +2414,10 @@ const appMethods = {
       return;
     }
 
-    parcel.status = newStatus;
-    parcel.statusUpdatedAt = new Date().toISOString();
+    if (parcel.status !== newStatus) {
+      parcel.status = newStatus;
+      parcel.statusUpdatedAt = new Date().toISOString();
+    }
     this.statusModalParcel = null;
     this.markParcelDirty(parcel);
     this.saveData();
@@ -2457,8 +2461,10 @@ const appMethods = {
     const newStatus = this.statusSmsConfirmStatus;
 
     // تغيير الحالة
-    parcel.status = newStatus;
-    parcel.statusUpdatedAt = new Date().toISOString();
+    if (parcel.status !== newStatus) {
+      parcel.status = newStatus;
+      parcel.statusUpdatedAt = new Date().toISOString();
+    }
     this.markParcelDirty(parcel);
     this.saveData();
 
@@ -2489,8 +2495,10 @@ const appMethods = {
   confirmStatusChangeOnly() {
     if (!this.statusSmsConfirmParcel) return;
 
-    this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
-    this.statusSmsConfirmParcel.statusUpdatedAt = new Date().toISOString();
+    if (this.statusSmsConfirmParcel.status !== this.statusSmsConfirmStatus) {
+      this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
+      this.statusSmsConfirmParcel.statusUpdatedAt = new Date().toISOString();
+    }
     this.markParcelDirty(this.statusSmsConfirmParcel);
     this.saveData();
 
@@ -4565,8 +4573,10 @@ const appMethods = {
   },
 
   focusChangeStatus(parcel, newStatus) {
-    parcel.status = newStatus;
-    parcel.statusUpdatedAt = new Date().toISOString();
+    if (parcel.status !== newStatus) {
+      parcel.status = newStatus;
+      parcel.statusUpdatedAt = new Date().toISOString();
+    }
     this.markParcelDirty(parcel);
     this.saveData();
     if (newStatus === "تم التسليم") {
