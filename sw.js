@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swipex-v4-shell-7';
+const CACHE_NAME = 'swipex-v4-shell-8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
