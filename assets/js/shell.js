@@ -561,7 +561,7 @@
         </div>
         <div class="flex gap-2">
             <button @click="copyAllSubTrackings"
-                class="flex-1 px-4 py-3 rounded-xl bg-indigo-500 text-white font-bold text-sm hover:bg-indigo-600 transition flex items-center justify-center gap-2">
+                class="flex-1 px-4 py-3 rounded-xl bg-indigo-500 text-white font-bold text-xs hover:bg-indigo-600 transition flex items-center justify-center gap-2">
                 <i class="fas fa-copy text-xs"></i>
                 نسخ كل الأرقام
             </button>
