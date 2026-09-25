@@ -1419,14 +1419,11 @@ select {
     text-overflow: ellipsis;
 }
 
-/* --- أيقونة الرئيسية أكبر من باقي أيقونات الشريط السفلي --- */
+/* --- أيقونة الرئيسية أكبر، في قوس يرتفع فوق البار دون تكبير البار --- */
 .bottom-nav .bottom-nav-item-home {
-    padding-top: 2px;
-}
-
-.bottom-nav .bottom-nav-item-home i {
-    font-size: 1.6rem;
-    line-height: 1.1;
+    min-height: 44px;
+    padding-top: 6px;
+    justify-content: flex-end;
 }
 
 .bottom-nav .bottom-nav-item-home .nav-label {
@@ -1434,8 +1431,46 @@ select {
     font-weight: 800;
 }
 
-.bottom-nav .bottom-nav-item-home.active i {
-    transform: scale(1.12);
+.bottom-nav .nav-home-arc {
+    position: absolute;
+    top: -19px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    color: #fff;
+    border: 3px solid #fff;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bottom-nav .nav-home-arc i {
+    font-size: 1.35rem;
+    line-height: 1;
+    transition: all 0.2s;
+}
+
+.dark-mode .bottom-nav .nav-home-arc {
+    border-color: #1e293b;
+    background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%);
+}
+
+.bottom-nav .bottom-nav-item-home.active .nav-home-arc {
+    box-shadow: 0 8px 22px rgba(220, 38, 38, 0.5);
+    transform: translateX(-50%) scale(1.06);
+}
+
+.bottom-nav .bottom-nav-item-home.active .nav-home-arc i {
+    color: #fff;
+}
+
+.bottom-nav .bottom-nav-item-home:active .nav-home-arc {
+    transform: translateX(-50%) scale(0.94);
 }
 
 

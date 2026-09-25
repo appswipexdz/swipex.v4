@@ -93,7 +93,7 @@
         <div v-if="appPage === 'home'">
             <!-- Header Bar موحّد (يختفي عند السحب) -->
             <div class="sticky top-0 z-50 header-wrapper" :class="{ 'header-hidden': headerHidden }">
-                <swipex-header title="الرئيسية" icon="fa-box" :hide-back="true">
+                <swipex-header title="الرئيسية" icon="fa-box" :hide-back="true" show-logo>
                     <template #actions>
                         <swipex-top-menu></swipex-top-menu>
                         <button @click.stop="toggleSearch" class="header-action"
@@ -135,7 +135,7 @@
                 </div>
             </div>
             <!-- Filter Pills (ثابتة دائماً) -->
-            <div class="filter-pills sticky z-40 transition-all duration-300" :style="{ top: headerHidden ? '0' : '56px' }">
+            <div class="filter-pills sticky z-40 transition-all duration-300" :style="{ top: headerHidden ? '0' : '48px' }">
                 <div class="mx-1 mt-1 px-0.5 py-0.2 relative bg-white/85 dark:bg-gray-900/85 backdrop-blur-md rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm"
                     style="overflow: visible">
                     <div class="flex gap-2 overflow-x-auto py-1 scrollbar-hide" style="scrollbar-width: none">

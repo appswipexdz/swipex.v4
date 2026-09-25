@@ -128,7 +128,8 @@
     }
 
     /**
-     * ترتيب العرض: غير المكتملة أولاً، ثم الأحدث موعداً، ثم الأحدث إنشاءً.
+     * ترتيب العرض: غير المكتملة أولاً (الأقرب موعداً ثم الأعلى أولوية).
+     * المكتملة بترتيب عكسي: الأحدث إكمالاً في الأعلى.
      * completedAt / dueDate غير مضبوطة تُدفع لآخر القائمة.
      */
     function sortForDisplay(list) {
@@ -137,6 +138,14 @@
             const ac = a.status === STATUS.COMPLETED ? 1 : 0;
             const bc = b.status === STATUS.COMPLETED ? 1 : 0;
             if (ac !== bc) return ac - bc;
+
+            // --- مجموعة المكتملة: ترتيب عكسي (الأحدث إكمالاً أولاً) ---
+            if (ac === 1) {
+                const ax = str(a.completedAt) || str(a.updatedAt) || "";
+                const bx = str(b.completedAt) || str(b.updatedAt) || "";
+                if (ax !== bx) return ax < bx ? 1 : -1;
+                return str(b.createdAt) < str(a.createdAt) ? -1 : 1;
+            }
 
             const ad = a.dueDate || "9999-99-99";
             const bd = b.dueDate || "9999-99-99";

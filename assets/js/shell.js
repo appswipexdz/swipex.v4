@@ -37,7 +37,7 @@
     const NAV_ITEMS = [
         { key: "settings", icon: "fa-user-cog", label: "الإعدادات", href: "settings.html" },
         { key: "tasks", icon: "fa-list-check", label: "المهام", href: "tasks.html", badge: "tasks" },
-        { key: "home", icon: "fa-box", label: "الرئيسية", href: "index.html" },
+        { key: "home", icon: "fa-home", label: "الرئيسية", href: "index.html" },
         { key: "yalidine", icon: "fa-shipping-fast", label: "ياليدين", action: "yalidine" },
         { key: "notifications", icon: "fa-bell", label: "الإشعارات", action: "notifications", badge: "notifications" },
     ];
@@ -108,7 +108,7 @@
 
     // ============ الهيدر الموحّد ============
     const HeaderTemplate = `
-<div class="app-header-bar sticky flex items-center justify-between shadow-lg" style="padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: 10px;">
+<div class="app-header-bar sticky flex items-center justify-between shadow-lg" style="padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px;">
     <!-- يمين: زر الرجوع + أزرار الصفحة -->
     <div class="flex items-center gap-2 min-w-0">
         <button v-if="showBack" type="button" class="header-action flex-shrink-0" @click="goBack" title="رجوع">
@@ -117,15 +117,18 @@
         <slot name="actions"></slot>
     </div>
 
-    <!-- الوسط: العنوان -->
-    <h1 class="text-base sm:text-lg font-bold flex items-center gap-2 min-w-0">
+    <!-- الوسط: العنوان (أو لوقو SwiPex في الرئيسية) -->
+    <div v-if="showLogo" class="flex items-center justify-center flex-shrink-0">
+        <img src="assets/icons/logo.png" alt="SwiPex" class="h-8 rounded-lg" />
+    </div>
+    <h1 v-else class="text-sm sm:text-base font-bold flex items-center gap-2 min-w-0">
         <i class="fas" :class="[icon, 'text-white/90']"></i>
         <span class="truncate">{{ title }}</span>
     </h1>
 
     <!-- يسار: اللوغو + حالة المزامنة/الاتصال -->
     <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        <img src="assets/icons/logo.png" alt="SwiPex" class="h-7 rounded-lg hidden sm:block" />
+        <img v-if="!showLogo" src="assets/icons/logo.png" alt="SwiPex" class="h-7 rounded-lg hidden sm:block" />
         <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
             <div v-if="syncStatus === 'syncing'" class="flex items-center gap-1.5 text-xs font-bold text-blue-300">
                 <i class="fas fa-circle-notch animate-spin text-sm"></i>
@@ -171,6 +174,7 @@
             icon: { type: String, default: "fa-box" },
             backHref: { type: String, default: "" },
             hideBack: { type: Boolean, default: false },
+            showLogo: { type: Boolean, default: false },
         },
         computed: {
             page() {
@@ -240,11 +244,13 @@
                 </a>
             </div>
 
-            <!-- الرئيسية -->
+            <!-- الرئيسية (أيقونة كبيرة داخل قوس يرتفع فوق البار) -->
             <div v-else-if="item.key === 'home'" class="nav-slot nav-slot-home">
                 <a class="bottom-nav-item bottom-nav-item-home" :class="{ active: page === 'home' && !showNotificationsPanel }" :href="item.href"
                     @click.prevent="go(item.href)">
-                    <i class="fas" :class="item.icon"></i>
+                    <span class="nav-home-arc">
+                        <i class="fas" :class="item.icon"></i>
+                    </span>
                     <span class="nav-label">{{ item.label }}</span>
                 </a>
             </div>
@@ -560,7 +566,7 @@
                 نسخ كل الأرقام
             </button>
             <button @click="openYalidine(multiPieceModalParcel.tracking, multiPieceModalParcel)"
-                class="flex-1 px-4 py-3 rounded-xl bg-orange-500 text-white font-bold text-sm hover:bg-orange-600 transition flex items-center justify-center gap-2">
+                class="flex-1 px-4 py-3 rounded-xl bg-orange-500 text-white font-bold text-xs hover:bg-orange-600 transition flex items-center justify-center gap-2">
                 <i class="fas fa-box text-xs"></i>
                 فتح في ياليدين
             </button>
