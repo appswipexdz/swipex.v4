@@ -1620,6 +1620,7 @@ const appMethods = {
       if (!tracking) return;
       const event = {
         status: p.status,
+        statusUpdatedAt: p.statusUpdatedAt || p.updatedAt || new Date().toISOString(),
         notes: p.notes || "",
         tag: p.tag || null,
         location: this.normalizeLocation(p.location),
@@ -1784,7 +1785,7 @@ const appMethods = {
         rows.push({
           "رقم التتبع": tracking,
           "الترتيب": idx + 1,
-          "آخر تحديث": event.lastUpdate || "",
+          "آخر تحديث": event.statusUpdatedAt || event.lastUpdate || "",
           "الحالة": event.status || "",
           "ملاحظات": event.notes || "",
           "التمييز": event.tag || "",
@@ -2397,6 +2398,7 @@ const appMethods = {
       const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
         parcel.status = newStatus;
+        parcel.statusUpdatedAt = new Date().toISOString();
         this.statusModalParcel = null;
         this.markParcelDirty(parcel);
         this.saveData();
@@ -2411,6 +2413,7 @@ const appMethods = {
     }
 
     parcel.status = newStatus;
+    parcel.statusUpdatedAt = new Date().toISOString();
     this.statusModalParcel = null;
     this.markParcelDirty(parcel);
     this.saveData();
@@ -2455,6 +2458,7 @@ const appMethods = {
 
     // تغيير الحالة
     parcel.status = newStatus;
+    parcel.statusUpdatedAt = new Date().toISOString();
     this.markParcelDirty(parcel);
     this.saveData();
 
@@ -2486,6 +2490,7 @@ const appMethods = {
     if (!this.statusSmsConfirmParcel) return;
 
     this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
+    this.statusSmsConfirmParcel.statusUpdatedAt = new Date().toISOString();
     this.markParcelDirty(this.statusSmsConfirmParcel);
     this.saveData();
 
@@ -3698,7 +3703,10 @@ const appMethods = {
       (s) => s.name !== statusName,
     );
     this.parcels.forEach((p) => {
-      if (p.status === statusName) p.status = "دون إجراء";
+      if (p.status === statusName) {
+        p.status = "دون إجراء";
+        p.statusUpdatedAt = new Date().toISOString();
+      }
     });
     this.saveSettings();
   },
@@ -4558,6 +4566,7 @@ const appMethods = {
 
   focusChangeStatus(parcel, newStatus) {
     parcel.status = newStatus;
+    parcel.statusUpdatedAt = new Date().toISOString();
     this.markParcelDirty(parcel);
     this.saveData();
     if (newStatus === "تم التسليم") {
@@ -5008,6 +5017,9 @@ const appMethods = {
         if (localParcelIndex !== -1) {
           // دمج التحديثات في الطرد المحلي
           const localParcel = this.parcels[localParcelIndex];
+          if (updates.status !== undefined && updates.status !== localParcel.status) {
+            updates = { ...updates, statusUpdatedAt: new Date().toISOString() };
+          }
           this.parcels[localParcelIndex] = { ...localParcel, ...updates };
           
           // حفظ التغييرات محلياً وفي سحابة المستخدم الخاصة

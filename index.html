@@ -1228,7 +1228,7 @@
 
                     <!-- السطر 5: التاريخ والوقت (أسفل البطاقة) -->
                     <div class="text-[11px] text-gray-400 text-left">
-                        {{ formatDate(item.lastUpdate) }}
+                        {{ formatDate(item.statusUpdatedAt || item.lastUpdate) }}
                     </div>
                 </div>
 
@@ -2634,7 +2634,7 @@
                                     </button>
                                 </div>
                                 <span class="text-[10px] text-gray-400 dark:text-gray-500">{{
-                                    formatDate(item.lastUpdate) }}</span>
+                                    formatDate(item.statusUpdatedAt || item.lastUpdate) }}</span>
                             </div>
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="w-2 h-2 rounded-full flex-shrink-0" :class="{
@@ -3327,7 +3327,7 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                                        {{ formatDate(event.lastUpdate) }}
+                                        {{ formatDate(event.statusUpdatedAt || event.lastUpdate) }}
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
