@@ -1934,8 +1934,16 @@ const appMethods = {
           smsSent: latestArchivedEvent.smsSent || false,
           senderSmsSent: latestArchivedEvent.senderSmsSent || false,
           insertedAt: this._nowTimestamp(),
+          // الحالة وحدها تُعاد دائماً إلى "دون إجراء" (يوم عمل جديد)، ما لم يحمل PDF حالة صريحة
           status: hasImportedStatus ? newParcel.status : "دون إجراء",
-          notes: hasImportedNotes ? newParcel.notes : "",
+          // بقية الحقول: تُعتمَد البيانات المحفوظة سابقاً (من آخر تعديل يدوي قبل الأرشفة)
+          // على بيانات PDF الجديدة، لأن الأخيرة قد تكون بيانات المرسل الأصلية غير المصحَّحة
+          notes: latestArchivedEvent.notes || (hasImportedNotes ? newParcel.notes : ""),
+          receiver: latestArchivedEvent.receiver || newParcel.receiver || "",
+          municipality: latestArchivedEvent.municipality || newParcel.municipality || "",
+          phone: latestArchivedEvent.phone || newParcel.phone || "",
+          phone2: latestArchivedEvent.phone2 || newParcel.phone2 || "",
+          tag: latestArchivedEvent.tag || newParcel.tag || null,
           location: this.normalizeLocation(
             newParcel.location || latestArchivedEvent.location,
           ),
