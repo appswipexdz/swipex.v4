@@ -485,6 +485,19 @@
                 }
                 return String(value);
             },
+            // التاريخ فقط (بدون وقت): حقول التاريخ من نوع "YYYY-MM-DD" تُقرأ كمنتصف ليل UTC
+            // فتظهر مع timezone غير UTC كوقت مصطنع (01:00 صباحاً)، والوقت الحقيقي معروض بجواره
+            formatTaskDay(value) {
+                if (!value) return "";
+                const raw = String(value);
+                const d = new Date(raw.length <= 10 ? raw + "T00:00:00" : raw);
+                if (isNaN(d.getTime())) return this.formatTaskDate(value);
+                return d.toLocaleDateString("ar-DZ", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                });
+            },
             goToLinkedParcel(task) {
                 if (!task.tracking) return;
                 this.filters.search = task.tracking;
