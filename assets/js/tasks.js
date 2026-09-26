@@ -155,6 +155,19 @@
                     (x) => String(x.tracking || "").trim().toLowerCase() === tr
                 ) || null;
             },
+            // ربط يدوي: رقم تتبع مكتوب غير موجود ضمن طرود اليوم
+            hasParcelLink() {
+                return !!(this.draft.parcelId || String(this.draft.tracking || "").trim());
+            },
+            trackingNotInParcels() {
+                const q = String(this.linkParcelQuery || "").trim();
+                // نعرضه فقط لمدخل يشبه رقم تتبع: كلمة واحدة بطول 3 أحرف فأكثر
+                if (q.length < 3 || /\s/.test(q)) return "";
+                const exists = (this.parcels || []).some(
+                    (x) => String(x.tracking || "").trim().toLowerCase() === q.toLowerCase()
+                );
+                return exists ? "" : q;
+            },
         },
 
         methods: {
@@ -517,6 +530,14 @@
                 this.draft.parcelId = p.id;
                 this.draft.tracking = p.tracking;
                 this.linkParcelQuery = p.tracking;
+                this.showParcelPicker = false;
+            },
+            linkParcelCustom() {
+                const q = this.trackingNotInParcels;
+                if (!q) return;
+                this.draft.parcelId = null;
+                this.draft.tracking = q;
+                this.linkParcelQuery = q;
                 this.showParcelPicker = false;
             },
             clearParcelLink() {

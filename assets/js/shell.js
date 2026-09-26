@@ -218,7 +218,7 @@
 
                 <template v-if="fabEnabled">
                     <button type="button" class="fab-float" :class="{ 'rotate-45': fabMenuOpen }"
-                        :aria-label="'إجراءات سريعة'" @click.stop="onFabClick()">
+                        :aria-label="page === 'tasks' ? 'مهمة جديدة' : 'إجراءات سريعة'" @click.stop="onFabClick()">
                         <span v-if="!fabMenuOpen" class="fab-pulse"></span>
                         <i class="fas fa-plus"></i>
                     </button>
@@ -676,15 +676,20 @@
                     <i class="fas fa-box text-gray-400"></i>
                     الطرد المرتبط
                 </label>
-                <div v-if="linkedParcel"
+                <div v-if="hasParcelLink"
                     class="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
                     <i class="fas fa-box text-blue-600 dark:text-blue-400"></i>
                     <div class="flex-1 min-w-0">
                         <div class="font-mono font-bold text-sm text-blue-700 dark:text-blue-300 truncate">
-                            {{ linkedParcel.tracking }}
+                            {{ linkedParcel ? linkedParcel.tracking : draft.tracking }}
                         </div>
-                        <div v-if="linkedParcel.receiver" class="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        <div v-if="linkedParcel && linkedParcel.receiver"
+                            class="text-xs text-gray-600 dark:text-gray-400 truncate">
                             {{ linkedParcel.receiver }}
+                        </div>
+                        <div v-else-if="!linkedParcel"
+                            class="text-xs text-amber-600 dark:text-amber-400 truncate">
+                            رقم التتبع غير موجود في قائمة الطرود
                         </div>
                     </div>
                     <button @click="clearParcelLink"
@@ -701,11 +706,24 @@
                 <div v-if="showParcelPicker" class="mt-2 glass-panel rounded-xl overflow-hidden">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-700">
                         <input v-model="linkParcelQuery" type="text"
-                            placeholder="ابحث بالرقم أو الاسم أو الهاتف..."
+                            placeholder="ابحث بالرقم أو الاسم أو الهاتف... أو اكتب أي رقم تتبع"
                             class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
+                    <button v-if="trackingNotInParcels" type="button" @click="linkParcelCustom"
+                        class="w-full p-3 text-right border-b border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition flex items-center gap-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-mono font-bold text-sm text-blue-700 dark:text-blue-300 truncate">
+                                {{ trackingNotInParcels }}
+                            </div>
+                            <div class="text-xs text-blue-600 dark:text-blue-400 truncate">
+                                غير موجود في قائمة الطرود — اضغط للربط به
+                            </div>
+                        </div>
+                        <i class="fas fa-link text-blue-500 text-xs flex-shrink-0"></i>
+                    </button>
                     <div class="max-h-52 overflow-y-auto">
-                        <div v-if="parcelOptions.length === 0" class="p-4 text-center text-gray-400 text-sm">
+                        <div v-if="parcelOptions.length === 0 && !trackingNotInParcels"
+                            class="p-4 text-center text-gray-400 text-sm">
                             لا توجد طرود مطابقة
                         </div>
                         <button v-for="p in parcelOptions" :key="p.id" type="button" @click="pickParcel(p)"
@@ -773,6 +791,12 @@
             parcelOptions() {
                 return this.$root.parcelOptions || [];
             },
+            hasParcelLink() {
+                return this.$root.hasParcelLink || false;
+            },
+            trackingNotInParcels() {
+                return this.$root.trackingNotInParcels || "";
+            },
             canSaveTask() {
                 return String((this.draft && this.draft.title) || "").trim() !== "";
             },
@@ -793,9 +817,9 @@
                     (a) => !a.requiresFlag || this.$root.settings[a.requiresFlag]
                 );
             },
-            // زر + العائم يظهر في الرئيسية فقط، لأن صفحة المهام لديها زر "مهمة جديدة"
+            // زر + العائم يظهر في الرئيسية (يفتح قائمة الإجراءات) وفي المهام (ينشئ مهمة جديدة)
             fabEnabled() {
-                return this.page === "home";
+                return this.page === "home" || this.page === "tasks";
             },
             fabMenuOpen() {
                 return this.page === "home" && this.showFabMenu === true;
@@ -921,6 +945,9 @@
             },
             pickParcel(p) {
                 if (this.$root.pickParcel) this.$root.pickParcel(p);
+            },
+            linkParcelCustom() {
+                if (this.$root.linkParcelCustom) this.$root.linkParcelCustom();
             },
             clearParcelLink() {
                 if (this.$root.clearParcelLink) this.$root.clearParcelLink();

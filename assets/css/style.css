@@ -1477,7 +1477,7 @@ select {
 /* --- زر + العائم فوق زر الإشعارات --- */
 .fab-float {
     position: absolute;
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 14px);
     right: 50%;
     transform: translateX(50%);
     width: 40px;
@@ -1761,23 +1761,4 @@ select {
     border-radius: 14px;
     background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-.task-fab-inline {
-    position: fixed;
-    bottom: calc(84px + env(safe-area-inset-bottom));
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 45;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-    color: #fff;
-    font-weight: 800;
-    font-size: 0.85rem;
-    box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
-    -webkit-tap-highlight-color: transparent;
 }
