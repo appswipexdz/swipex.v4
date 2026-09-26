@@ -157,8 +157,9 @@ body.dark-mode::after {
 .card-content {
     position: relative;
     z-index: 10;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
+    /* بلا backdrop-filter: البطاقة تُعاد بناؤها مع كل تحديث/سحب،
+       وتمويه الخلفية behindها مكلف جداً على الجوال */
+    background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.6);
     transition: transform 0.1s linear;
     border-radius: 1rem;
@@ -166,7 +167,7 @@ body.dark-mode::after {
 }
 
 .dark-mode .card-content {
-    background: rgba(30, 41, 59, 0.65);
+    background: rgba(30, 41, 59, 0.92);
     border-color: rgba(255, 255, 255, 0.08);
     color: #e5e7eb;
 }
@@ -772,8 +773,7 @@ select {
     transform: translateX(-50%);
     margin-bottom: 12px;
     min-width: 180px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.98);
     border-radius: 16px;
     border: 1px solid rgba(0, 0, 0, 0.06);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -819,8 +819,7 @@ select {
     right: 0;
     margin-top: 8px;
     min-width: 220px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.98);
     border-radius: 16px;
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);

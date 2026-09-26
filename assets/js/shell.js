@@ -578,7 +578,7 @@
 <div class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-[90%] pointer-events-none">
     <transition-group name="toast">
         <div v-for="toast in toasts" :key="toast.id"
-            class="px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto backdrop-blur-md animate-toast-in"
+            class="px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto animate-toast-in"
             :class="{
                 'bg-gray-800/90 text-white': toast.type === 'info',
                 'bg-green-600/90 text-white': toast.type === 'success',
