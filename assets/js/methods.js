@@ -2411,11 +2411,11 @@ const appMethods = {
           parcel.status = newStatus;
           parcel.statusUpdatedAt = new Date().toISOString();
         }
-        this.statusModalParcel = null;
-        this.markParcelDirty(parcel);
-        this.saveData();
-        if (newStatus === "تم التسليم") this.triggerConfetti();
-        return;
+      this.statusModalParcel = null;
+      this.markParcelDirty(parcel);
+      this.saveData();
+      if (newStatus === "تم التسليم") this.celebrateDelivered(parcel);
+      return;
       }
       this.statusSmsConfirmParcel = parcel;
       this.statusSmsConfirmStatus = newStatus;
@@ -2433,7 +2433,7 @@ const appMethods = {
     this.saveData();
 
     if (newStatus === "تم التسليم") {
-      this.triggerConfetti();
+      this.celebrateDelivered(parcel);
     }
   },
 
@@ -2479,7 +2479,7 @@ const appMethods = {
     this.saveData();
 
     if (newStatus === "تم التسليم") {
-      this.triggerConfetti();
+      this.celebrateDelivered(parcel);
     }
 
     // إنشاء رسالة SMS
@@ -2513,7 +2513,7 @@ const appMethods = {
     this.saveData();
 
     if (this.statusSmsConfirmStatus === "تم التسليم") {
-      this.triggerConfetti();
+      this.celebrateDelivered(this.statusSmsConfirmParcel);
     }
 
     this.closeStatusSmsConfirm();
@@ -4306,12 +4306,173 @@ const appMethods = {
     }
   },
 
-  // ========== Confetti Animation ==========
-  triggerConfetti() {
-    this.showConfetti = true;
-    setTimeout(() => {
-      this.showConfetti = false;
-    }, 3000);
+  // ========== Celebration (مُتدرّج الشدّة عند التسليم) ==========
+  // المحطات: احتفال متوسط عند 10/25/50/100 طرد مُسلَّم في اليوم
+
+  _celebrationReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  },
+
+  // مركز البطاقة في الشاشة (نسبةً إلى الإحداثيات النسبية) لتمرير نثار الاحتفال عليها
+  _celebrationOrigin(parcel) {
+    const fallback = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    if (!parcel || parcel.id == null) return fallback;
+    let el = null;
+    try {
+      el = document.getElementById("parcel-card-" + parcel.id);
+    } catch (e) {
+      el = null;
+    }
+    if (!el) return fallback;
+    const r = el.getBoundingClientRect();
+    if (!r || !r.width) return fallback;
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  },
+
+  // نغمة قصيرة جداً (Web Audio، بلا ملف صوتي) + اهتزاز على المحطات
+  _playDeliveryCue(big) {
+    if (!this.settings.deliveryCueEnabled) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        if (!this._cueCtx) this._cueCtx = new Ctx();
+        const ctx = this._cueCtx;
+        if (ctx.state === "suspended") ctx.resume();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(big ? 880 : 660, now);
+        osc.frequency.exponentialRampToValueAtTime(big ? 1320 : 880, now + 0.07);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(big ? 0.09 : 0.045, now + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      }
+    } catch (e) {
+      /* الصوت غير متاح */
+    }
+    if (big && navigator.vibrate) {
+      try {
+        navigator.vibrate(20);
+      } catch (e) {
+        /* الاهتزاز غير مدعوم */
+      }
+    }
+  },
+
+  // 1) كل عملية تسليم: حلقة تأكيد محلية على البطاقة (لا تحجب الشاشة)
+  _celebrateLocal(parcel) {
+    if (this._celebrationReducedMotion()) return;
+    const o = this._celebrationOrigin(parcel);
+    this.celebrationPulse = { x: o.x, y: o.y, token: ++this._celebrationToken };
+    clearTimeout(this._pulseTimer);
+    this._pulseTimer = setTimeout(() => {
+      this.celebrationPulse = null;
+    }, 700);
+  },
+
+  // 2) المحطات + 3) بلوغ هدف اليوم: لحظة واحدة كبيرة، مرة واحدة يومياً لكل محطة
+  //    يُرجع true إذا أُطلقت نغمة كبيرة، حتى لا تُضاف إليها نغمة التسليم العادية
+  _celebrateMilestone(count, parcel) {
+    const list = this.deliveryMilestones || [10, 25, 50, 100];
+    const hit = list.find((m) => count === m);
+
+    // هدف اليوم = لم يبقَ أي طرد نشط (نفس تعريف remainingCount في التطبيق)
+    const active = typeof this.remainingCount === "function"
+      ? this.remainingCount()
+      : (this.parcels || []).filter(
+          (p) => ["تم التسليم", "إلغاء الطلبية", "استرجاع"].indexOf(p.status) === -1
+        ).length;
+    const goalHit = active === 0 && count > 0 && !this._celebrationSeen.g;
+
+    // عند 100 مع اكتمال الهدف: بطاقة الهدف وحدها (أقوى لحظة، لا تكرار)
+    if (hit && !this._celebrationSeen["m" + hit] && !goalHit) {
+      this._celebrationSeen["m" + hit] = true;
+      this.celebrationMilestone = { count };
+      this._celebrateBurst(parcel);
+      this._playDeliveryCue(true);
+      clearTimeout(this._milestoneTimer);
+      this._milestoneTimer = setTimeout(() => {
+        this.celebrationMilestone = null;
+      }, 2800);
+      this._persistCelebrationSeen();
+      return true;
+    }
+
+    if (goalHit) {
+      this._celebrationSeen.g = true;
+      this.celebrationGoal = { count };
+      this._celebrateBurst(parcel);
+      this._playDeliveryCue(true);
+      clearTimeout(this._goalTimer);
+      this._goalTimer = setTimeout(() => {
+        this.celebrationGoal = null;
+      }, 4200);
+      this._persistCelebrationSeen();
+      return true;
+    }
+
+    return false;
+  },
+
+  // دفعة قصاصات صغيرة محصورة حول البطاقة (12 قطعة بدل 50 على الشاشة كلها)
+  _celebrateBurst(parcel) {
+    if (this._celebrationReducedMotion()) return;
+    const o = this._celebrationOrigin(parcel);
+    this.celebrationBurst = { x: o.x, y: o.y, token: ++this._celebrationToken };
+    clearTimeout(this._burstTimer);
+    this._burstTimer = setTimeout(() => {
+      this.celebrationBurst = null;
+    }, 1100);
+  },
+
+  // المحطات تُطلق مرة واحدة في اليوم فقط
+  _persistCelebrationSeen() {
+    try {
+      const today = String(this.sessionDate || "").slice(0, 10);
+      const seen = { __day: today, m: [], g: false };
+      Object.keys(this._celebrationSeen || {}).forEach((k) => {
+        if (k === "g") seen.g = true;
+        else if (k.charAt(0) === "m") seen.m.push(Number(k.slice(1)));
+      });
+      window.localStorage.setItem("swipex_celebration_seen", JSON.stringify(seen));
+    } catch (e) {
+      /* التخزين غير متاح */
+    }
+  },
+
+  _loadCelebrationSeen() {
+    this._celebrationSeen = {};
+    try {
+      const raw = JSON.parse(window.localStorage.getItem("swipex_celebration_seen") || "{}");
+      if (raw.__day !== String(this.sessionDate || "").slice(0, 10)) return;
+      (raw.m || []).forEach((n) => {
+        this._celebrationSeen["m" + n] = true;
+      });
+      if (raw.g) this._celebrationSeen.g = true;
+    } catch (e) {
+      this._celebrationSeen = {};
+    }
+  },
+
+  // نقطة الدخول الوحيدة: تُستدعى بعد حفظ حالة "تم التسليم"
+  // الاحتفال تجميلي فقط: أي خطأ فيه يجب ألا يوقف منطق تغيير الحالة أو إرسال SMS
+  celebrateDelivered(parcel) {
+    try {
+      const count = (this.parcels || []).filter((p) => p.status === "تم التسليم").length;
+      this._celebrateLocal(parcel);
+      // نغمة واحدة فقط: إن أطلقت المحطة/الهدف نغمة كبيرة فلا نضيف العادية فوقها
+      if (!this._celebrateMilestone(count, parcel)) this._playDeliveryCue(false);
+    } catch (e) {
+      console.warn("تعذّر تشغيل احتفال التسليم:", e);
+    }
   },
 
   // ========== Dashboard Stats ==========
@@ -4475,7 +4636,7 @@ const appMethods = {
     this.markParcelDirty(parcel);
     this.saveData();
     if (newStatus === "تم التسليم") {
-      this.triggerConfetti();
+      this.celebrateDelivered(parcel);
     }
   },
 

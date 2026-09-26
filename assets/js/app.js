@@ -245,6 +245,8 @@ const appOptions = {
             // السحابية في الخلفية (لا ينتظرها - syncStatus يُضبط من داخل المزامنة).
             this.loadData().then(() => {
                 console.log('✓ اكتمل تحميل البيانات المحلية');
+                // محطات الاحتفال تُطلق مرة واحدة يومياً: تُقرأ أعلامها بعد ضبط sessionDate
+                if (typeof this._loadCelebrationSeen === 'function') this._loadCelebrationSeen();
             }).catch((e) => {
                 console.error('❌ فشل تحميل البيانات:', e);
                 this.syncStatus = 'error';

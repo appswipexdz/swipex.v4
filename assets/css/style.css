@@ -572,34 +572,250 @@ select {
     transform: translateY(-100%);
 }
 
-/* ========== Confetti Animation ========== */
-.confetti-container {
+/* ========== Celebration (مُتدرّج الشدّة) ========== */
+
+/* 1) حلقة تأكيد محلية: transform/opacity فقط (طبقة تركيب) */
+.celebrate-layer {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    z-index: 9998;
     pointer-events: none;
-    z-index: 9999;
-    overflow: hidden;
+    width: 0;
+    height: 0;
 }
 
-.confetti-piece {
+.celebrate-ring {
     position: absolute;
-    top: -10px;
-    opacity: 0;
-    animation: confettiFall 3s ease-out forwards;
+    left: 50%;
+    top: 50%;
+    width: 84px;
+    height: 84px;
+    margin: -42px 0 0 -42px;
+    border-radius: 9999px;
+    border: 2px solid rgba(16, 185, 129, 0.75);
+    animation: celebratePulse 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes confettiFall {
+.celebrate-tick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.6rem;
+    color: #059669;
+    animation: celebrateTick 0.62s ease-out forwards;
+}
+
+@keyframes celebratePulse {
     0% {
+        opacity: 0;
+        transform: scale(0.2);
+    }
+    35% {
         opacity: 1;
-        transform: translateY(0) rotate(0deg) scale(1);
     }
     100% {
         opacity: 0;
-        transform: translateY(100vh) rotate(720deg) scale(0.5);
+        transform: scale(1.9);
     }
+}
+
+@keyframes celebrateTick {
+    0%, 25% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.4);
+    }
+    45% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.15);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* 2) دفعة قصاصات محصورة: 12 قطعة، مدة قصيرة */
+.celebrate-burst {
+    position: fixed;
+    z-index: 9997;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+.celebrate-chip {
+    position: absolute;
+    width: 7px;
+    height: 11px;
+    border-radius: 2px;
+    opacity: 0;
+    /* التأخير يُضبط inline في القالب (animation-delay) لتوافق أوسع */
+    animation: celebrateChip 0.95s cubic-bezier(0.18, 0.7, 0.35, 1) forwards;
+}
+
+@keyframes celebrateChip {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(0.6);
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--dx), calc(var(--dy) + 46px)) rotate(var(--rot)) scale(1);
+    }
+}
+
+/* 3) شريط المحطة */
+.celebrate-milestone {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    color: #065f46;
+    background: rgba(236, 253, 245, 0.97);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    box-shadow: 0 10px 30px rgba(5, 150, 105, 0.22);
+}
+
+.dark-mode .celebrate-milestone {
+    color: #a7f3d0;
+    background: rgba(6, 78, 59, 0.97);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.celebrate-milestone i {
+    font-size: 1.1rem;
+    color: #059669;
+}
+
+.milestone-enter-active,
+.milestone-leave-active {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.milestone-enter-from,
+.milestone-leave-to {
+    opacity: 0;
+    transform: translate(-50%, -14px);
+}
+
+/* 4) بطاقة بلوغ هدف اليوم */
+.celebrate-goal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.28);
+}
+
+.celebrate-goal-card {
+    width: 100%;
+    max-width: 320px;
+    padding: 28px 24px;
+    text-align: center;
+    border-radius: 24px;
+    background: #fff;
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    box-shadow: 0 24px 60px rgba(2, 44, 34, 0.28);
+}
+
+.dark-mode .celebrate-goal-card {
+    background: #1f2937;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.celebrate-goal-check svg {
+    width: 74px;
+    height: 74px;
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.goal-ring {
+    stroke: #d1fae5;
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    animation: goalRing 0.55s ease-out forwards;
+}
+
+.goal-tick {
+    stroke: #059669;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: goalTick 0.4s 0.35s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes goalRing {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes goalTick {
+    to { stroke-dashoffset: 0; }
+}
+
+.goal-enter-active,
+.goal-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.goal-enter-active .celebrate-goal-card,
+.goal-leave-active .celebrate-goal-card {
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.goal-enter-from,
+.goal-leave-to {
+    opacity: 0;
+}
+
+.goal-enter-from .celebrate-goal-card {
+    transform: scale(0.9);
+}
+
+/* احترام تفضيل تقليل الحركة: نبضة خفيفة بدل الحلقة المتوسّعة */
+@media (prefers-reduced-motion: reduce) {
+    .celebrate-ring {
+        animation: celebratePulseSoft 0.5s ease-out forwards;
+    }
+
+    .celebrate-tick {
+        animation: celebrateTickSoft 0.5s ease-out forwards;
+    }
+
+    .celebrate-chip,
+    .goal-ring,
+    .goal-tick {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+    }
+}
+
+@keyframes celebratePulseSoft {
+    0% { opacity: 0; transform: scale(1); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes celebrateTickSoft {
+    0% { opacity: 0; transform: translate(-50%, -50%); }
+    40% { opacity: 1; transform: translate(-50%, -50%); }
+    100% { opacity: 0; transform: translate(-50%, -50%); }
 }
 
 /* ========== Daily Summary Widget ========== */

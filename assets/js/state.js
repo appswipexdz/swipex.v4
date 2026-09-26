@@ -73,6 +73,7 @@ showYalidineMenu: false,
         favoritePhones: [],
         favoritePhonesEnabled: false,
         bulkSmsEnabled: false,
+        deliveryCueEnabled: true,
         archiveSyncEnabled: true
     },
     newCustomStatus: { name: '', color: '#9ca3af', icon: 'fa-tag' },
@@ -214,8 +215,14 @@ showYalidineMenu: false,
     // وضع التركيز
     focusModeActive: false,
     focusModeIndex: 0,
-    // Confetti
-    showConfetti: false,
+    // الاحتفال المتدرّج عند التسليم
+    deliveryMilestones: [10, 25, 50, 100], // عدّاد الطرود المُسلَّمة التي تُطلق احتفالاً
+    celebrationPulse: null,      // { x, y, token } حلقة تأكيد محلية على البطاقة
+    celebrationBurst: null,      // { x, y, token } دفعة قصاصات محصورة بالبطاقة
+    celebrationMilestone: null,  // { count } شريط المحطة
+    celebrationGoal: null,       // { count } بطاقة بلوغ هدف اليوم
+    _celebrationToken: 0,
+    _celebrationSeen: {},
     // Focus Mode extras
     focusEditingNotes: false,
     focusTouchStartX: 0,
