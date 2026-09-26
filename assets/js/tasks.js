@@ -513,12 +513,27 @@
             },
             goToLinkedParcel(task) {
                 if (!task.tracking) return;
-                this.filters.search = task.tracking;
+                const tracking = String(task.tracking).trim();
+                if (!tracking) return;
+                this.filters.search = tracking;
                 this.filters.municipality = "";
                 this.filters.status = "";
                 this.filters.tag = "";
                 if (typeof this.saveFilters === "function") this.saveFilters();
-                window.location.href = "index.html";
+
+                // انتقال سلس داخل التطبيق (بدون إعادة تحميل الصفحة)
+                if (typeof this.navigate !== "function") {
+                    window.location.href = "index.html";
+                    return;
+                }
+                const revealSearch = () => {
+                    // navigate() يغلق اللوحات عند التبديل، لذا نفتح لوحة البحث بعد انتهائه
+                    this.showFilters = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.searchInput) this.$refs.searchInput.focus();
+                    });
+                };
+                this.navigate("index.html").then(revealSearch, revealSearch);
             },
 
             // ---------- ربط طرد ----------
