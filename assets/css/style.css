@@ -1648,7 +1648,9 @@ select {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 84px;
+    /* تغطية البطاقة كاملة: السحب قد يكشف أكثر من 84px،
+       فالعرض الثابت كان يُظهر نهاية الشريط وسط المنطقة المكشوفة */
+    width: 100%;
     z-index: 1;
     display: flex;
     flex-direction: column;
@@ -1664,15 +1666,32 @@ select {
     font-size: 1.15rem;
 }
 
+/* الصفحة RTL، لذا نستخدم هوامش فيزيائية (auto) بدل flex-start/flex-end
+   حتى يبقى الأيقونة والنص عند الحافة الصحيحة في السحب (يمين/يسار) */
+
 .task-swipe-action.complete {
     left: 0;
+    padding-left: 18px;
     background: linear-gradient(160deg, #10b981 0%, #059669 100%);
+}
+
+.task-swipe-action.complete i,
+.task-swipe-action.complete span {
+    margin-right: auto;
 }
 
 .task-swipe-action.delete {
     right: 0;
+    padding-right: 18px;
     background: linear-gradient(160deg, #ef4444 0%, #b91c1c 100%);
 }
+
+.task-swipe-action.delete i,
+.task-swipe-action.delete span {
+    margin-left: auto;
+}
+
+
 
 .task-priority {
     display: inline-flex;

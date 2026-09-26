@@ -58,6 +58,8 @@
                 showParcelPicker: false,
                 // سلة المحذوفات
                 showTrash: false,
+                // قسم المهام المكتملة (مطوي تلقائياً)
+                showCompletedTasks: false,
             };
         },
 
@@ -84,6 +86,15 @@
                     if (only.length) return TS.sortForDisplay(only);
                 }
                 return TS.sortForDisplay(list);
+            },
+            // --- فصل المعلّقة عن المكتملة (قسم قابل للطي) ---
+            pendingTaskList() {
+                if (this.taskFilter === "completed") return [];
+                return this.taskList.filter((t) => t.status !== "completed");
+            },
+            completedTaskList() {
+                if (this.taskFilter === "completed") return this.taskList;
+                return this.taskList.filter((t) => t.status === "completed");
             },
             focusedTask() {
                 if (this.taskFocusId == null || this.taskFocusId === "") return null;

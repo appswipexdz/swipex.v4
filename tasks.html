@@ -155,17 +155,29 @@
                     </p>
                 </div>
 
+                <!-- حالة: اكتملت كل المهام (لا توجد مهام معلّقة) -->
+                <div v-if="pendingTaskList.length === 0 && taskFilter !== 'completed' && taskList.length > 0"
+                    class="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <div
+                        class="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-circle-check text-3xl text-emerald-500"></i>
+                    </div>
+                    <p class="font-bold text-gray-700 dark:text-gray-300">إكتملت كل المهام</p>
+                    <p class="text-sm mt-1">لا توجد مهام معلّقة حالياً</p>
+                </div>
+
                 <!-- بطاقة مهمة -->
-                <div v-for="task in taskList" :key="task.id" class="task-card"
+                <div v-for="task in pendingTaskList" :key="task.id" class="task-card"
                     :class="{ 'is-dragging': swipeDragging && String(swipeId) === String(task.id), 'is-exiting': isExiting(task, 'delete'), 'is-completing': isExiting(task, 'complete'), 'task-done-flash': String(flashId) === String(task.id) }">
 
                     <!-- طبقة الإجراء خلف البطاقة -->
                     <div class="task-swipe-action complete"
-                        :style="{ opacity: taskCompleteProgress(task) }">
+                        :style="{ opacity: taskCompleteProgress(task), zIndex: taskCompleteProgress(task) > 0 ? 1 : 0 }">
                         <i class="fas fa-check-circle"></i>
                         <span>إتمام</span>
                     </div>
-                    <div class="task-swipe-action delete" :style="{ opacity: taskDeleteProgress(task) }">
+                    <div class="task-swipe-action delete"
+                        :style="{ opacity: taskDeleteProgress(task), zIndex: taskDeleteProgress(task) > 0 ? 1 : 0 }">
                         <i class="fas fa-trash-alt"></i>
                         <span>حذف</span>
                     </div>
@@ -269,6 +281,132 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- قسم المهام المكتملة (مطوي تلقائياً) -->
+                <button v-if="completedTaskList.length > 0 && taskFilter !== 'completed'"
+                    @click="showCompletedTasks = !showCompletedTasks"
+                    class="w-full py-3 rounded-xl glass-panel text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700">
+                    <i class="fas" :class="showCompletedTasks ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                    مكتملة ({{ completedTaskList.length }})
+                </button>
+
+                <!-- المهام المكتملة (تظهر فقط عند التوسيع، أو دائماً إن كانت الفلترة الحالية "مكتملة") -->
+                <template v-if="showCompletedTasks || taskFilter === 'completed'">
+                    <div v-for="task in completedTaskList" :key="task.id" class="task-card"
+                        :class="{ 'is-dragging': swipeDragging && String(swipeId) === String(task.id), 'is-exiting': isExiting(task, 'delete'), 'is-completing': isExiting(task, 'complete'), 'task-done-flash': String(flashId) === String(task.id) }">
+
+                        <!-- طبقة الإجراء خلف البطاقة -->
+                        <div class="task-swipe-action complete"
+                            :style="{ opacity: taskCompleteProgress(task), zIndex: taskCompleteProgress(task) > 0 ? 1 : 0 }">
+                            <i class="fas fa-check-circle"></i>
+                            <span>إتمام</span>
+                        </div>
+                        <div class="task-swipe-action delete"
+                            :style="{ opacity: taskDeleteProgress(task), zIndex: taskDeleteProgress(task) > 0 ? 1 : 0 }">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>حذف</span>
+                        </div>
+
+                        <!-- جسم البطاقة -->
+                        <div class="task-card-body glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm"
+                            :style="taskSwipeStyle(task)"
+                            @touchstart="onTaskTouchStart($event, task)" @touchmove="onTaskTouchMove($event)"
+                            @touchend="onTaskTouchEnd($event, task)" @touchcancel="onTaskTouchCancel()">
+
+                            <div class="p-4" @click="openEditTask(task)">
+                                <div class="flex items-start gap-3">
+                                    <!-- إكمال سريع -->
+                                    <button @click.stop="toggleTask(task)" class="task-check mt-0.5"
+                                        :class="{ done: task.status === 'completed' }"
+                                        :aria-label="task.status === 'completed' ? 'إرجاع للمعلّقة' : 'إكمال المهمة'">
+                                        <i v-if="task.status === 'completed'" class="fas fa-check text-xs"></i>
+                                    </button>
+
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="task-priority" :class="'task-priority-' + task.priority">
+                                                <i class="fas" :class="priorityMeta(task.priority).icon"></i>
+                                                {{ priorityMeta(task.priority).label }}
+                                            </span>
+                                            <span v-if="isOverdue(task)"
+                                                class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                متأخرة
+                                            </span>
+                                            <span v-else-if="isDueToday(task)"
+                                                class="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                                                اليوم
+                                            </span>
+                                        </div>
+
+                                        <h3 class="mt-2 font-bold text-gray-800 dark:text-gray-100 text-base leading-snug"
+                                            :class="{ 'task-title-done': task.status === 'completed' }">
+                                            {{ task.title || 'مهمة بدون عنوان' }}
+                                        </h3>
+
+                                        <p v-if="task.description"
+                                            class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+                                            :class="{ 'task-title-done': task.status === 'completed' }">
+                                            {{ task.description }}
+                                        </p>
+
+                                        <p v-if="task.notes"
+                                            class="mt-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg">
+                                            <i class="fas fa-sticky-note text-[10px]"></i>
+                                            {{ task.notes }}
+                                        </p>
+
+                                        <!-- الطرد المرتبط -->
+                                        <button v-if="task.tracking" @click.stop="goToLinkedParcel(task)"
+                                            class="mt-2 inline-flex items-center gap-1.5 text-xs font-bold font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                                            <i class="fas fa-box"></i>
+                                            {{ task.tracking }}
+                                            <i class="fas fa-arrow-left text-[9px] opacity-60"></i>
+                                        </button>
+
+                                        <!-- التاريخ / الوقت -->
+                                        <div class="mt-2 flex items-center gap-3 flex-wrap text-[11px] text-gray-400">
+                                            <span v-if="task.dueDate" class="flex items-center gap-1">
+                                                <i class="fas fa-calendar-day"></i>
+                                                {{ formatTaskDate(task.dueDate) }}
+                                            </span>
+                                            <span v-if="task.dueTime" class="flex items-center gap-1 text-amber-500">
+                                                <i class="fas fa-clock"></i>
+                                                {{ task.dueTime }}
+                                            </span>
+                                            <span v-if="task.status === 'completed' && task.completedAt"
+                                                class="flex items-center gap-1 text-emerald-500">
+                                                <i class="fas fa-check-double"></i>
+                                                {{ formatTaskDate(task.completedAt) }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <i class="fas fa-chevron-left text-gray-300 dark:text-gray-600 text-xs mt-1"></i>
+                                </div>
+                            </div>
+
+                            <!-- شريط تأكيد الحذف (بعد Swipe Left) -->
+                            <div v-if="String(deleteArmedId) === String(task.id)" class="px-4 pb-4"
+                                @click.stop>
+                                <div class="task-delete-bar">
+                                    <i class="fas fa-triangle-exclamation text-red-500"></i>
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex-1">
+                                        هل تريد حذف "{{ task.title || 'مهمة' }}"؟
+                                    </span>
+                                    <button @click="cancelDelete"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                        تراجع
+                                    </button>
+                                    <button @click="confirmDeleteTask(task)"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition shadow">
+                                        تأكيد الحذف
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- زر إنشاء مهمة (بديل واضح بجانب زر + العائم) -->
