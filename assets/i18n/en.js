@@ -443,6 +443,12 @@ window.i18n_en = {
     "settings.language_ar": "Arabic",
     "settings.language_fr": "French",
     "settings.language_en": "English",
+
+    "settings.direction_label": "App direction",
+    "settings.direction_rtl": "Right",
+    "settings.direction_ltr": "Left",
+    "settings.direction_auto": "Automatic",
+    "settings.direction_hint": "Automatic follows the interface language: Arabic is right-to-left, while French and English are left-to-right. Pick a fixed direction to override it.",
     "guide.settings.sms_label": "SMS messages:",
     "guide.settings.sms_body": "enable an SMS per status, edit the text with dynamic tags, and enable \"message saving\" to skip the confirmation for carried-over parcels.",
     "guide.settings.custom_label": "Custom statuses:",
@@ -740,6 +746,7 @@ window.i18n_en = {
     "toast.task_deleted": "Task deleted",    // ============ Settings ============
     "settings.title": "Settings",
     "settings.section_theme": "Appearance",
+    "settings.section_appearance": "Appearance, language & direction",
     "settings.section_duplicates": "Duplicate numbers",
     "settings.section_tags": "Tag system",
     "settings.section_statuses": "Statuses",

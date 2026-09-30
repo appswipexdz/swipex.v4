@@ -64,6 +64,8 @@ showYalidineMenu: false,
     settings: { 
         themeMode: 'auto', 
         language: 'ar',
+        // اتجاه الواجهة: 'auto' يتبع اللغة (العربية يمين، الفرنسية/الإنجليزية يسار)
+        direction: 'auto',
         showDuplicates: true,
         smsTemplate: 'مرحبًا {اسم_المستلم}،\nمعكم خدمة التوصيل.\nطلبيتكم برقم التتبع {رقم_التتبع} جاهزة للاستلام.\nثمن الطرد مع التوصيل: {المبلغ} دج.\nشكرًا لكم!',
         whatsappTemplate: 'مرحبًا {اسم_المستلم}،\nطلبيتكم قد وصلت لدينا، ونحن نتواصل معكم الآن من أجل تحديد مكان الاستلام.\nالمبلغ المطلوب: {المبلغ} دج.\nشكرًا لكم!',
@@ -181,8 +183,7 @@ showYalidineMenu: false,
     showEditMunicipalityList: false,
     newFavoritePhone: '',
     settingsExpanded: {
-        theme: false,
-        language: false,
+        appearance: false,
         duplicates: false,
         tags: false,
         statuses: false,

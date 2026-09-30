@@ -20,8 +20,9 @@ const appOptions = {
     },
     
     computed: {
-        // i18n: هل اتجاه الواجهة الحالي RTL؟
+        // i18n: هل اتجاه الواجهة الحالي RTL؟ (يحترم إعداد الاتجاه اليدوي، والتلقائي يتبع اللغة)
         isRtl() {
+            if (typeof this.resolvedDirection === 'function') return this.resolvedDirection() === 'rtl';
             const lang = (this.settings && this.settings.language) || window.i18nDefaultLang || "ar";
             const registry = window.i18nRegistry || {};
             const entry = registry[lang] || registry[window.i18nDefaultLang || "ar"];
@@ -206,6 +207,10 @@ const appOptions = {
         },
         // i18n: عند تغيّر اللغة (محلياً أو عبر المزامنة السحابية) يُعاد تطبيق الاتجاه
         'settings.language'() {
+            this.applyLanguageDirection();
+        },
+        // i18n/dir: عند تغيّر اتجاه التطبيق (يمين/يسار/تلقائي) يُعاد تطبيقه فوراً
+        'settings.direction'() {
             this.applyLanguageDirection();
         }
     },
@@ -532,6 +537,7 @@ const appOptions = {
                                                 console.log('🔄 تحديث الإعدادات من Firestore');
                                                 this.settings = { ...this.settings, ...remoteSettings };
                                                 this.applyTheme();
+                                                this.applyLanguageDirection();
                                                 updated = true;
                                             }
                                         }

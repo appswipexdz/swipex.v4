@@ -443,6 +443,12 @@ window.i18n_fr = {
     "settings.language_ar": "Arabe",
     "settings.language_fr": "Français",
     "settings.language_en": "Anglais",
+
+    "settings.direction_label": "Direction de l'application",
+    "settings.direction_rtl": "Droite",
+    "settings.direction_ltr": "Gauche",
+    "settings.direction_auto": "Automatique",
+    "settings.direction_hint": "En mode automatique, la direction suit la langue de l'interface : l'arabe s'écrit de droite à gauche, le français et l'anglais de gauche à droite. Choisissez une direction fixe pour la remplacer.",
     "guide.settings.sms_label": "Messages SMS :",
     "guide.settings.sms_body": "activer un SMS par statut, modifier le texte avec des balises dynamiques, et activer « Économie de messages » pour sauter la confirmation des colis renvoyés.",
     "guide.settings.custom_label": "Statuts personnalisés :",
@@ -740,6 +746,7 @@ window.i18n_fr = {
     "toast.task_deleted": "Tâche supprimée",    // ============ Paramètres ============
     "settings.title": "Paramètres",
     "settings.section_theme": "Apparence",
+    "settings.section_appearance": "Apparence, langue et direction",
     "settings.section_duplicates": "Numéros en double",
     "settings.section_tags": "Système d'étiquettes",
     "settings.section_statuses": "Statuts",

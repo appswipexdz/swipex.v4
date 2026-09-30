@@ -139,6 +139,27 @@ const appMethods = {
     this.saveSettings();
   },
 
+  // i18n/dir: اتجاه الواجهة الفعّال.
+  // 'rtl' | 'ltr' من الإعداد مباشرة، أما 'auto' فيتبع لغة الواجهة
+  // (العربية من اليمين، الفرنسية والإنجليزية من اليسار).
+  resolvedDirection() {
+    const pref = (((this.settings || {}).direction) || "auto").toLowerCase();
+    if (pref === "rtl" || pref === "ltr") return pref;
+    const fallbackLang = window.i18nDefaultLang || "ar";
+    const lang = (this.settings && this.settings.language) || fallbackLang;
+    const registry = window.i18nRegistry || {};
+    const entry = registry[lang] || registry[fallbackLang];
+    const pack = entry ? (typeof entry === "function" ? entry() : entry) : null;
+    const meta = (pack && pack.meta) || { dir: "rtl" };
+    return (meta.dir || "rtl") === "ltr" ? "ltr" : "rtl";
+  },
+
+  setDirection(dir) {
+    this.settings.direction = dir === "rtl" || dir === "ltr" ? dir : "auto";
+    this.applyLanguageDirection();
+    this.saveSettings();
+  },
+
   applyLanguageDirection() {
     if (typeof document === "undefined") return;
     const fallbackLang = window.i18nDefaultLang || "ar";
@@ -150,7 +171,7 @@ const appMethods = {
     const html = document.documentElement;
     if (html) {
       html.setAttribute("lang", meta.code || fallbackLang);
-      html.setAttribute("dir", meta.dir || "rtl");
+      html.setAttribute("dir", this.resolvedDirection());
     }
   },
 
@@ -1097,6 +1118,8 @@ const appMethods = {
         this.settings = { ...this.settings, ...savedSettings };
         this.normalizeTagSettings();
         if (!this.settings.themeMode) this.settings.themeMode = "auto";
+        if (["rtl", "ltr", "auto"].indexOf(this.settings.direction) === -1)
+          this.settings.direction = "auto";
         console.log(
           "✓ تم تحميل البيانات المحلية:",
           this.parcels.length,

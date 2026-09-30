@@ -36,26 +36,30 @@
         }
     </script>
     <script>
-        // i18n: لغة الواجهة تُقرأ من الإعدادات المحفوظة محلياً (نفس مفتاح التطبيق) قبل أول paint
+        // i18n: لغة الواجهة واتجاهها يُقرآن من الإعدادات المحفوظة محلياً (نفس مفتاح التطبيق) قبل أول paint
         (function () {
-            function readStoredLang() {
+            function readStoredSettings() {
                 try {
                     const raw = localStorage.getItem('swipex_pro_v2');
                     if (!raw) return null;
                     const parsed = JSON.parse(raw);
-                    return (parsed && parsed.settings && parsed.settings.language) || null;
+                    return (parsed && parsed.settings) || null;
                 } catch (e) {
                     return null;
                 }
             }
+            const stored = readStoredSettings() || {};
             const fallback = window.i18nDefaultLang || 'ar';
-            const lang = readStoredLang() || fallback;
+            const lang = stored.language || fallback;
             const entry = (window.i18nRegistry || {})[lang];
             const pack = entry ? (typeof entry === 'function' ? entry() : entry) : null;
             const meta = (pack && pack.meta) || { code: fallback, dir: 'rtl' };
+            // i18n/dir: 'rtl' | 'ltr' يُطبَّقان كما هما، أما 'auto' فيتبع اتجاه اللغة
+            const pref = String(stored.direction || 'auto').toLowerCase();
+            const dir = (pref === 'rtl' || pref === 'ltr') ? pref : (meta.dir || 'rtl');
             const html = document.documentElement;
             html.setAttribute('lang', meta.code || fallback);
-            html.setAttribute('dir', meta.dir || 'rtl');
+            html.setAttribute('dir', dir);
             window.SWIPEX_LOGIN_LANG = lang;
         })();
     </script>
@@ -259,11 +263,11 @@
             },
             computed: {
                 isRtl() {
-                    const fallback = window.i18nDefaultLang || 'ar';
-                    const registry = window.i18nRegistry || {};
-                    const entry = registry[this.lang] || registry[fallback];
-                    const pack = entry ? (typeof entry === 'function' ? entry() : entry) : null;
-                    return ((pack && pack.meta && pack.meta.dir) || 'rtl') === 'rtl';
+                    // i18n/dir: الاتجاه المُطبَّق فعلياً على الصفحة (يراعي الاختيار اليدوي)
+                    const attr = typeof document !== 'undefined' && document.documentElement
+                        ? document.documentElement.getAttribute('dir')
+                        : null;
+                    return (attr || 'rtl') === 'rtl';
                 }
             },
             mounted() {

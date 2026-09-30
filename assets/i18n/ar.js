@@ -737,6 +737,7 @@ window.i18n_ar = {
     "toast.task_deleted": "تم حذف المهمة",    // ============ الإعدادات ============
     "settings.title": "الإعدادات",
     "settings.section_theme": "المظهر",
+    "settings.section_appearance": "المظهر واللغة والاتجاه",
     "settings.section_duplicates": "الأرقام المكررة",
     "settings.section_tags": "نظام التمييز",
     "settings.section_statuses": "الحالات",
@@ -761,6 +762,12 @@ window.i18n_ar = {
     "settings.language_ar": "العربية",
     "settings.language_fr": "الفرنسية",
     "settings.language_en": "الإنجليزية",
+
+    "settings.direction_label": "اتجاه التطبيق",
+    "settings.direction_rtl": "يمين",
+    "settings.direction_ltr": "يسار",
+    "settings.direction_auto": "تلقائي",
+    "settings.direction_hint": "في وضع التلقائي يتبع الاتجاه لغة الواجهة: العربية من اليمين، والفرنسية والإنجليزية من اليسار. ويمكنك تجاوز ذلك باختيار اتجاه ثابت.",
 
     "settings.tags_enable": "تفعيل نظام التمييز",
     "settings.tags_smart_sort": "ترتيب ذكي للتمييزات",
