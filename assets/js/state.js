@@ -26,6 +26,8 @@ const appState = {
     showHistoryModal: false,
     currentHistory: null,
     statusModalParcel: null,
+    // الطرد الذي ينتظر تأكيد "تم التسليم" أثناء عدّاد الإلغاء (null = لا انتظار)
+    pendingDeliveryConfirmId: null,
     showMultiPieceModal: false,
     multiPieceModalParcel: null,
     parcels: [],

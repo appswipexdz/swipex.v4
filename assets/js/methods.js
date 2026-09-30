@@ -1147,6 +1147,7 @@ const appMethods = {
       this.showImportSummary = false;
       this.showHistoryModal = false;
       this.drawerOpen = false;
+      this.cancelDeliveryConfirm();
       this.statusModalParcel = null;
       this.currentHistory = null;
       this.showMunicipalityDropdown = false;
@@ -2462,6 +2463,8 @@ const appMethods = {
   },
 
   openStatusModal(parcel) {
+    // فتح النافذة لطرد آخر يلغي أي عدّاد تعليق لطرد سابق
+    this.cancelDeliveryConfirm();
     this.statusModalParcel = parcel;
   },
 
@@ -2476,6 +2479,8 @@ const appMethods = {
       this.statusLongPressTriggered = true;
       const parcel = this.statusModalParcel;
       if (!parcel) return;
+      // ضغط مطوّل = تطبيق فوري، ويُلغي أي عدّاد "تم التسليم" المعلّق لنفس الطرد
+      this.cancelDeliveryConfirm();
       this.changeStatus(parcel, statusName);
       if (!['دون إجراء', 'في الإنتظار'].includes(statusName) && parcel.tracking) {
         this.openYalidine(parcel.tracking, parcel);
@@ -2505,15 +2510,50 @@ const appMethods = {
       this.statusLongPressStatus = null;
       return;
     }
-    if (this.statusModalParcel) {
-      this.changeStatus(this.statusModalParcel, statusName);
+    if (!this.statusModalParcel) return;
+
+    if (statusName === "تم التسليم") {
+      if (this.pendingDeliveryConfirmId === this.statusModalParcel.id) {
+        // ضغطة ثانية أثناء العد التنازلي = إلغاء
+        this.cancelDeliveryConfirm();
+        return;
+      }
+      this.startDeliveryConfirm(this.statusModalParcel, statusName);
+      return;
     }
+
+    // أي حالة أخرى تُطبَّق فوراً (ويلغي عدّاد "تم التسليم" المعلّق)
+    this.cancelDeliveryConfirm();
+    this.changeStatus(this.statusModalParcel, statusName);
   },
 
   clearStatusLongPress() {
     if (this.statusLongPressTimer) {
       clearTimeout(this.statusLongPressTimer);
       this.statusLongPressTimer = null;
+    }
+  },
+
+  // ========== تأكيد "تم التسليم" بعد 3 ثوانٍ (قابل للإلغاء) ==========
+  startDeliveryConfirm(parcel, statusName) {
+    this.clearDeliveryConfirm();
+    this.pendingDeliveryConfirmId = parcel.id;
+    this._deliveryConfirmTimer = setTimeout(() => {
+      this._deliveryConfirmTimer = null;
+      this.pendingDeliveryConfirmId = null;
+      this.changeStatus(parcel, statusName);
+    }, 3000);
+  },
+
+  cancelDeliveryConfirm() {
+    this.clearDeliveryConfirm();
+    this.pendingDeliveryConfirmId = null;
+  },
+
+  clearDeliveryConfirm() {
+    if (this._deliveryConfirmTimer) {
+      clearTimeout(this._deliveryConfirmTimer);
+      this._deliveryConfirmTimer = null;
     }
   },
 

@@ -1274,7 +1274,8 @@
         </div>
 
         <!-- Status Modal -->
-        <div v-if="statusModalParcel" class="status-modal" @click="statusModalParcel = null">
+        <div v-if="statusModalParcel" class="status-modal"
+            @click="cancelDeliveryConfirm(); statusModalParcel = null">
             <div class="status-modal-content" @pointerdown.stop @pointerup.stop @click.stop>
                 <div class="p-5 bg-gradient-to-r from-red-600 to-red-700 text-white sticky top-0 z-10">
                     <div class="flex items-center justify-between">
@@ -1282,7 +1283,7 @@
                             <i class="fas fa-tasks"></i>
                             {{ t('status_modal.title') }}
                         </h2>
-                        <button @click="statusModalParcel = null"
+                        <button @click="cancelDeliveryConfirm(); statusModalParcel = null"
                             class="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">
                             <i class="fas fa-times"></i>
                         </button>
@@ -1312,8 +1313,20 @@
                                 @pointercancel="clearStatusLongPress()" @contextmenu.prevent>
                                 <div class="flex-1 flex items-center cursor-pointer min-w-0"
                                     :class="g.group.layout === 'row' ? 'flex-col gap-1 text-center' : 'flex-row gap-3'">
-                                    <div class="rounded-full flex items-center justify-center flex-shrink-0" :class="[status.dot, g.group.layout === 'row' ? 'w-8 h-8' : 'w-10 h-10']">
-                                        <i class="fas text-white" :class="[status.icon, g.group.layout === 'row' ? 'text-xs' : 'text-sm']"></i>
+                                    <div
+                                        class="rounded-full flex items-center justify-center flex-shrink-0 relative"
+                                        :class="[status.dot, g.group.layout === 'row' ? 'w-8 h-8' : 'w-10 h-10']">
+                                        <template v-if="status.name === 'تم التسليم' && statusModalParcel && pendingDeliveryConfirmId === statusModalParcel.id">
+                                            <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                                <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.3)"
+                                                    stroke-width="3"></circle>
+                                                <circle cx="18" cy="18" r="16" fill="none" stroke-width="3"
+                                                    class="delivery-confirm-ring"></circle>
+                                            </svg>
+                                            <i class="fas fa-xmark text-white text-xs relative"></i>
+                                        </template>
+                                        <i v-else class="fas text-white"
+                                            :class="[status.icon, g.group.layout === 'row' ? 'text-xs' : 'text-sm']"></i>
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <div class="font-bold text-gray-800 dark:text-white break-words leading-tight"
