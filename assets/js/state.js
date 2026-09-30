@@ -1,4 +1,16 @@
 const appState = {
+    // i18n: القيم الداخلية للحالات الثابتة (عربية) — تُستخدم مع statusLabel() للعرض فقط.
+    // لا تُترجَم هذه القيم لأنها مفاتيح داخلية مخزَّنة في parcel.status.
+    statusMap: {
+        no_action: "دون إجراء",
+        waiting: "في الإنتظار",
+        delivered: "تم التسليم",
+        closed: "مغلق",
+        no_answer: "لا يرد",
+        wrong_number: "رقم خاطئ",
+        postponed: "مؤجل للغد",
+        cancelled: "إلغاء الطلبية",
+    },
     filters: { search: "", municipality: "", status: "", tag: "", favorite: false },
     showFilters: false,
     whatsappLongPressTimer: null,
@@ -51,6 +63,7 @@ const appState = {
 showYalidineMenu: false,
     settings: { 
         themeMode: 'auto', 
+        language: 'ar',
         showDuplicates: true,
         smsTemplate: 'مرحبًا {اسم_المستلم}،\nمعكم خدمة التوصيل.\nطلبيتكم برقم التتبع {رقم_التتبع} جاهزة للاستلام.\nثمن الطرد مع التوصيل: {المبلغ} دج.\nشكرًا لكم!',
         whatsappTemplate: 'مرحبًا {اسم_المستلم}،\nطلبيتكم قد وصلت لدينا، ونحن نتواصل معكم الآن من أجل تحديد مكان الاستلام.\nالمبلغ المطلوب: {المبلغ} دج.\nشكرًا لكم!',
@@ -169,6 +182,7 @@ showYalidineMenu: false,
     newFavoritePhone: '',
     settingsExpanded: {
         theme: false,
+        language: false,
         duplicates: false,
         tags: false,
         statuses: false,

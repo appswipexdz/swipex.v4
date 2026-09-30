@@ -14,6 +14,32 @@
     // قوالب المكوّنات لا تصل إلى $root مباشرة، وكل خاصية غير معرّفة على المكوّن
     // تُقرأ undefined (فتفشل v-if) أو تُكتب بصمت (فتفشل v-model / @click).
     // هذه الخصائص المحسوبة القابلة للكتابة تصل بين القالب و appState.
+    // ---------- جسر i18n: قوالب المكوّنات ← دالة t على جذر التطبيق ----------
+    // قوالب المكوّنات لا تملك t مباشرة، لذا نمرّرها إلى $root الذي يملك methods.js
+    const I18N_METHODS = {
+        t(key, params) {
+            const root = this.$root;
+            return root && typeof root.t === "function" ? root.t(key, params) : key;
+        },
+        isRtl() {
+            const root = this.$root;
+            if (root && typeof root.isRtl === "boolean") return root.isRtl;
+            const html = typeof document !== "undefined" && document.documentElement;
+            const dir = html ? html.getAttribute("dir") : "rtl";
+            return (dir || "rtl") === "rtl";
+        },
+        // i18n: تعكس الأيقونات الأفقية حسب اتجاه اللغة
+        rtlIcon(rtlClass, ltrClass) {
+            return this.isRtl() ? rtlClass : ltrClass;
+        },
+        statusLabel(statusName) {
+            const root = this.$root;
+            return root && typeof root.statusLabel === "function"
+                ? root.statusLabel(statusName)
+                : statusName;
+        },
+    };
+
     function rootState(key) {
         return {
             get() {
@@ -35,11 +61,11 @@
 
     // ---------- عناصر الشريط السفلي (الترتيب المطلوب: من اليسار إلى اليمين) ----------
     const NAV_ITEMS = [
-        { key: "settings", icon: "fa-user-cog", label: "الإعدادات", href: "settings.html" },
-        { key: "tasks", icon: "fa-list-check", label: "المهام", href: "tasks.html", badge: "tasks" },
-        { key: "home", icon: "fa-home", label: "الرئيسية", href: "index.html" },
-        { key: "yalidine", icon: "fa-shipping-fast", label: "ياليدين", action: "yalidine" },
-        { key: "notifications", icon: "fa-bell", label: "الإشعارات", action: "notifications", badge: "notifications" },
+        { key: "settings", icon: "fa-user-cog", labelKey: "nav.settings", href: "settings.html" },
+        { key: "tasks", icon: "fa-list-check", labelKey: "nav.tasks", href: "tasks.html", badge: "tasks" },
+        { key: "home", icon: "fa-home", labelKey: "nav.home", href: "index.html" },
+        { key: "yalidine", icon: "fa-shipping-fast", labelKey: "nav.yalidine", action: "yalidine" },
+        { key: "notifications", icon: "fa-bell", labelKey: "nav.notifications", action: "notifications", badge: "notifications" },
     ];
 
     // ---------- روابط ياليدين (نفسها الحالية، بلا تغيير) ----------
@@ -47,21 +73,21 @@
         {
             href: "https://yalidine.app/app/livraison/livrer_un_colis.php",
             icon: "fa-truck-fast",
-            label: "التوزيع",
+            labelKey: "yalidine.distribution",
             color: "text-orange-600 dark:text-orange-400",
             hover: "hover:bg-orange-50 dark:hover:bg-orange-900/20",
         },
         {
             href: "https://yalidine.app/app/demande/ouverture/demande.php",
             icon: "fa-box-open",
-            label: "طلب فتح طلبية",
+            labelKey: "yalidine.open_request",
             color: "text-blue-600 dark:text-blue-400",
             hover: "hover:bg-blue-50 dark:hover:bg-blue-900/20",
         },
         {
             href: "https://yalidine.app/app/demande/prix/demande.php",
             icon: "fa-tags",
-            label: "طلب تغيير السعر",
+            labelKey: "yalidine.price_change",
             color: "text-green-600 dark:text-green-400",
             hover: "hover:bg-green-50 dark:hover:bg-green-900/20",
         },
@@ -71,7 +97,7 @@
     const FAB_ACTIONS_HOME = [
         {
             id: "bulk-sms",
-            label: "SMS جماعي",
+            labelKey: "fab.bulk_sms",
             icon: "fa-paper-plane",
             gradient: "from-purple-500 to-violet-600",
             run: "openBulkSmsModal",
@@ -79,14 +105,14 @@
         },
         {
             id: "focus",
-            label: "وضع التركيز",
+            labelKey: "fab.focus_mode",
             icon: "fa-crosshairs",
             gradient: "from-amber-500 to-orange-600",
             run: "enterFocusMode",
         },
         {
             id: "add-parcel",
-            label: "إضافة طرد",
+            labelKey: "fab.add_parcel",
             icon: "fa-box",
             gradient: "from-red-500 to-rose-600",
             run: null,
@@ -96,14 +122,14 @@
 
     // ---------- قائمة النقاط الثلاث (موحّدة في كل الصفحات) ----------
     const TOP_MENU = [
-        { id: "pdf", label: "استيراد ملف PDF", icon: "fa-file-pdf", color: "text-red-500", run: "triggerPdfInput", homeOnly: true },
-        { id: "excel", label: "استيراد ملف Excel", icon: "fa-file-excel", color: "text-blue-500", run: "triggerFileInput", homeOnly: true },
+        { id: "pdf", labelKey: "topmenu.import_pdf", icon: "fa-file-pdf", color: "text-red-500", run: "triggerPdfInput", homeOnly: true },
+        { id: "excel", labelKey: "topmenu.import_excel", icon: "fa-file-excel", color: "text-blue-500", run: "triggerFileInput", homeOnly: true },
         { divider: true },
-        { id: "dashboard", label: "لوحة الإحصائيات", icon: "fa-chart-pie", color: "text-indigo-500", run: "openDashboard", homeOnly: true },
-        { id: "archive", label: "الأرشيف", icon: "fa-archive", color: "text-purple-500", href: "archive.html" },
-        { id: "export", label: "تصدير النتائج", icon: "fa-file-export", color: "text-green-500", run: "exportExcel", homeOnly: true },
+        { id: "dashboard", labelKey: "topmenu.dashboard", icon: "fa-chart-pie", color: "text-indigo-500", run: "openDashboard", homeOnly: true },
+        { id: "archive", labelKey: "nav.archive", icon: "fa-archive", color: "text-purple-500", href: "archive.html" },
+        { id: "export", labelKey: "topmenu.export", icon: "fa-file-export", color: "text-green-500", run: "exportExcel", homeOnly: true },
         { divider: true },
-        { id: "guide", label: "دليل الاستخدام", icon: "fa-book-open", color: "text-teal-500", run: "showGuide", homeOnly: true },
+        { id: "guide", labelKey: "topmenu.guide", icon: "fa-book-open", color: "text-teal-500", run: "showGuide", homeOnly: true },
     ];
 
     // ============ الهيدر الموحّد ============
@@ -111,8 +137,8 @@
 <div class="app-header-bar sticky flex items-center justify-between shadow-lg" style="padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px;">
     <!-- يمين: زر الرجوع + أزرار الصفحة -->
     <div class="flex items-center gap-2 min-w-0">
-        <button v-if="showBack" type="button" class="header-action flex-shrink-0" @click="goBack" title="رجوع">
-            <i class="fas fa-arrow-right text-sm"></i>
+        <button v-if="showBack" type="button" class="header-action flex-shrink-0" @click="goBack" :title="t('nav.back')">
+            <i class="fas text-sm" :class="rtlIcon('fa-arrow-right', 'fa-arrow-left')"></i>
         </button>
         <slot name="actions"></slot>
     </div>
@@ -132,34 +158,34 @@
         <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
             <div v-if="syncStatus === 'syncing'" class="flex items-center gap-1.5 text-xs font-bold text-blue-300">
                 <i class="fas fa-circle-notch animate-spin text-sm"></i>
-                <span class="hidden sm:inline">مزامنة...</span>
+                <span class="hidden sm:inline">{{ t('sync.syncing') }}</span>
             </div>
             <div v-else-if="syncStatus === 'synced'" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
                 <i class="fas fa-check-circle text-sm"></i>
-                <span class="hidden sm:inline">محفوظ</span>
+                <span class="hidden sm:inline">{{ t('sync.saved') }}</span>
             </div>
             <div v-else-if="syncStatus === 'error'" class="flex items-center gap-1.5 text-xs font-bold text-red-300">
                 <i class="fas fa-exclamation-circle text-sm"></i>
-                <span class="hidden sm:inline">خطأ</span>
+                <span class="hidden sm:inline">{{ t('sync.error') }}</span>
             </div>
             <div v-else-if="syncStatus === 'offline'" class="flex items-center gap-1.5 text-xs font-bold text-gray-300">
                 <i class="fas fa-pause-circle text-sm"></i>
-                <span class="hidden sm:inline">متوقفة</span>
+                <span class="hidden sm:inline">{{ t('sync.stopped') }}</span>
             </div>
             <div v-else class="flex items-center gap-1.5 text-xs font-bold text-gray-300">
                 <i class="fas fa-pause-circle text-sm"></i>
-                <span class="hidden sm:inline">جاهز</span>
+                <span class="hidden sm:inline">{{ t('sync.idle') }}</span>
             </div>
 
             <div class="h-3 w-px bg-white/20"></div>
 
             <div v-if="isOnline" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
                 <i class="fas fa-wifi text-sm"></i>
-                <span class="hidden sm:inline">متصل</span>
+                <span class="hidden sm:inline">{{ t('sync.online') }}</span>
             </div>
             <div v-else class="flex items-center gap-1.5 text-xs font-bold text-gray-400">
                 <i class="fas fa-wifi text-sm relative"><span class="absolute left-[-2px] top-1/2 w-[18px] h-[2px] bg-gray-500 -rotate-45 origin-center"></span></i>
-                <span class="hidden sm:inline">منقطع</span>
+                <span class="hidden sm:inline">{{ t('sync.offline') }}</span>
             </div>
         </div>
     </div>
@@ -191,6 +217,7 @@
             },
         },
         methods: {
+            ...I18N_METHODS,
             goBack() {
                 const target = this.backHref || "index.html";
                 if (this.page === target.replace(/\.html$/, "")) return;
@@ -213,12 +240,12 @@
                 <a class="bottom-nav-item" :class="{ active: page === 'settings' }" :href="item.href"
                     @click.prevent="go(item.href)">
                     <i class="fas" :class="item.icon"></i>
-                    <span class="nav-label">{{ item.label }}</span>
+                    <span class="nav-label">{{ t(item.labelKey) }}</span>
                 </a>
 
                 <template v-if="fabEnabled">
                     <button type="button" class="fab-float" :class="{ 'rotate-45': fabMenuOpen }"
-                        :aria-label="page === 'tasks' ? 'مهمة جديدة' : 'إجراءات سريعة'" @click.stop="onFabClick()">
+                        :aria-label="page === 'tasks' ? t('nav.new_task') : t('nav.quick_actions')" @click.stop="onFabClick()">
                         <span v-if="!fabMenuOpen" class="fab-pulse"></span>
                         <i class="fas fa-plus"></i>
                     </button>
@@ -228,7 +255,7 @@
                             <span class="fab-action-icon bg-gradient-to-br" :class="act.gradient">
                                 <i class="fas" :class="act.icon"></i>
                             </span>
-                            <span class="fab-action-label">{{ act.label }}</span>
+                            <span class="fab-action-label">{{ t(act.labelKey) }}</span>
                         </button>
                     </div>
                 </template>
@@ -239,7 +266,7 @@
                 <a class="bottom-nav-item" :class="{ active: page === 'tasks' }" :href="item.href"
                     @click.prevent="go(item.href)">
                     <i class="fas" :class="item.icon"></i>
-                    <span class="nav-label">{{ item.label }}</span>
+                    <span class="nav-label">{{ t(item.labelKey) }}</span>
                     <span v-if="pendingTasks > 0" class="nav-badge">{{ pendingTasks > 99 ? '99+' : pendingTasks }}</span>
                 </a>
             </div>
@@ -251,7 +278,7 @@
                     <span class="nav-home-arc">
                         <i class="fas" :class="item.icon"></i>
                     </span>
-                    <span class="nav-label">{{ item.label }}</span>
+                    <span class="nav-label">{{ t(item.labelKey) }}</span>
                 </a>
             </div>
 
@@ -260,14 +287,14 @@
                 <button type="button" class="bottom-nav-item" :class="{ active: showYalidineMenu }"
                     @click.stop="toggleYalidine()">
                     <i class="fas" :class="item.icon"></i>
-                    <span class="nav-label">{{ item.label }}</span>
+                    <span class="nav-label">{{ t(item.labelKey) }}</span>
                 </button>
                 <div v-if="showYalidineMenu" class="yalidine-dropdown" @click.stop>
                     <a v-for="link in yalidineLinks" :key="link.href" :href="link.href" target="_blank"
                         rel="noopener" class="yalidine-dropdown-item" :class="[link.color, link.hover]"
                         @click="showYalidineMenu = false">
                         <i class="fas" :class="link.icon"></i>
-                        <span>{{ link.label }}</span>
+                        <span>{{ t(link.labelKey) }}</span>
                     </a>
                 </div>
             </div>
@@ -277,7 +304,7 @@
                 <button type="button" class="bottom-nav-item" :class="{ active: showNotificationsPanel }"
                     style="position: relative" @click="toggleNotifications()">
                     <i class="fas" :class="item.icon"></i>
-                    <span class="nav-label">{{ item.label }}</span>
+                    <span class="nav-label">{{ t(item.labelKey) }}</span>
                     <span v-if="unread > 0" class="nav-badge"
                         style="background:#ef4444">{{ unread > 99 ? '99+' : unread }}</span>
                 </button>
@@ -301,12 +328,12 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
                     <i class="fas fa-bell"></i>
-                    الإشعارات
+                    {{ t('notifications.title') }}
                 </h3>
                 <div class="flex items-center gap-2">
                     <button v-if="notifications.length > 0" @click="clearAllNotifications"
                         class="text-white/80 hover:text-white text-xs">
-                        مسح الكل
+                        {{ t('notifications.clear_all') }}
                     </button>
                     <button @click="showNotificationsPanel = false"
                         class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
@@ -321,7 +348,7 @@
                 <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-bell-slash text-2xl text-gray-400"></i>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">لا توجد إشعارات</p>
+                <p class="text-gray-500 dark:text-gray-400">{{ t('notifications.empty') }}</p>
             </div>
 
             <div v-for="notif in notifications" :key="notif.id"
@@ -354,7 +381,7 @@
             <button @click="showNotificationHistory = true; showNotificationsPanel = false"
                 class="w-full py-2 text-center text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 transition flex items-center justify-center gap-2">
                 <i class="fas fa-history"></i>
-                سجل الإشعارات
+                {{ t('notifications.history') }}
             </button>
         </div>
     </div>
@@ -369,12 +396,12 @@
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
                     <i class="fas fa-history"></i>
-                    سجل الإشعارات
+                    {{ t('notifications.history') }}
                 </h3>
                 <div class="flex items-center gap-2">
                     <button v-if="notifications.length > 0" @click="clearAllNotifications"
                         class="text-white/80 hover:text-white text-xs">
-                        مسح الكل
+                        {{ t('notifications.clear_all') }}
                     </button>
                     <button @click="showNotificationHistory = false"
                         class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
@@ -389,7 +416,7 @@
                 <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-bell-slash text-2xl text-gray-400"></i>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">لا توجد إشعارات سابقة</p>
+                <p class="text-gray-500 dark:text-gray-400">{{ t('notifications.history_empty') }}</p>
             </div>
 
             <div v-for="notif in notifications" :key="notif.id"
@@ -420,7 +447,7 @@
         <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
             <button @click="showNotificationHistory = false"
                 class="w-full py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl font-bold hover:opacity-90 transition">
-                إغلاق
+                {{ t('common.close') }}
             </button>
         </div>
     </div>
@@ -438,8 +465,8 @@
                         <i class="fas fa-history text-white"></i>
                     </div>
                     <div>
-                        <h2 class="text-lg font-bold text-white">السجل التاريخي</h2>
-                        <p class="text-xs text-white/70">معلومات من المحاولات السابقة</p>
+                        <h2 class="text-lg font-bold text-white">{{ t('history.title') }}</h2>
+                        <p class="text-xs text-white/70">{{ t('history.sub') }}</p>
                     </div>
                 </div>
                 <button @click="showHistoryModal = false"
@@ -459,8 +486,8 @@
                                     <i class="fas fa-flag text-white text-sm"></i>
                                 </div>
                                 <div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">الحالة</div>
-                                    <div class="text-base font-bold text-gray-800 dark:text-white">{{ event.status }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold">{{ t('history.status') }}</div>
+                                    <div class="text-base font-bold text-gray-800 dark:text-white">{{ statusLabel(event.status) }}</div>
                                 </div>
                             </div>
                             <div class="text-[11px] text-gray-500 dark:text-gray-400">
@@ -470,18 +497,18 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div v-if="event.tag"
                                 class="glass-panel p-3 rounded-2xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
-                                <div class="text-[11px] font-semibold mb-1">التمييز</div>
+                                <div class="text-[11px] font-semibold mb-1">{{ t('history.tag') }}</div>
                                 <div class="font-bold">@{{ event.tag }}</div>
                             </div>
                             <div v-if="event.notes"
                                 class="glass-panel p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300">
-                                <div class="text-[11px] font-semibold mb-1">الملاحظات</div>
+                                <div class="text-[11px] font-semibold mb-1">{{ t('history.notes') }}</div>
                                 <div class="text-sm leading-relaxed">{{ event.notes }}</div>
                             </div>
                         </div>
                         <div v-if="event.location && (event.location.address || event.location.mapsUrl)"
                             class="mt-3 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">
-                            <div class="text-[11px] font-semibold mb-1">الموقع</div>
+                            <div class="text-[11px] font-semibold mb-1">{{ t('history.location') }}</div>
                             <div class="text-sm font-bold">{{ getLocationDisplay(event) }}</div>
                             <div v-if="getLocationMeta(event)" class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                                 {{ getLocationMeta(event) }}
@@ -496,13 +523,13 @@
             <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-inbox text-2xl text-gray-400"></i>
             </div>
-            <p class="text-gray-500 dark:text-gray-400">لا يوجد سجل تاريخي</p>
+            <p class="text-gray-500 dark:text-gray-400">{{ t('history.empty') }}</p>
         </div>
 
         <div class="p-4 border-t border-gray-200 dark:border-gray-700">
             <button @click="showHistoryModal = false"
                 class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white py-3 rounded-xl font-bold hover:opacity-90 transition shadow-lg">
-                إغلاق
+                {{ t('common.close') }}
             </button>
         </div>
     </div>
@@ -516,16 +543,16 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                 <i class="fas fa-layer-group text-indigo-500"></i>
-                طرد متعدد القطع
+                {{ t('multipiece.title') }}
             </h3>
             <button @click="closeMultiPieceModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="mb-4">
-            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">كود المجموعة</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('multipiece.group_code') }}</div>
             <div class="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-mono font-bold w-fit cursor-pointer hover:bg-blue-500 transition"
-                @click="copyTracking(multiPieceModalParcel.tracking)" title="نسخ كود المجموعة">
+                @click="copyTracking(multiPieceModalParcel.tracking)" :title="t('multipiece.copy_group')">
                 <i class="fas fa-copy text-[10px] opacity-60"></i>
                 {{ multiPieceModalParcel.tracking }}
             </div>
@@ -533,14 +560,14 @@
                 {{ multiPieceModalParcel.receiver }}
             </div>
             <div v-if="multiPieceModalParcel.amount" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                المبلغ: {{ formatCurrency(multiPieceModalParcel.amount) }}
+                {{ t('multipiece.amount') }} {{ formatCurrency(multiPieceModalParcel.amount) }}
             </div>
         </div>
         <div class="overflow-y-auto max-h-[45vh] space-y-2 mb-4">
             <div v-for="(sub, idx) in multiPieceModalParcel.subTrackings" :key="idx"
                 class="glass-panel rounded-xl p-3 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex flex-col items-center justify-center flex-shrink-0">
-                    <span class="text-[9px] leading-none">قطعة</span>
+                    <span class="text-[9px] leading-none">{{ t('multipiece.piece') }}</span>
                     <span class="text-xs font-bold leading-tight">{{ sub.pieceIndex || (idx + 1) }}/{{ multiPieceModalParcel.piecesCount || multiPieceModalParcel.subTrackings.length }}</span>
                 </div>
                 <div class="min-w-0 flex-1">
@@ -549,26 +576,26 @@
                         PIN: <span class="font-mono">{{ sub.pin }}</span>
                     </div>
                 </div>
-                <button @click="copyTracking(sub.tracking)" title="نسخ رقم التتبع الفرعي"
+                <button @click="copyTracking(sub.tracking)" :title="t('multipiece.copy_sub')"
                     class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:text-white hover:bg-indigo-500 transition flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-copy text-xs"></i>
                 </button>
             </div>
             <div v-if="!multiPieceModalParcel.subTrackings || multiPieceModalParcel.subTrackings.length === 0"
                 class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
-                لا توجد أرقام فرعية لهذا الطرد.
+                {{ t('multipiece.no_subs') }}
             </div>
         </div>
         <div class="flex gap-2">
             <button @click="copyAllSubTrackings"
                 class="flex-1 px-4 py-3 rounded-xl bg-indigo-500 text-white font-bold text-xs hover:bg-indigo-600 transition flex items-center justify-center gap-2">
                 <i class="fas fa-copy text-xs"></i>
-                نسخ كل الأرقام
+                {{ t('multipiece.copy_all') }}
             </button>
             <button @click="openYalidine(multiPieceModalParcel.tracking, multiPieceModalParcel)"
                 class="flex-1 px-4 py-3 rounded-xl bg-orange-500 text-white font-bold text-xs hover:bg-orange-600 transition flex items-center justify-center gap-2">
                 <i class="fas fa-box text-xs"></i>
-                فتح في ياليدين
+                {{ t('parcel.open_yalidine') }}
             </button>
         </div>
     </div>
@@ -618,20 +645,20 @@
         <!-- Body -->
         <div class="p-4 space-y-4 overflow-y-auto">
             <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">العنوان *</label>
-                <input v-model="draft.title" type="text" placeholder="مثال: إعادة الاتصال بالعميل"
+                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.title_label') }}</label>
+                <input v-model="draft.title" type="text" :placeholder="t('task_composer.title_placeholder')"
                     class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">الوصف</label>
+                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.description') }}</label>
                 <textarea v-model="draft.description" rows="2"
-                    placeholder="تفاصيل إضافية عن المهمة..."
+                    :placeholder="t('task_composer.description_placeholder')"
                     class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">الأولوية</label>
+                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.priority') }}</label>
                 <div class="grid grid-cols-4 gap-2">
                     <button v-for="p in taskPriorities" :key="p.value" type="button"
                         @click="draft.priority = p.value"
@@ -640,7 +667,7 @@
                             ? 'bg-blue-600 text-white border-blue-500 shadow-lg'
                             : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300'">
                         <i class="fas" :class="p.icon + ' ml-1'"></i>
-                        {{ p.label }}
+                        {{ t(p.labelKey) }}
                     </button>
                 </div>
             </div>
@@ -649,7 +676,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
                         <i class="fas fa-calendar-day text-gray-400"></i>
-                        التاريخ
+                        {{ t('task_composer.date') }}
                     </label>
                     <input v-model="draft.dueDate" type="date"
                         class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
@@ -657,7 +684,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
                         <i class="fas fa-clock text-gray-400"></i>
-                        الوقت
+                        {{ t('task_composer.time') }}
                     </label>
                     <input v-model="draft.dueTime" type="time"
                         class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
@@ -665,8 +692,8 @@
             </div>
 
             <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">الملاحظات</label>
-                <textarea v-model="draft.notes" rows="2" placeholder="ملاحظات خاصة..."
+                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.notes') }}</label>
+                <textarea v-model="draft.notes" rows="2" :placeholder="t('task_composer.notes_placeholder')"
                     class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
             </div>
 
@@ -674,7 +701,7 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
                     <i class="fas fa-box text-gray-400"></i>
-                    الطرد المرتبط
+                    {{ t('task_composer.linked_parcel') }}
                 </label>
                 <div v-if="hasParcelLink"
                     class="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
@@ -689,7 +716,7 @@
                         </div>
                         <div v-else-if="!linkedParcel"
                             class="text-xs text-amber-600 dark:text-amber-400 truncate">
-                            رقم التتبع غير موجود في قائمة الطرود
+                            {{ t('task_composer.tracking_missing') }}
                         </div>
                     </div>
                     <button @click="clearParcelLink"
@@ -700,23 +727,23 @@
                 <button v-else type="button" @click="toggleParcelPicker"
                     class="w-full py-3 rounded-xl glass-input text-gray-500 dark:text-gray-400 text-sm font-bold hover:border-blue-300 transition flex items-center justify-center gap-2">
                     <i class="fas fa-link"></i>
-                    ربط مهمة بطرد
+                    {{ t('task_composer.link_button') }}
                 </button>
 
                 <div v-if="showParcelPicker" class="mt-2 glass-panel rounded-xl overflow-hidden">
                     <div class="p-2 border-b border-gray-200 dark:border-gray-700">
                         <input v-model="linkParcelQuery" type="text"
-                            placeholder="ابحث بالرقم أو الاسم أو الهاتف... أو اكتب أي رقم تتبع"
+                            :placeholder="t('task_composer.search_placeholder')"
                             class="w-full p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                     <button v-if="trackingNotInParcels" type="button" @click="linkParcelCustom"
-                        class="w-full p-3 text-right border-b border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition flex items-center gap-2">
+                        class="w-full p-3 text-start border-b border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition flex items-center gap-2">
                         <div class="min-w-0 flex-1">
                             <div class="font-mono font-bold text-sm text-blue-700 dark:text-blue-300 truncate">
                                 {{ trackingNotInParcels }}
                             </div>
                             <div class="text-xs text-blue-600 dark:text-blue-400 truncate">
-                                غير موجود في قائمة الطرود — اضغط للربط به
+                                {{ t('task_composer.not_in_list') }}
                             </div>
                         </div>
                         <i class="fas fa-link text-blue-500 text-xs flex-shrink-0"></i>
@@ -724,19 +751,20 @@
                     <div class="max-h-52 overflow-y-auto">
                         <div v-if="parcelOptions.length === 0 && !trackingNotInParcels"
                             class="p-4 text-center text-gray-400 text-sm">
-                            لا توجد طرود مطابقة
+                            {{ t('task_composer.no_match') }}
                         </div>
                         <button v-for="p in parcelOptions" :key="p.id" type="button" @click="pickParcel(p)"
-                            class="w-full p-3 text-right border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition flex items-center gap-2">
+                            class="w-full p-3 text-start border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition flex items-center gap-2">
                             <div class="min-w-0 flex-1">
                                 <div class="font-mono font-bold text-sm text-gray-800 dark:text-gray-100 truncate">
                                     {{ p.tracking }}
                                 </div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                    {{ p.receiver || 'بدون اسم' }}
+                                    {{ p.receiver || t('task_composer.no_name') }}
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-left text-gray-300 text-xs flex-shrink-0"></i>
+                            <i class="fas text-gray-300 text-xs flex-shrink-0"
+                                :class="rtlIcon('fa-chevron-left', 'fa-chevron-right')"></i>
                         </button>
                     </div>
                 </div>
@@ -747,12 +775,12 @@
         <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2 flex-shrink-0">
             <button @click="closeComposer"
                 class="flex-1 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
-                إلغاء
+                {{ t('common.cancel') }}
             </button>
             <button @click="saveTask" :disabled="!canSaveTask"
                 class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold shadow-lg transition"
                 :class="canSaveTask ? 'hover:opacity-90' : 'opacity-50 cursor-not-allowed'">
-                {{ isEditing ? 'حفظ التعديل' : 'إضافة' }}
+                {{ isEditing ? t('task_composer.save_edit') : t('common.add') }}
             </button>
         </div>
     </div>
@@ -783,7 +811,12 @@
             draft: rootState("draft"),
             taskPriorities() {
                 const ts = this.$root.taskStore;
-                return ts && ts.PRIORITIES ? ts.PRIORITIES : [];
+                if (!ts || !ts.PRIORITIES) return [];
+                return ts.PRIORITIES.map((p) => ({
+                    ...p,
+                    // labelKey: مفتاح الترجمة — القيمة `label` تبقى العربية (داخلية)
+                    labelKey: "task_priority." + p.value,
+                }));
             },
             linkedParcel() {
                 return this.$root.linkedParcel || null;
@@ -804,7 +837,7 @@
                 return !!this.$root.editingTaskId;
             },
             composerTitle() {
-                return this.$root.composerTitle || "مهمة جديدة";
+                return this.$root.composerTitle || this.t('task_composer.new_title');
             },
             navItems() {
                 return NAV_ITEMS;
@@ -849,6 +882,7 @@
             },
         },
         methods: {
+            ...I18N_METHODS,
             // تنقل داخل التطبيق بدون إعادة تحميل الصفحة (يرجع للمواقع القديمة عند الفشل)
             go(url) {
                 if (this.$root && typeof this.$root.navigate === "function") {
@@ -958,7 +992,7 @@
     // ============ قائمة النقاط الثلاث (موحّدة) ============
     const TopMenuTemplate = `
 <div class="relative top-menu-wrapper">
-    <button type="button" class="header-action" @click.stop="toggle()" title="القائمة">
+    <button type="button" class="header-action" @click.stop="toggle()" :title="t('nav.menu')">
         <i class="fas fa-ellipsis-v text-sm"></i>
     </button>
     <div v-if="showTopMenu" class="top-menu-dropdown" @click.stop>
@@ -966,7 +1000,7 @@
             <div v-if="item.divider" class="top-menu-divider"></div>
             <button v-else type="button" class="top-menu-item" @click="onSelect(item)">
                 <i class="fas" :class="[item.icon, item.color]"></i>
-                <span>{{ item.label }}</span>
+                <span>{{ t(item.labelKey) }}</span>
             </button>
         </template>
         <div class="top-menu-divider"></div>
@@ -1004,6 +1038,7 @@
             },
         },
         methods: {
+            ...I18N_METHODS,
             toggle() {
                 this.showTopMenu = !this.showTopMenu;
             },

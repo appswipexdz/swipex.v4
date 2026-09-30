@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+<!-- i18n: mirroring — انظر كتلة [dir="ltr"] في assets/css/style.css:
+     المسافات والحدود + القوائم المنسدلة + select + عمود سحب الطرد.
+     المحاذاة تستخدم الخصائص المنطقية (text-start/text-end, text-align: start).
+     توسيط left-1/2 + -translate-x-1/2 وخلفيات السحب المادية تبقى كما هي في الاتجاهين. -->
 
 <head>
     <meta charset="UTF-8" />
@@ -39,17 +43,17 @@
                 class="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-t-red-600 rounded-full animate-spin">
             </div>
             <p class="mt-6 text-gray-600 dark:text-gray-400 font-semibold">
-                جاري تحميل التطبيق...
+                {{ t('app.loading') }}
             </p>
         </div>
 
         <div v-if="initialSyncProgress" v-cloak class="loading-overlay loading-overlay-nonblocking">
             <div class="spinner"></div>
             <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
-                جاري مزامنة البيانات من السحابة...
+                {{ t('app.syncing') }}
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                تم تحميل {{ initialSyncProgress.loaded }} سجل حتى الآن
+                {{ t('app.syncing_progress', { count: initialSyncProgress.loaded }) }}
             </p>
         </div>
 
@@ -57,7 +61,7 @@
         <div class="min-h-screen">
 
             <!-- Header موحّد -->
-            <swipex-header title="المهام" icon="fa-list-check">
+            <swipex-header :title="t('tasks.title')" icon="fa-list-check">
                 <template #actions>
                     <swipex-top-menu></swipex-top-menu>
                 </template>
@@ -67,19 +71,19 @@
             <div class="px-3 mt-3">
                 <div class="glass-panel rounded-2xl p-3 flex items-center gap-2">
                     <div class="flex-1 min-w-0">
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">إجمالي المهام</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">{{ t('tasks.count_all') }}</div>
                         <div class="text-2xl font-extrabold text-gray-800 dark:text-white leading-tight">
                             {{ taskCounts.all }}
                         </div>
                     </div>
                     <div class="text-center px-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">معلّقة</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">{{ t('tasks.section_pending') }}</div>
                         <div class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 leading-tight">
                             {{ taskCounts.pending }}
                         </div>
                     </div>
                     <div class="text-center px-2">
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">مكتملة</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-bold">{{ t('tasks.completed') }}</div>
                         <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
                             {{ taskCounts.completed }}
                         </div>
@@ -93,14 +97,14 @@
                     class="rounded-2xl p-3 flex items-center gap-3 border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/25">
                     <i class="fas fa-bell text-blue-600 dark:text-blue-400"></i>
                     <div class="flex-1 min-w-0">
-                        <div class="text-xs font-bold text-blue-700 dark:text-blue-300">مهمة التذكير</div>
+                        <div class="text-xs font-bold text-blue-700 dark:text-blue-300">{{ t('tasks.focus_label') }}</div>
                         <div class="text-sm font-bold text-gray-800 dark:text-gray-100 truncate">
-                            {{ focusedTask ? focusedTask.title : 'مهمة غير موجودة' }}
+                            {{ focusedTask ? focusedTask.title : t('tasks.focus_missing_task') }}
                         </div>
                     </div>
                     <button @click="clearTaskFocus"
                         class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition flex-shrink-0 flex items-center gap-1">
-                        عرض الكل
+                        {{ t('tasks.focus_show_all') }}
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -112,7 +116,7 @@
                     <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input v-model="taskSearch" type="text" placeholder="بحث في المهام..."
+                    <input v-model="taskSearch" type="text" :placeholder="t('tasks.search_placeholder')"
                         class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
                 </div>
             </div>
@@ -123,19 +127,19 @@
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     taskFilter === 'all' ? 'bg-blue-600 text-white border-blue-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">
-                    الكل ({{ taskCounts.all }})
+                    {{ t('common.all') }} ({{ taskCounts.all }})
                 </button>
                 <button @click="taskFilter = 'pending'" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     taskFilter === 'pending' ? 'bg-amber-500 text-white border-amber-400' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">
-                    معلّقة ({{ taskCounts.pending }})
+                    {{ t('tasks.section_pending') }} ({{ taskCounts.pending }})
                 </button>
                 <button @click="taskFilter = 'completed'" :class="[
                     'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
                     taskFilter === 'completed' ? 'bg-emerald-600 text-white border-emerald-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                 ]">
-                    مكتملة ({{ taskCounts.completed }})
+                    {{ t('tasks.completed') }} ({{ taskCounts.completed }})
                 </button>
             </div>
 
@@ -149,9 +153,9 @@
                         class="w-20 h-20 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-list-check text-3xl text-blue-400"></i>
                     </div>
-                    <p class="font-bold text-gray-700 dark:text-gray-300">لا توجد مهام</p>
+                    <p class="font-bold text-gray-700 dark:text-gray-300">{{ t('tasks.empty_title') }}</p>
                     <p class="text-sm mt-1">
-                        {{ taskSearch ? 'لا توجد نتائج للبحث' : 'اضغط على زر + لإنشاء مهمة جديدة' }}
+                        {{ taskSearch ? t('tasks.empty_search') : t('tasks.empty_hint') }}
                     </p>
                 </div>
 
@@ -162,8 +166,8 @@
                         class="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-circle-check text-3xl text-emerald-500"></i>
                     </div>
-                    <p class="font-bold text-gray-700 dark:text-gray-300">إكتملت كل المهام</p>
-                    <p class="text-sm mt-1">لا توجد مهام معلّقة حالياً</p>
+                    <p class="font-bold text-gray-700 dark:text-gray-300">{{ t('tasks.all_done_title') }}</p>
+                    <p class="text-sm mt-1">{{ t('tasks.all_done_body') }}</p>
                 </div>
 
                 <!-- بطاقة مهمة -->
@@ -174,12 +178,12 @@
                     <div class="task-swipe-action complete"
                         :style="{ opacity: taskCompleteProgress(task), zIndex: taskCompleteProgress(task) > 0 ? 1 : 0 }">
                         <i class="fas fa-check-circle"></i>
-                        <span>إتمام</span>
+                        <span>{{ t('tasks.swipe_complete') }}</span>
                     </div>
                     <div class="task-swipe-action delete"
                         :style="{ opacity: taskDeleteProgress(task), zIndex: taskDeleteProgress(task) > 0 ? 1 : 0 }">
                         <i class="fas fa-trash-alt"></i>
-                        <span>حذف</span>
+                        <span>{{ t('common.delete') }}</span>
                     </div>
 
                     <!-- جسم البطاقة -->
@@ -193,7 +197,7 @@
                                 <!-- إكمال سريع -->
                                 <button @click.stop="toggleTask(task)" class="task-check mt-0.5"
                                     :class="{ done: task.status === 'completed' }"
-                                    :aria-label="task.status === 'completed' ? 'إرجاع للمعلّقة' : 'إكمال المهمة'">
+                                    :aria-label="task.status === 'completed' ? t('tasks.mark_pending') : t('tasks.mark_done')">
                                     <i v-if="task.status === 'completed'" class="fas fa-check text-xs"></i>
                                 </button>
 
@@ -206,17 +210,17 @@
                                         <span v-if="isOverdue(task)"
                                             class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                                             <i class="fas fa-exclamation-triangle"></i>
-                                            متأخرة
+                                            {{ t('tasks.overdue') }}
                                         </span>
                                         <span v-else-if="isDueToday(task)"
                                             class="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                                            اليوم
+                                            {{ t('tasks.today') }}
                                         </span>
                                     </div>
 
                                     <h3 class="mt-2 font-bold text-gray-800 dark:text-gray-100 text-base leading-snug"
                                         :class="{ 'task-title-done': task.status === 'completed' }">
-                                        {{ task.title || 'مهمة بدون عنوان' }}
+                                        {{ task.title || t('tasks.untitled') }}
                                     </h3>
 
                                     <p v-if="task.description"
@@ -267,15 +271,15 @@
                             <div class="task-delete-bar">
                                 <i class="fas fa-triangle-exclamation text-red-500"></i>
                                 <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex-1">
-                                    هل تريد حذف "{{ task.title || 'مهمة' }}"؟
+                                    {{ t('tasks.delete_confirm_title') }} "{{ task.title || t('tasks.untitled') }}"?
                                 </span>
                                 <button @click="cancelDelete"
                                     class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                                    تراجع
+                                    {{ t('common.undo') }}
                                 </button>
                                 <button @click="confirmDeleteTask(task)"
                                     class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition shadow">
-                                    تأكيد الحذف
+                                    {{ t('tasks.confirm_delete') }}
                                 </button>
                             </div>
                         </div>
@@ -287,7 +291,7 @@
                     @click="showCompletedTasks = !showCompletedTasks"
                     class="w-full py-3 rounded-xl glass-panel text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500 transition flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700">
                     <i class="fas" :class="showCompletedTasks ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                    مكتملة ({{ completedTaskList.length }})
+                    {{ t('tasks.completed') }} ({{ completedTaskList.length }})
                 </button>
 
                 <!-- المهام المكتملة (تظهر فقط عند التوسيع، أو دائماً إن كانت الفلترة الحالية "مكتملة") -->
@@ -299,12 +303,12 @@
                         <div class="task-swipe-action complete"
                             :style="{ opacity: taskCompleteProgress(task), zIndex: taskCompleteProgress(task) > 0 ? 1 : 0 }">
                             <i class="fas fa-check-circle"></i>
-                            <span>إتمام</span>
+                            <span>{{ t('tasks.swipe_complete') }}</span>
                         </div>
                         <div class="task-swipe-action delete"
                             :style="{ opacity: taskDeleteProgress(task), zIndex: taskDeleteProgress(task) > 0 ? 1 : 0 }">
                             <i class="fas fa-trash-alt"></i>
-                            <span>حذف</span>
+                            <span>{{ t('common.delete') }}</span>
                         </div>
 
                         <!-- جسم البطاقة -->
@@ -318,7 +322,7 @@
                                     <!-- إكمال سريع -->
                                     <button @click.stop="toggleTask(task)" class="task-check mt-0.5"
                                         :class="{ done: task.status === 'completed' }"
-                                        :aria-label="task.status === 'completed' ? 'إرجاع للمعلّقة' : 'إكمال المهمة'">
+                                        :aria-label="task.status === 'completed' ? t('tasks.mark_pending') : t('tasks.mark_done')">
                                         <i v-if="task.status === 'completed'" class="fas fa-check text-xs"></i>
                                     </button>
 
@@ -331,17 +335,17 @@
                                             <span v-if="isOverdue(task)"
                                                 class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                                                 <i class="fas fa-exclamation-triangle"></i>
-                                                متأخرة
+                                                {{ t('tasks.overdue') }}
                                             </span>
                                             <span v-else-if="isDueToday(task)"
                                                 class="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                                                اليوم
+                                                {{ t('tasks.today') }}
                                             </span>
                                         </div>
 
                                         <h3 class="mt-2 font-bold text-gray-800 dark:text-gray-100 text-base leading-snug"
                                             :class="{ 'task-title-done': task.status === 'completed' }">
-                                            {{ task.title || 'مهمة بدون عنوان' }}
+                                            {{ task.title || t('tasks.untitled') }}
                                         </h3>
 
                                         <p v-if="task.description"
@@ -392,15 +396,15 @@
                                 <div class="task-delete-bar">
                                     <i class="fas fa-triangle-exclamation text-red-500"></i>
                                     <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex-1">
-                                        هل تريد حذف "{{ task.title || 'مهمة' }}"؟
+                                        {{ t('tasks.delete_confirm_title') }} "{{ task.title || t('tasks.untitled') }}"?
                                     </span>
                                     <button @click="cancelDelete"
                                         class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                                        تراجع
+                                        {{ t('common.undo') }}
                                     </button>
                                     <button @click="confirmDeleteTask(task)"
                                         class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition shadow">
-                                        تأكيد الحذف
+                                        {{ t('tasks.confirm_delete') }}
                                     </button>
                                 </div>
                             </div>
@@ -416,10 +420,10 @@
                 class="fixed z-[160] left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-800/95 text-white shadow-2xl"
                 style="bottom: calc(96px + env(safe-area-inset-bottom))">
                 <i class="fas fa-undo text-sm"></i>
-                <span class="text-sm font-bold">تم تنفيذ الإجراء</span>
+                <span class="text-sm font-bold">{{ t('tasks.action_done') }}</span>
                 <button @click="undoTaskAction"
                     class="text-sm font-extrabold text-blue-300 hover:text-blue-200 transition px-2">
-                    تراجع
+                    {{ t('common.undo') }}
                 </button>
             </div>
         </transition>
@@ -429,29 +433,29 @@
             <button @click="showTrash = !showTrash"
                 class="w-full py-3 rounded-xl glass-panel text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700">
                 <i class="fas fa-trash-restore"></i>
-                سلة المحذوفات ({{ deletedTasksCount }})
+                {{ t('tasks.trash_title') }} ({{ deletedTasksCount }})
             </button>
             <div v-if="showTrash" class="mt-2 space-y-2">
                 <div v-for="t in deletedTasks" :key="t.id"
                     class="glass-panel rounded-xl p-3 flex items-center gap-2 border border-red-200 dark:border-red-900/40">
                     <div class="flex-1 min-w-0">
                         <div class="text-sm font-bold text-gray-500 dark:text-gray-400 line-through truncate">
-                            {{ t.title || 'مهمة' }}
+                            {{ t.title || t('tasks.untitled') }}
                         </div>
                     </div>
                     <button @click="restoreTask(t)"
                         class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                        استرجاع
+                        {{ t('tasks.trash_restore') }}
                     </button>
                     <button @click="deleteTaskPermanently(t)"
                         class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition">
-                        حذف نهائي
+                        {{ t('tasks.trash_delete_permanent') }}
                     </button>
                 </div>
                 <button @click="emptyTrashTasks"
                     class="w-full py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition flex items-center justify-center gap-2">
                     <i class="fas fa-trash-alt"></i>
-                    إفراغ السلة
+                    {{ t('tasks.trash_empty') }}
                 </button>
             </div>
         </div>
@@ -470,6 +474,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="assets/js/firebase-init.js"></script>
+    <!-- i18n: dictionaries + registry (must load before state.js / methods.js) -->
+    <script src="assets/i18n/ar.js"></script>
+    <script src="assets/i18n/fr.js"></script>
+    <script src="assets/i18n/en.js"></script>
+    <script src="assets/i18n/index.js"></script>
     <script src="assets/js/state.js"></script>
     <script src="assets/js/firestoreSync.js"></script>
     <script src="assets/js/taskStore.js"></script>

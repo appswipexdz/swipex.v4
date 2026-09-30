@@ -20,6 +20,23 @@ const appOptions = {
     },
     
     computed: {
+        // i18n: هل اتجاه الواجهة الحالي RTL؟
+        isRtl() {
+            const lang = (this.settings && this.settings.language) || window.i18nDefaultLang || "ar";
+            const registry = window.i18nRegistry || {};
+            const entry = registry[lang] || registry[window.i18nDefaultLang || "ar"];
+            const pack = entry ? (typeof entry === "function" ? entry() : entry) : null;
+            return ((pack && pack.meta && pack.meta.dir) || "rtl") === "rtl";
+        },
+        // i18n: خريطة مفاتيح محرر SMS → عناوين القواميس (العربية/الفرنسية/الإنجليزية)
+        smsEditorTitleKeys() {
+            return {
+                smsTemplate: "sms_editor.title_delivery",
+                whatsappTemplate: "sms_editor.title_whatsapp",
+                smsStatusTemplate: "sms_editor.title_no_answer",
+                smsWrongNumberTemplate: "sms_editor.title_wrong_number",
+            };
+        },
         uniqueMunicipalities() {
             return (typeof window.appMethods !== 'undefined' && window.appMethods.uniqueMunicipalities) ? window.appMethods.uniqueMunicipalities.call(this) : [];
         },
@@ -133,7 +150,7 @@ const appOptions = {
                 return {
                     group: {
                         id: g.id || ('sg' + gi),
-                        name: g.name || 'تجميع',
+                        name: g.name || this.t('settings.status_group_unnamed'),
                         icon: g.icon || 'fa-layer-group',
                         color: g.color || '#6b7280',
                         layout: g.layout === 'row' ? 'row' : 'column',
@@ -144,7 +161,7 @@ const appOptions = {
             const unassigned = all.filter(s => !assigned.has(s.name));
             if (unassigned.length > 0) {
                 result.push({
-                    group: { id: 'unassigned', name: 'غير مجمّعة', icon: 'fa-folder-open', color: '#9ca3af', layout: 'column' },
+                    group: { id: 'unassigned', name: this.t('settings.status_group_unassigned'), icon: 'fa-folder-open', color: '#9ca3af', layout: 'column' },
                     statuses: unassigned,
                 });
             }
@@ -186,6 +203,10 @@ const appOptions = {
             this.$nextTick(() => {
                 this.initSortable();
             });
+        },
+        // i18n: عند تغيّر اللغة (محلياً أو عبر المزامنة السحابية) يُعاد تطبيق الاتجاه
+        'settings.language'() {
+            this.applyLanguageDirection();
         }
     },
     
@@ -221,6 +242,9 @@ const appOptions = {
         // تحميل الفلاتر والثيم فوراً
         this.loadFilters();
         this.applyTheme();
+
+        // i18n: تطبيق لغة الواجهة واتجاهها (lang/dir) على مستوى الصفحة
+        this.applyLanguageDirection();
         
         // الاستماع لتغييرات الثيم
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -674,6 +698,13 @@ const appOptions = {
 // دمج ميزات الصفحات (مثل نظام المهام) في خيارات التطبيق
 // يتم الدمج في نفس نسخة appState للحفاظ على المراجع المشتركة
 // ============================================
+// appMethods (methods.js)must be available during the FIRST render, not only in mounted():
+// t() / statusLabel() are called from templates, and child components (shell) render
+// before the root's mounted() hook runs.
+if (window.appMethods && typeof window.appMethods === 'object') {
+    appOptions.methods = Object.assign({}, appOptions.methods, window.appMethods);
+}
+
 const FEATURE_PACKS = ['tasksFeature'];
 FEATURE_PACKS.forEach((packName) => {
     const pack = window[packName];

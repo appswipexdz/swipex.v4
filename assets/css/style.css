@@ -193,13 +193,26 @@ body.dark-mode::after {
 .swipe-background-right {
     background: linear-gradient(90deg, #be2222 0%, #ef4444 100%);
     justify-content: flex-start;
-    padding-right: 25px;
 }
 
 .swipe-background-left {
     background: linear-gradient(270deg, #2b66b9 0%, #3b82f6 100%);
-    justify-content: flex-end;
-    padding-left: 25px;
+    justify-content: flex-start;
+}
+
+/* حافة السحب فيزيائية ولا تتبع اتجاه الصفحة: البطاقة تنزلق يميناً فتكشف
+   حافة اليسار (الأزرق = اتصال)، وتنزلق يساراً فتكشف حافة اليمين
+   (الأحمر = Yalidine). لذلك نثبّت المحتوى عند الحافة المكشوفة بهوامش
+   فيزيائية auto بدل flex-start/flex-end التي تنقلب مع dir=rtl/ltr
+   فتختفي خلف البطاقة. */
+.swipe-background-left > * {
+    margin-left: 25px;
+    margin-right: auto;
+}
+
+.swipe-background-right > * {
+    margin-right: 25px;
+    margin-left: auto;
 }
 
 .status-modal {
@@ -1067,7 +1080,7 @@ select {
     border: none;
     background: none;
     width: 100%;
-    text-align: right;
+    text-align: start;
     color: #374151;
 }
 
@@ -1767,6 +1780,7 @@ select {
     background: #fff;
     border-radius: 9999px;
     padding: 6px 16px 6px 6px;
+    /* i18n: الحشوة معكوسة في LTR عبر [dir="ltr"] أسفل الملف */
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
     transition: transform 0.15s ease;
     -webkit-tap-highlight-color: transparent;
@@ -1976,4 +1990,130 @@ select {
     border-radius: 14px;
     background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.25);
+}
+/* ============================================
+   i18n: RTL/LTR mirroring pass
+   Tailwind 3.0 (Play CDN) لا يدعم الخصائص المنطقية
+   (ms-/me-/ps-/pe-/start-/end-)، لذلك نعكس الأدوات
+   الاتجاهية يدوياً في وضع LTR فقط.
+   العربية (RTL) تبقى كما هي تماماً — هذه القواعد لا تؤثر عليها.
+   ============================================ */
+[dir="ltr"] .ml-1 {
+    margin-left: 0 !important;
+    margin-right: 0.25rem !important;
+}
+
+[dir="ltr"] .ml-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+}
+
+[dir="ltr"] .mr-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+}
+
+[dir="ltr"] .mr-auto {
+    margin-right: auto !important;
+    margin-left: auto !important;
+}
+
+[dir="ltr"] .pl-3 {
+    padding-left: 0 !important;
+    padding-right: 0.75rem !important;
+}
+
+[dir="ltr"] .pl-4 {
+    padding-left: 0 !important;
+    padding-right: 1rem !important;
+}
+
+[dir="ltr"] .pl-10 {
+    padding-left: 0 !important;
+    padding-right: 2.5rem !important;
+}
+
+[dir="ltr"] .pl-20 {
+    padding-left: 0 !important;
+    padding-right: 5rem !important;
+}
+
+[dir="ltr"] .pl-28 {
+    padding-left: 0 !important;
+    padding-right: 7rem !important;
+}
+
+[dir="ltr"] .pr-1 {
+    padding-right: 0 !important;
+    padding-left: 0.25rem !important;
+}
+
+[dir="ltr"] .pr-3 {
+    padding-right: 0 !important;
+    padding-left: 0.75rem !important;
+}
+
+[dir="ltr"] .pr-10 {
+    padding-right: 0 !important;
+    padding-left: 2.5rem !important;
+}
+
+[dir="ltr"] .pr-12 {
+    padding-right: 0 !important;
+    padding-left: 3rem !important;
+}
+
+[dir="ltr"] .border-r-4 {
+    border-right-width: 0 !important;
+    border-left-width: 4px !important;
+}
+
+/* التوسيط المطلق (left-1/2 + -translate-x-1/2) يبقى كما هو في الاتجاهين. */
+
+
+/* ============================================
+   i18n: LTR mirroring — القوائم المنسدلة والـ select والسحب
+   العربية (RTL) تبقى كما هي تماماً.
+   ============================================ */
+
+/* قوائم الفلاتر (البلديات / التمييزات) مثبّتة على جهة البداية */
+[dir="ltr"] .municipality-dropdown,
+[dir="ltr"] .tags-dropdown {
+    right: auto !important;
+    left: 0.75rem !important;
+}
+
+/* قائمة "المزيد" داخل بطاقة الطرد — مثبّتة على جهة النهاية في RTL */
+[dir="ltr"] .parcel-more-menu {
+    left: auto !important;
+    right: 0 !important;
+}
+
+/* عمود مقبض سحب/ترتيب الطرد — جهة البداية */
+[dir="ltr"] .parcel-drag-handle {
+    right: auto !important;
+    left: 0.5rem !important;
+}
+
+/* قائمة النقاط الثلاث في الهيدر */
+[dir="ltr"] .top-menu-dropdown {
+    right: auto !important;
+    left: 0 !important;
+}
+
+/* قائمة الإجراءات السريعة: تُزاح نحو جهة النهاية حتى لا تغطي زر + */
+[dir="ltr"] .fab-action-menu {
+    right: auto !important;
+    left: calc(50% + 26px) !important;
+}
+
+[dir="ltr"] .fab-action-item {
+    padding: 6px 6px 6px 16px !important;
+}
+
+/* سهم <select> الأصلي كان مثبتاً على اليسار (= النهاية في RTL) */
+[dir="ltr"] select {
+    background-position: right 0.5rem center !important;
+    padding-right: 2.5rem !important;
+    padding-left: 1rem !important;
 }

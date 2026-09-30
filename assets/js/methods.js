@@ -17,7 +17,9 @@ const appMethods = {
     // إضافة لإشعارات النظام الدائمة أيضاً
     if (type === 'error' || type === 'success') {
       this.addNotification({
-        title: type === 'error' ? 'خطأ' : 'نجاح',
+        title: type === 'error'
+          ? (this.t ? this.t('msg.notify_title_error') : 'خطأ')
+          : (this.t ? this.t('msg.notify_title_success') : 'نجاح'),
         message: message,
         type: type,
         time: new Date().toISOString()
@@ -60,6 +62,95 @@ const appMethods = {
     ) {
       body.classList.add("dark-mode");
       html.classList.add("dark");
+    }
+  },
+
+  // ========== i18n / اللغة ==========
+  // ترجمة طبقة عرض فقط: قيمة status المخزَّنة تبقى عربية دائماً (مفتاح داخلي).
+  t(key, params) {
+    const fallbackLang = window.i18nDefaultLang || "ar";
+    const lang = (this.settings && this.settings.language) || fallbackLang;
+    const registry = window.i18nRegistry || {};
+    const pick = (code) => {
+      const entry = registry[code];
+      if (!entry) return null;
+      const pack = typeof entry === "function" ? entry() : entry;
+      return pack && pack.strings ? pack.strings : null;
+    };
+    const dict = pick(lang) || {};
+    const fallback = pick(fallbackLang) || {};
+    let text = dict[key] || fallback[key] || key;
+    if (params) {
+      Object.keys(params).forEach((p) => {
+        text = text.split("{{" + p + "}}").join(params[p]);
+      });
+    }
+    return text;
+  },
+
+  // خريطة أسماء الحالات الثابتة (العربية = المفتاح الداخلي المخزَّن) -> مفاتيح العرض
+  statusLabel(statusName) {
+    const map = {
+      "دون إجراء": "status.no_action",
+      "في الإنتظار": "status.waiting",
+      "تم التسليم": "status.delivered",
+      "مغلق": "status.closed",
+      "لا يرد": "status.no_answer",
+      "رقم خاطئ": "status.wrong_number",
+      "مؤجل للغد": "status.postponed",
+      "إلغاء الطلبية": "status.cancelled",
+    };
+    const key = map[statusName];
+    // حالة مخصَّصة (غير موجودة في الخريطة الثابتة أعلاه) تُعرَض كما كتبها المستخدم، بلا ترجمة
+    return key ? this.t(key) : statusName;
+  },
+
+  // i18n: اللغة الفعلية المستخدمة لتنسيق التواريخ والأرقام
+  currentLocale() {
+    const fallbackLang = window.i18nDefaultLang || "ar";
+    const lang = (this.settings && this.settings.language) || fallbackLang;
+    const registry = window.i18nRegistry || {};
+    const entry = registry[lang] || registry[fallbackLang];
+    const pack = entry ? (typeof entry === "function" ? entry() : entry) : null;
+    const meta = (pack && pack.meta) || {};
+    const locale = meta.locale || (meta.code === "fr" ? "fr-DZ" : meta.code === "en" ? "en-GB" : "ar-DZ");
+    try {
+      // some environments lack full ICU data — validate before using it
+      new Date().toLocaleDateString(locale);
+      return locale;
+    } catch (e) {
+      return fallbackLang === "fr" ? "fr-DZ" : fallbackLang === "en" ? "en-GB" : "ar-DZ";
+    }
+  },
+
+  // i18n: دورة الساعة حسب اللغة — العربية 12 ساعة (ص/م)، الفرنسية والإنجليزية 24 ساعة
+  hourCycle() {
+    const fallbackLang = window.i18nDefaultLang || "ar";
+    const registry = window.i18nRegistry || {};
+    const lang = (this.settings && this.settings.language) || fallbackLang;
+    const code = registry[lang] ? lang : fallbackLang;
+    return code === "ar" ? "h12" : "h23";
+  },
+
+  setLanguage(lang) {
+    if (!window.i18nRegistry || !window.i18nRegistry[lang]) return;
+    this.settings.language = lang;
+    this.applyLanguageDirection();
+    this.saveSettings();
+  },
+
+  applyLanguageDirection() {
+    if (typeof document === "undefined") return;
+    const fallbackLang = window.i18nDefaultLang || "ar";
+    const lang = (this.settings && this.settings.language) || fallbackLang;
+    const registry = window.i18nRegistry || {};
+    const entry = registry[lang] || registry[fallbackLang];
+    const pack = entry ? (typeof entry === "function" ? entry() : entry) : null;
+    const meta = (pack && pack.meta) || { code: fallbackLang, dir: "rtl" };
+    const html = document.documentElement;
+    if (html) {
+      html.setAttribute("lang", meta.code || fallbackLang);
+      html.setAttribute("dir", meta.dir || "rtl");
     }
   },
 
@@ -616,9 +707,9 @@ const appMethods = {
     const cleaned = this.cleanPhoneNumberString(raw);
     if (cleaned) {
       this.editParcel[fieldName] = cleaned;
-      this.showToast('تم تنظيف رقم الهاتف', 'success');
+      this.showToast(this.t('msg.phone_cleaned'), 'success');
     } else {
-      this.showToast('لم يتم تحويل الرقم إلى صيغة صحيحة', 'error');
+      this.showToast(this.t('msg.phone_format_failed'), 'error');
     }
   },
 
@@ -639,7 +730,7 @@ const appMethods = {
 
   getLocationDisplay(target) {
     const location = this.normalizeLocation(target?.location || target);
-    return location.label || location.address || location.mapsUrl || "بدون رابط";
+    return location.label || location.address || location.mapsUrl || this.t("msg.no_link");
   },
 
   getLocationMeta(target) {
@@ -671,7 +762,7 @@ const appMethods = {
     if (!parcel) return;
 
     if (!navigator.geolocation) {
-      this.showToast("متصفحك لا يدعم تحديد الموقع الجغرافي.", "error");
+      this.showToast(this.t("msg.location_unsupported"), "error");
       return;
     }
 
@@ -695,21 +786,21 @@ const appMethods = {
         lat: latitude,
         lng: longitude,
         address: "",
-        label: "الموقع الحالي",
+        label: this.t("msg.location_label_current"),
         source: "device",
         updatedAt: new Date().toISOString(),
       });
       this.markParcelDirty(parcel);
       this.saveData();
-      this.showToast("تم حفظ الموقع الحالي بنجاح.", "success");
+      this.showToast(this.t("msg.location_saved_current"), "success");
     } catch (error) {
-      let message = "تعذر الحصول على الموقع. تأكد من سماح المتصفح بالوصول إلى الموقع.";
+      let message = this.t("msg.location_fetch_failed");
       if (error && error.code === 1) {
-        message = "تم رفض إذن الموقع. يرجى السماح بالوصول إلى الموقع.";
+        message = this.t("msg.location_permission_denied");
       } else if (error && error.code === 2) {
-        message = "تعذر تحديد الموقع. حاول مرة أخرى أو تأكد من تشغيل GPS.";
+        message = this.t("msg.location_gps_failed");
       } else if (error && error.code === 3) {
-        message = "انتهت مهلة طلب الموقع. حاول مرة أخرى.";
+        message = this.t("msg.location_timeout");
       }
       this.showToast(message, "error", 5000);
     }
@@ -728,7 +819,7 @@ const appMethods = {
 
   initLocationPickerMap() {
     if (typeof L === 'undefined') {
-      this.showToast('لم يتم تحميل مكتبة الخرائط.', 'error');
+      this.showToast(this.t('msg.map_lib_failed'), 'error');
       return;
     }
 
@@ -775,7 +866,7 @@ const appMethods = {
 
   async centerLocationPickerToDeviceLocation() {
     if (!navigator.geolocation) {
-      this.showToast('متصفحك لا يدعم تحديد الموقع الجغرافي.', 'error');
+      this.showToast(this.t('msg.location_unsupported'), 'error');
       return;
     }
 
@@ -800,15 +891,15 @@ const appMethods = {
       if (this.locationPickerMap) {
         this.locationPickerMap.setView([latitude, longitude], this.locationPickerMap.getZoom() || 14);
       }
-      this.showToast('تم الانتقال إلى الموقع الحالي.', 'success');
+      this.showToast(this.t('msg.location_moved'), 'success');
     } catch (error) {
-      let message = 'تعذر الحصول على الموقع. تأكد من سماح المتصفح بالوصول إلى الموقع.';
+      let message = this.t('msg.location_fetch_failed');
       if (error && error.code === 1) {
-        message = 'تم رفض إذن الموقع. يرجى السماح بالوصول إلى الموقع.';
+        message = this.t('msg.location_permission_denied');
       } else if (error && error.code === 2) {
-        message = 'تعذر تحديد الموقع. حاول مرة أخرى أو تأكد من تشغيل GPS.';
+        message = this.t('msg.location_gps_failed');
       } else if (error && error.code === 3) {
-        message = 'انتهت مهلة طلب الموقع. حاول مرة أخرى.';
+        message = this.t('msg.location_timeout');
       }
       this.showToast(message, 'error', 5000);
     }
@@ -817,21 +908,21 @@ const appMethods = {
   selectParcelLocationFromMap() {
     if (!this.locationPickerParcel) return;
     if (this.locationPickerLat === null || this.locationPickerLng === null) {
-      this.showToast('لم يتم تحديد موقع صالح.', 'error');
+      this.showToast(this.t('msg.location_invalid'), 'error');
       return;
     }
 
     this.locationPickerParcel.location = this.normalizeLocation({
       lat: this.locationPickerLat,
       lng: this.locationPickerLng,
-      label: 'موقع الخريطة',
+      label: this.t('msg.location_label_map'),
       address: '',
       source: 'map',
       updatedAt: new Date().toISOString(),
     });
     this.markParcelDirty(this.locationPickerParcel);
     this.saveData();
-    this.showToast('تم حفظ الموقع المخصص من الخريطة.', 'success');
+    this.showToast(this.t('msg.location_saved_map'), 'success');
     this.closeLocationPicker();
   },
 
@@ -856,7 +947,7 @@ const appMethods = {
   openParcelLocation(target) {
     const location = this.normalizeLocation(target?.location || target);
     if (!this.hasParcelLocation(location) || !location.mapsUrl) {
-      this.showToast("لا يوجد موقع محفوظ لهذا الطرد", "info");
+      this.showToast(this.t("msg.location_missing"), "info");
       return;
     }
     window.open(location.mapsUrl, "_blank");
@@ -907,7 +998,7 @@ const appMethods = {
             this._settingsLocalUpdatedAt = new Date().toISOString();
           }
           console.log(
-            ok ? "✓ تم حفظ البيانات في Firestore" : "❌ فشل حفظ البيانات",
+            ok ? "✓ " + this.t("msg.saved_to_firestore") : "❌ " + this.t("msg.save_failed"),
           );
         })
         .catch((e) => {
@@ -961,7 +1052,7 @@ const appMethods = {
 
     localStorage.setItem(FLAG, 'true');
     this.syncLocalStorage();
-    this.showToast(`تم تنظيف ${phantomTrackings.length} سجل مكرر من الأرشيف`, 'info');
+    this.showToast(this.t('msg.archive_duplicates_cleaned', { count: phantomTrackings.length }), 'info');
   },
 
   async loadData() {
@@ -1432,8 +1523,14 @@ const appMethods = {
 
   getTagScopeLabel(tagName) {
     const tag = this.getTagDefinition(tagName);
-    if (!tag) return "عام";
-    return tag.scope === "municipality" && tag.municipality ? `بلدية: ${tag.municipality}` : "عام";
+    const general = this.t ? this.t('settings.tag_scope_general') : 'عام';
+    if (!tag) return general;
+    if (tag.scope === 'municipality' && tag.municipality) {
+      return this.t
+        ? this.t('settings.tag_scope_municipality', { municipality: tag.municipality })
+        : `بلدية: ${tag.municipality}`;
+    }
+    return general;
   },
 
   isTagVisibleForMunicipality(tagName, municipality = "") {
@@ -1486,7 +1583,7 @@ const appMethods = {
     const fav = this.getFavoriteInfo(parcel);
     if (!fav) return;
     if (typeof fav === 'string') {
-      this.showToast('لا توجد بيانات محفوظة - عدّل المفضلة من الإعدادات', 'info');
+      this.showToast(this.t('msg.favorites_no_data'), 'info');
       return;
     }
     let applied = false;
@@ -1495,9 +1592,9 @@ const appMethods = {
     if (applied) {
       this.markParcelDirty(parcel);
       this.saveData();
-      this.showToast('تم تطبيق بيانات المفضلة', 'success');
+      this.showToast(this.t('msg.favorites_applied'), 'success');
     } else {
-      this.showToast('لا يوجد اسم أو بلدية محفوظة', 'info');
+      this.showToast(this.t('msg.favorites_no_name'), 'info');
     }
   },
 
@@ -1571,9 +1668,9 @@ const appMethods = {
     }
     if (added.length > 0) {
       this.saveSettings();
-      this.showToast('تمت إضافة ' + added.join(' و ') + ' للمفضلة', 'success');
+      this.showToast(this.t('msg.favorites_added', { list: added.join(this.t('common.list_separator')) }), 'success');
     } else {
-      this.showToast('الرقم موجود بالفعل في المفضلة', 'info');
+      this.showToast(this.t('msg.favorites_exists'), 'info');
     }
   },
 
@@ -1697,7 +1794,7 @@ const appMethods = {
 
   manualArchive() {
     if (this.parcels.length === 0) {
-      this.showToast("لا توجد طرود لأرشفتها", "info");
+      this.showToast(this.t("msg.nothing_to_archive"), "info");
       return;
     }
     const count = this.parcels.length;
@@ -1707,7 +1804,7 @@ const appMethods = {
     this.sessionDate = this.getTodayString();
     this._settingsDirty = true;
     this.saveData();
-    this.showToast("تم أرشفة " + count + " طرد بنجاح", "success");
+    this.showToast(this.t("msg.archived_ok", { count: count }), "success");
   },
 
   toggleArchiveSync(enabled) {
@@ -1724,27 +1821,27 @@ const appMethods = {
       });
     }
 
-    this.showToast(enabled ? 'تم تفعيل مزامنة الأرشيف مع السحابة' : 'تم إيقاف مزامنة الأرشيف مع السحابة', 'info');
+    this.showToast(this.t(enabled ? 'msg.archive_sync_on' : 'msg.archive_sync_off'), 'info');
     this.saveSettings();
   },
 
   async syncArchiveToCloud() {
     if (!firestoreSync.isAvailable()) {
-      this.showToast("السحابة غير متاحة", "error");
+      this.showToast(this.t("msg.cloud_unavailable"), "error");
       return;
     }
     if (!this.settings.archiveSyncEnabled) {
-      this.showToast("مزامنة الأرشيف موقوفة. فعّلها من زر التبديل بالأعلى", "warning");
+      this.showToast(this.t("msg.archive_sync_off"), "warning");
       return;
     }
     const keys = Object.keys(this.archive || {});
     if (!keys.length) {
-      this.showToast("الأرشيف فارغ", "info");
+      this.showToast(this.t("msg.archive_empty"), "info");
       return;
     }
     const uid = firestoreSync.getUid();
     if (!uid || !window.db) {
-      this.showToast("غير مسجل الدخول", "error");
+      this.showToast(this.t("msg.not_logged_in"), "error");
       return;
     }
 
@@ -1756,27 +1853,27 @@ const appMethods = {
       .map(([tracking, entry]) => ({ tracking: tracking.trim(), raw: entry }));
 
     if (!candidates.length) {
-      this.showToast("الأرشيف فارغ", "info");
+      this.showToast(this.t("msg.archive_empty"), "info");
       return;
     }
-    this.showToast("جاري مزامنة " + candidates.length + " عنصر...", "info");
+    this.showToast(this.t("msg.syncing_items", { count: candidates.length }), "info");
     try {
       const result = await this.pushRecordsProgressive('archive_v2', candidates);
       if (result.failed > 0) {
-        this.showToast(`تم رفع ${result.done} من ${result.done + result.failed} إلى السحابة — تعذّر رفع ${result.failed} سجل`, 'warning');
+        this.showToast(this.t('msg.sync_partial', { done: result.done, total: result.done + result.failed, failed: result.failed }), 'warning');
       } else {
-        this.showToast("تم مزامنة " + result.done + " عنصر إلى السحابة", "success");
+        this.showToast(this.t("msg.sync_items_done", { count: result.done }), "success");
       }
     } catch (e) {
       console.error('syncArchiveToCloud:', e);
-      this.showToast("فشلت المزامنة", "error");
+      this.showToast(this.t("msg.sync_failed"), "error");
     }
   },
 
   exportArchive() {
     const archiveCount = Object.keys(this.archive || {}).length;
     if (!archiveCount) {
-      this.showToast("لا يوجد أرشيف للتصدير", "info");
+      this.showToast(this.t("msg.no_archive_export"), "info");
       return;
     }
 
@@ -1814,7 +1911,7 @@ const appMethods = {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "الأرشيف");
     XLSX.writeFile(wb, `SwiPex_Archive_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    this.showToast(`تم تصدير ${archiveCount} طرد من الأرشيف`, "success");
+    this.showToast(this.t('msg.archive_exported', { count: archiveCount }), "success");
   },
 
   openArchiveImport() {
@@ -1872,16 +1969,16 @@ const appMethods = {
 
         this.archiveVisibleCount = 30;
         this.saveData();
-        this.showToast(`تم استيراد الأرشيف: ${added} جديد، ${updated} محدث`, "success");
+        this.showToast(this.t('msg.archive_imported', { added: added, updated: updated }), "success");
       } catch (error) {
         console.error("Archive import failed:", error);
-        this.showToast("تعذر استيراد الأرشيف. تأكد من اختيار ملف Excel صحيح.", "error");
+        this.showToast(this.t("msg.archive_import_failed"), "error");
       } finally {
         event.target.value = "";
       }
     };
     reader.onerror = () => {
-      this.showToast("تعذر قراءة ملف الأرشيف", "error");
+      this.showToast(this.t("msg.archive_read_failed"), "error");
       event.target.value = "";
     };
     reader.readAsArrayBuffer(file);
@@ -2079,7 +2176,7 @@ const appMethods = {
     this.markParcelDirty(parcel);
 
     this.saveData();
-    this.showToast('تم نسخ التمييز والملاحظة إلى الطرد الحالي', 'success');
+    this.showToast(this.t('msg.tag_notes_copied'), 'success');
   },
 
   // ========== History ==========
@@ -2118,12 +2215,13 @@ const appMethods = {
   formatDate(isoString) {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleDateString("ar-DZ", {
+    return date.toLocaleDateString(this.currentLocale(), {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hourCycle: this.hourCycle(),
     });
   },
 
@@ -2776,9 +2874,10 @@ const appMethods = {
       maximumFractionDigits: 0,
     }).format(value);
 
-    // استبدال رمز العملة (الموجود في آخر السلسلة) بـ "دج"
+    // استبدال رمز العملة (الموجود في آخر السلسلة) برمز العملة المترجَم
     // نستخدم تعبير نمطي للبحث عن أي حروف غير أرقام في نهاية السلسلة واستبدالها
-    return formatted.replace(/\D+$/, " دج");
+    const symbol = this.t ? this.t("common.dzd") : "دج";
+    return formatted.replace(/\D+$/, " " + symbol);
   },
 
   formatPhoneForWa(phone) {
@@ -3039,11 +3138,11 @@ const appMethods = {
         this.activeListeningId = null;
         const isConnectivityError = ['network', 'audio-capture', 'service-not-allowed'].includes(event.error);
         if (isConnectivityError) {
-          this.showToast('تعذّر الاتصال بخدمة التعرف الصوتي — تحقّق من الإنترنت', 'error');
+          this.showToast(this.t('msg.voice_service_failed'), 'error');
         }
       };
     } else {
-      alert("عذرًا، متصفحك لا يدعم خاصية تحويل الصوت إلى نص.");
+      alert(this.t("msg.voice_unsupported"));
     }
   },
 
@@ -3065,7 +3164,7 @@ const appMethods = {
   // ========== Voice Search ==========
   startVoiceSearch() {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      this.showToast('متصفحك لا يدعم البحث الصوتي', 'error');
+      this.showToast(this.t('msg.voice_search_unsupported'), 'error');
       return;
     }
     if (this.voiceSearchActive) {
@@ -3097,7 +3196,7 @@ const appMethods = {
       this.micConnected = false;
       const isConnectivityError = ['network', 'audio-capture', 'service-not-allowed'].includes(event.error);
       if (isConnectivityError) {
-        this.showToast('تعذّر الاتصال بخدمة التعرف الصوتي — تحقّق من الإنترنت', 'error');
+        this.showToast(this.t('msg.voice_service_failed'), 'error');
       }
     };
     this._voiceSearchRec.start();
@@ -3282,12 +3381,12 @@ const appMethods = {
         !parcel.reminderTriggered &&
         !ownedByTask
       ) {
-        const message = parcel.notes || "تذكير للطرد";
+        const message = parcel.notes || this.t("notifications.default_reminder");
         const fullMessage = `${parcel.receiver || ""}\n${message}`;
 
         this.addNotification({
           type: "reminder",
-          title: "تذكير بملاحظة",
+          title: this.t("notifications.reminder_note_title"),
           message: fullMessage,
           parcelId: parcel.id,
           tracking: parcel.tracking,
@@ -3295,10 +3394,10 @@ const appMethods = {
         });
         parcel.reminderTriggered = true;
         this.saveData();
-        this.showBrowserNotification("تذكير", fullMessage, parcel.tracking);
+        this.showBrowserNotification(this.t("notifications.reminder_title"), fullMessage, parcel.tracking);
 
         // إرسال إشعار للـ Service Worker
-        this.sendPushNotification("تذكير", fullMessage, parcel.tracking);
+        this.sendPushNotification(this.t("notifications.reminder_title"), fullMessage, parcel.tracking);
       }
     });
 
@@ -3311,10 +3410,10 @@ const appMethods = {
         reminderTime === currentTime &&
         !task.triggered
       ) {
-        const taskText = task.title || task.description || "مهمة";
+        const taskText = task.title || task.description || this.t("notifications.task_fallback");
         this.addNotification({
           type: "task",
-          title: "تذكير بمهمة",
+          title: this.t("notifications.task_title"),
           message: taskText,
           taskId: task.id,
           tracking: task.tracking || "",
@@ -3322,10 +3421,10 @@ const appMethods = {
         });
         task.triggered = true;
         this.saveNotificationsData();
-        this.showBrowserNotification("مهمة", taskText);
+        this.showBrowserNotification(this.t("notifications.task_fallback"), taskText);
 
         // إرسال إشعار للـ Service Worker
-        this.sendPushNotification("مهمة", taskText);
+        this.sendPushNotification(this.t("notifications.task_fallback"), taskText);
       }
     });
 
@@ -3373,7 +3472,7 @@ const appMethods = {
         reminders.push({
           type: "task",
           id: t.id,
-          description: t.title || t.description || "مهمة",
+          description: t.title || t.description || this.t("notifications.task_fallback"),
           time: reminderTime,
         });
       }
@@ -3508,8 +3607,15 @@ const appMethods = {
       // حذف المهمة المرتبطة التي أُنشئت من زر التذكير
       if (typeof this.tasks !== "undefined" && Array.isArray(this.tasks)) {
         const before = this.tasks.length;
+        const autoPrefix = this.t ? this.t("tasks.auto_title_prefix") : "متابعة الطرد";
         this.tasks = this.tasks.filter(
-          (t) => !(t.parcelId === parcelId && t.title && String(t.title).indexOf("متابعة الطرد") === 0),
+          (t) => !(
+            t.parcelId === parcelId &&
+            t.title &&
+            (t.autoGenerated === true ||
+              String(t.title).indexOf(autoPrefix) === 0 ||
+              String(t.title).indexOf("متابعة الطرد") === 0)
+          ),
         );
         if (this.tasks.length !== before && typeof this.persistTasks === "function") {
           this.persistTasks();
@@ -3525,9 +3631,10 @@ const appMethods = {
   formatNotificationTime(isoString) {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleTimeString("ar-DZ", {
+    return date.toLocaleTimeString(this.currentLocale(), {
       hour: "2-digit",
       minute: "2-digit",
+      hourCycle: this.hourCycle(),
     });
   },
 
@@ -3537,7 +3644,7 @@ const appMethods = {
     if (!name) return;
 
     if (this.newTagForm?.scope === "municipality" && !String(this.newTagForm?.municipality || "").trim()) {
-      this.showToast('يرجى إدخال اسم البلدية لهذا التمييز', 'error');
+      this.showToast(this.t('msg.municipality_required'), 'error');
       return;
     }
 
@@ -3670,7 +3777,7 @@ const appMethods = {
     this.normalizeStatusGroups();
     const newGroup = {
       id: 'sg' + Date.now() + Math.random().toString(36).slice(2, 6),
-      name: 'تجميع جديد',
+      name: this.t('msg.group_default_name'),
       icon: 'fa-layer-group',
       color: '#6b7280',
       layout: 'column',
@@ -3679,14 +3786,14 @@ const appMethods = {
     this.settings.statusGroups.push(newGroup);
     this.expandedStatusGroupId = newGroup.id;
     this.saveSettings();
-    this.showToast('تم إنشاء تجميع جديد', 'success');
+    this.showToast(this.t('msg.group_created'), 'success');
   },
 
   removeStatusGroup(id) {
     this.settings.statusGroups = (this.settings.statusGroups || []).filter((g) => g.id !== id);
     if (this.expandedStatusGroupId === id) this.expandedStatusGroupId = null;
     this.saveSettings();
-    this.showToast('تم حذف التجميع', 'info');
+    this.showToast(this.t('msg.group_deleted'), 'info');
   },
 
   toggleStatusGroupExpand(groupId) {
@@ -3769,7 +3876,7 @@ const appMethods = {
     const municipality = scope === "municipality" ? (parcel?.municipality || this.quickTagForm?.municipality || "") : "";
 
     if (scope === "municipality" && !municipality.trim()) {
-      this.showToast('يرجى إدخال اسم البلدية لهذا التمييز', 'error');
+      this.showToast(this.t('msg.municipality_required'), 'error');
       return;
     }
 
@@ -4021,7 +4128,7 @@ const appMethods = {
 
   async saveAccountPassword() {
     if (typeof firebase === "undefined" || !firebase.auth || !firebase.auth().currentUser) {
-      this.showToast('يرجى تسجيل الدخول أولاً', 'error');
+      this.showToast(this.t('msg.login_required'), 'error');
       return;
     }
 
@@ -4031,17 +4138,17 @@ const appMethods = {
     const confirmPassword = (this.settingsPasswordForm.confirmPassword || '').trim();
 
     if (!email || !password || !confirmPassword) {
-      this.showToast('يرجى إدخال البريد الإلكتروني وكلمتي المرور', 'error');
+      this.showToast(this.t('msg.credentials_required'), 'error');
       return;
     }
 
     if (password.length < 6) {
-      this.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+      this.showToast(this.t('msg.password_too_short'), 'error');
       return;
     }
 
     if (password !== confirmPassword) {
-      this.showToast('تأكيد كلمة المرور لا يطابق كلمة المرور الجديدة', 'error');
+      this.showToast(this.t('settings.password_mismatch'), 'error');
       return;
     }
 
@@ -4050,11 +4157,11 @@ const appMethods = {
 
       if (hasPasswordProvider) {
         await user.updatePassword(password);
-        this.showToast('تم تحديث كلمة المرور بنجاح', 'success');
+        this.showToast(this.t('msg.password_updated'), 'success');
       } else {
         const credential = firebase.auth.EmailAuthProvider.credential(email, password);
         await user.linkWithCredential(credential);
-        this.showToast('تم إنشاء كلمة المرور بنجاح', 'success');
+        this.showToast(this.t('msg.password_created'), 'success');
       }
 
       this.settingsPasswordForm.password = '';
@@ -4064,19 +4171,19 @@ const appMethods = {
 
       switch (error.code) {
         case 'auth/requires-recent-login':
-          this.showToast('يرجى تسجيل الدخول مرة أخرى ثم حاول مجدداً', 'error');
+          this.showToast(this.t('msg.reauth_required'), 'error');
           break;
         case 'auth/email-already-in-use':
-          this.showToast('هذا البريد الإلكتروني مستخدم في حساب آخر', 'error');
+          this.showToast(this.t('msg.email_already_used'), 'error');
           break;
         case 'auth/weak-password':
-          this.showToast('كلمة المرور ضعيفة جدًا', 'error');
+          this.showToast(this.t('msg.password_weak'), 'error');
           break;
         case 'auth/provider-already-linked':
-          this.showToast('هذا الحساب مرتبط بالفعل بكلمة مرور', 'info');
+          this.showToast(this.t('msg.password_already_set'), 'info');
           break;
         default:
-          this.showToast(error.message || 'فشل تحديث كلمة المرور', 'error');
+          this.showToast(error.message || this.t('msg.password_update_failed'), 'error');
       }
     }
   },
@@ -4789,7 +4896,7 @@ const appMethods = {
       console.log(`✅ تم تحميل ${this.sessions.length} جلسة و ${this.pendingInvites.length} دعوة`);
     } catch (error) {
       console.error('❌ خطأ في تحميل الجلسات:', error);
-      this.showToast('فشل تحميل الجلسات: ' + (error.message || 'خطأ غير معروف'), 'error');
+      this.showToast(this.t('msg.sessions_load_failed') + ' ' + (error.message || ''), 'error');
     }
   },
 
@@ -4801,7 +4908,7 @@ const appMethods = {
       if (typeof sessionsManager === 'undefined') return;
 
       const sessionId = await sessionsManager.acceptInvite(invite.id);
-      this.showToast(`تم قبول الدعوة بنجاح لـ: ${invite.sessionName}`, 'success');
+      this.showToast(this.t('msg.invite_accepted', { name: invite.sessionName }), 'success');
       
       // السماح بالحفظ في السحابة فوراً (تخطي التحميل الأولي)
       if (typeof firestoreSync !== 'undefined') {
@@ -4815,7 +4922,7 @@ const appMethods = {
       await this.joinSession(sessionId);
     } catch (error) {
       console.error('❌ خطأ في قبول الدعوة:', error);
-      this.showToast('فشل قبول الدعوة', 'error');
+      this.showToast(this.t('msg.invite_accept_failed'), 'error');
     }
   },
 
@@ -4825,14 +4932,14 @@ const appMethods = {
   async rejectSessionInvite(inviteId) {
     try {
       if (typeof sessionsManager === 'undefined') return;
-      if (!confirm('هل أنت متأكد من رفض هذه الدعوة؟')) return;
+      if (!confirm(this.t('msg.confirm_reject_invite'))) return;
 
       await sessionsManager.rejectInvite(inviteId);
-      this.showToast('تم رفض الدعوة', 'info');
+      this.showToast(this.t('msg.invite_rejected'), 'info');
       await this.loadUserSessions();
     } catch (error) {
       console.error('❌ خطأ في رفض الدعوة:', error);
-      this.showToast('فشل رفض الدعوة', 'error');
+      this.showToast(this.t('msg.invite_reject_failed'), 'error');
     }
   },
 
@@ -4863,7 +4970,7 @@ const appMethods = {
   async createSession() {
     try {
       if (!this.newSession.name.trim()) {
-        this.showToast('يرجى إدخال اسم الجلسة', 'error');
+        this.showToast(this.t('msg.session_name_required'), 'error');
         return;
       }
 
@@ -4883,7 +4990,7 @@ const appMethods = {
       }
 
       if (parcelsToShare.length === 0) {
-        this.showToast('لا توجد طرود للمشاركة', 'error');
+        this.showToast(this.t('msg.no_parcels_to_share'), 'error');
         return;
       }
 
@@ -4905,7 +5012,7 @@ const appMethods = {
         await sessionsManager.inviteUser(sessionId, invite.email, invite.role);
       }
 
-      this.showToast(`تم إنشاء الجلسة بنجاح (${parcelsToShare.length} طرد)`, 'success');
+      this.showToast(this.t('msg.session_created', { count: parcelsToShare.length }), 'success');
       this.closeCreateSessionModal();
       await this.loadUserSessions();
       
@@ -4914,7 +5021,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في إنشاء الجلسة:', error);
-      this.showToast('فشل إنشاء الجلسة', 'error');
+      this.showToast(this.t('msg.session_create_failed'), 'error');
     }
   },
 
@@ -4923,20 +5030,20 @@ const appMethods = {
    */
   addInviteToSession() {
     if (!this.newInvite.email.trim()) {
-      this.showToast('يرجى إدخال البريد الإلكتروني', 'error');
+      this.showToast(this.t('msg.email_required'), 'error');
       return;
     }
 
     // التحقق من صحة البريد الإلكتروني
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(this.newInvite.email)) {
-      this.showToast('البريد الإلكتروني غير صحيح', 'error');
+      this.showToast(this.t('msg.email_invalid'), 'error');
       return;
     }
 
     // التحقق من عدم تكرار البريد
     if (this.newSession.invites.some(inv => inv.email === this.newInvite.email)) {
-      this.showToast('هذا المستخدم مدعو بالفعل', 'error');
+      this.showToast(this.t('msg.already_invited'), 'error');
       return;
     }
 
@@ -4946,7 +5053,7 @@ const appMethods = {
     });
 
     this.newInvite = { email: '', role: 'editor' };
-    this.showToast('تمت إضافة الدعوة', 'success');
+    this.showToast(this.t('msg.invite_added'), 'success');
   },
 
   /**
@@ -4985,12 +5092,12 @@ const appMethods = {
       // عرض واجهة الجلسة
       this.showSessionDetailsModal = true;
 
-      this.showToast(`انضممت للجلسة: ${this.currentSession.name}`, 'success');
+      this.showToast(this.t('msg.joined_session', { name: this.currentSession.name }), 'success');
       console.log('✅ تم الانضمام للجلسة:', sessionId);
 
     } catch (error) {
       console.error('❌ خطأ في الانضمام للجلسة:', error);
-      this.showToast('فشل الانضمام للجلسة', 'error');
+      this.showToast(this.t('msg.join_failed'), 'error');
     }
   },
 
@@ -5016,7 +5123,7 @@ const appMethods = {
       this.sessionActivity = [];
       this.showSessionDetailsModal = false;
 
-      this.showToast('غادرت الجلسة', 'info');
+      this.showToast(this.t('msg.left_session'), 'info');
       console.log('✅ تم مغادرة الجلسة');
 
     } catch (error) {
@@ -5041,10 +5148,10 @@ const appMethods = {
 
       if (changeType === 'added' && index === -1) {
         this.sessionParcels.push(parcel);
-        this.showSessionNotificationToast(`تمت إضافة طرد جديد بواسطة ${parcel.addedBy}`);
+        this.showSessionNotificationToast(this.t('msg.session_toast_parcel_added', { name: parcel.addedBy }));
       } else if (changeType === 'modified' && index !== -1) {
         this.sessionParcels[index] = parcel;
-        this.showSessionNotificationToast(`تم تحديث طرد بواسطة ${parcel.lastModifiedBy}`);
+        this.showSessionNotificationToast(this.t('msg.session_toast_parcel_updated', { name: parcel.lastModifiedBy }));
       } else if (changeType === 'removed' && index !== -1) {
         this.sessionParcels.splice(index, 1);
       }
@@ -5096,7 +5203,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في تحديث الطرد:', error);
-      this.showToast(error.message || 'فشل تحديث الطرد', 'error');
+      this.showToast(error.message || this.t('msg.parcel_update_failed'), 'error');
     }
   },
 
@@ -5142,7 +5249,7 @@ const appMethods = {
       if (!this.currentSession) return;
 
       if (!this.newInvite.email.trim()) {
-        this.showToast('يرجى إدخال البريد الإلكتروني', 'error');
+        this.showToast(this.t('msg.email_required'), 'error');
         return;
       }
 
@@ -5157,13 +5264,13 @@ const appMethods = {
         this.newInvite.role
       );
 
-      this.showToast('تم إرسال الدعوة بنجاح', 'success');
+      this.showToast(this.t('msg.invite_sent'), 'success');
       this.newInvite = { email: '', role: 'editor' };
       this.showInviteUserModal = false;
 
     } catch (error) {
       console.error('❌ خطأ في دعوة المستخدم:', error);
-      this.showToast('فشل إرسال الدعوة', 'error');
+      this.showToast(this.t('msg.invite_send_failed'), 'error');
     }
   },
 
@@ -5174,7 +5281,7 @@ const appMethods = {
     try {
       if (!this.currentSession) return;
 
-      if (!confirm('هل أنت متأكد من إزالة هذا المشارك؟')) return;
+      if (!confirm(this.t('msg.confirm_remove_member'))) return;
 
       if (typeof sessionsManager === 'undefined') {
         console.error('❌ مدير الجلسات غير متوفر');
@@ -5182,11 +5289,11 @@ const appMethods = {
       }
 
       await sessionsManager.removeParticipant(this.currentSession.id, userId);
-      this.showToast('تمت إزالة المشارك', 'success');
+      this.showToast(this.t('msg.member_removed'), 'success');
 
     } catch (error) {
       console.error('❌ خطأ في إزالة المشارك:', error);
-      this.showToast(error.message || 'فشل إزالة المشارك', 'error');
+      this.showToast(error.message || this.t('msg.member_remove_failed'), 'error');
     }
   },
 
@@ -5203,11 +5310,11 @@ const appMethods = {
       }
 
       await sessionsManager.updateParticipantRole(this.currentSession.id, userId, newRole);
-      this.showToast('تم تحديث الدور بنجاح', 'success');
+      this.showToast(this.t('msg.role_updated'), 'success');
 
     } catch (error) {
       console.error('❌ خطأ في تحديث الدور:', error);
-      this.showToast(error.message || 'فشل تحديث الدور', 'error');
+      this.showToast(error.message || this.t('msg.role_update_failed'), 'error');
     }
   },
 
@@ -5228,7 +5335,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في جلب سجل النشاطات:', error);
-      this.showToast('فشل تحميل سجل النشاطات', 'error');
+      this.showToast(this.t('msg.activity_load_failed'), 'error');
     }
   },
 
@@ -5249,7 +5356,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في جلب الإحصائيات:', error);
-      this.showToast('فشل تحميل الإحصائيات', 'error');
+      this.showToast(this.t('msg.stats_load_failed'), 'error');
     }
   },
 
@@ -5258,7 +5365,7 @@ const appMethods = {
    */
   async endSession(sessionId) {
     try {
-      if (!confirm('هل أنت متأكد من إنهاء هذه الجلسة؟')) return;
+      if (!confirm(this.t('msg.confirm_end_session'))) return;
 
       if (typeof sessionsManager === 'undefined') {
         console.error('❌ مدير الجلسات غير متوفر');
@@ -5266,7 +5373,7 @@ const appMethods = {
       }
 
       await sessionsManager.updateSession(sessionId, { status: 'ended' });
-      this.showToast('تم إنهاء الجلسة', 'success');
+      this.showToast(this.t('msg.session_ended'), 'success');
       
       if (this.currentSession && this.currentSession.id === sessionId) {
         await this.leaveSession();
@@ -5276,7 +5383,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في إنهاء الجلسة:', error);
-      this.showToast('فشل إنهاء الجلسة', 'error');
+      this.showToast(this.t('msg.session_end_failed'), 'error');
     }
   },
 
@@ -5285,7 +5392,7 @@ const appMethods = {
    */
   async deleteSession(sessionId) {
     try {
-      if (!confirm('هل أنت متأكد من حذف هذه الجلسة؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+      if (!confirm(this.t('msg.confirm_delete_session'))) return;
 
       if (typeof sessionsManager === 'undefined') {
         console.error('❌ مدير الجلسات غير متوفر');
@@ -5293,7 +5400,7 @@ const appMethods = {
       }
 
       await sessionsManager.deleteSession(sessionId);
-      this.showToast('تم حذف الجلسة', 'success');
+      this.showToast(this.t('msg.session_deleted'), 'success');
       
       if (this.currentSession && this.currentSession.id === sessionId) {
         await this.leaveSession();
@@ -5303,7 +5410,7 @@ const appMethods = {
 
     } catch (error) {
       console.error('❌ خطأ في حذف الجلسة:', error);
-      this.showToast(error.message || 'فشل حذف الجلسة', 'error');
+      this.showToast(error.message || this.t('msg.session_delete_failed'), 'error');
     }
   },
 
@@ -5322,10 +5429,10 @@ const appMethods = {
    */
   getRoleNameAr(role) {
     const roles = {
-      'owner': 'مالك',
-      'admin': 'مدير',
-      'editor': 'محرر',
-      'viewer': 'مشاهد'
+      'owner': this.t('role.owner'),
+      'admin': this.t('role.admin'),
+      'editor': this.t('role.editor'),
+      'viewer': this.t('role.viewer')
     };
     return roles[role] || role;
   },
@@ -5370,10 +5477,10 @@ const appMethods = {
     const now = new Date();
     const diff = now - date;
     
-    if (diff < 60000) return 'الآن';
-    if (diff < 3600000) return `منذ ${Math.floor(diff / 60000)} دقيقة`;
-    if (diff < 86400000) return `منذ ${Math.floor(diff / 3600000)} ساعة`;
-    return `منذ ${Math.floor(diff / 86400000)} يوم`;
+    if (diff < 60000) return this.t('time.now');
+    if (diff < 3600000) return this.t('time.minutes_ago', { count: Math.floor(diff / 60000) });
+    if (diff < 86400000) return this.t('time.hours_ago', { count: Math.floor(diff / 3600000) });
+    return this.t('time.days_ago', { count: Math.floor(diff / 86400000) });
   },
 };
 
