@@ -65,6 +65,20 @@
                 }"></span>
         </div>
 
+        <!-- عداد تأكيد "تم التسليم" (3 ثوانٍ قابلة للإلغاء) -->
+        <div v-if="pendingDeliveryConfirm" :key="'deliveryConfirm-' + pendingDeliveryConfirm.token"
+            class="celebrate-layer"
+            :style="{ left: pendingDeliveryConfirm.x + 'px', top: pendingDeliveryConfirm.y + 'px' }">
+            <div class="delivery-confirm-wrap" @click="cancelDeliveryConfirm()">
+                <svg class="delivery-confirm-svg" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="3"></circle>
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#ef4444" stroke-width="3"
+                        class="delivery-confirm-ring"></circle>
+                </svg>
+                <i class="fas fa-xmark delivery-confirm-x"></i>
+            </div>
+        </div>
+
         <!-- 3) شريط المحطة (10 / 25 / 50 / 100) -->
         <transition name="milestone">
             <div v-if="celebrationMilestone"
@@ -1313,20 +1327,8 @@
                                 @pointercancel="clearStatusLongPress()" @contextmenu.prevent>
                                 <div class="flex-1 flex items-center cursor-pointer min-w-0"
                                     :class="g.group.layout === 'row' ? 'flex-col gap-1 text-center' : 'flex-row gap-3'">
-                                    <div
-                                        class="rounded-full flex items-center justify-center flex-shrink-0 relative"
-                                        :class="[status.dot, g.group.layout === 'row' ? 'w-8 h-8' : 'w-10 h-10']">
-                                        <template v-if="status.name === 'تم التسليم' && statusModalParcel && pendingDeliveryConfirmId === statusModalParcel.id">
-                                            <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
-                                                <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.3)"
-                                                    stroke-width="3"></circle>
-                                                <circle cx="18" cy="18" r="16" fill="none" stroke-width="3"
-                                                    class="delivery-confirm-ring"></circle>
-                                            </svg>
-                                            <i class="fas fa-xmark text-white text-xs relative"></i>
-                                        </template>
-                                        <i v-else class="fas text-white"
-                                            :class="[status.icon, g.group.layout === 'row' ? 'text-xs' : 'text-sm']"></i>
+                                    <div class="rounded-full flex items-center justify-center flex-shrink-0" :class="[status.dot, g.group.layout === 'row' ? 'w-8 h-8' : 'w-10 h-10']">
+                                        <i class="fas text-white" :class="[status.icon, g.group.layout === 'row' ? 'text-xs' : 'text-sm']"></i>
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <div class="font-bold text-gray-800 dark:text-white break-words leading-tight"

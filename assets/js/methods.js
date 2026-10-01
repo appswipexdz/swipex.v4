@@ -2513,17 +2513,12 @@ const appMethods = {
     if (!this.statusModalParcel) return;
 
     if (statusName === "تم التسليم") {
-      if (this.pendingDeliveryConfirmId === this.statusModalParcel.id) {
-        // ضغطة ثانية أثناء العد التنازلي = إلغاء
-        this.cancelDeliveryConfirm();
-        return;
-      }
-      this.startDeliveryConfirm(this.statusModalParcel, statusName);
+      const parcel = this.statusModalParcel;
+      this.statusModalParcel = null; // إغلاق القائمة فوراً
+      this.startDeliveryConfirm(parcel, statusName);
       return;
     }
 
-    // أي حالة أخرى تُطبَّق فوراً (ويلغي عدّاد "تم التسليم" المعلّق)
-    this.cancelDeliveryConfirm();
     this.changeStatus(this.statusModalParcel, statusName);
   },
 
@@ -2534,20 +2529,25 @@ const appMethods = {
     }
   },
 
-  // ========== تأكيد "تم التسليم" بعد 3 ثوانٍ (قابل للإلغاء) ==========
+  // ========== تأكيد "تم التسليم" بعد 3 ثوانٍ (دائرة × في وسط البطاقة) ==========
   startDeliveryConfirm(parcel, statusName) {
     this.clearDeliveryConfirm();
-    this.pendingDeliveryConfirmId = parcel.id;
+    const o = this._celebrationOrigin(parcel);
+    this.pendingDeliveryConfirm = {
+      parcelId: parcel.id,
+      x: o.x,
+      y: o.y,
+      token: ++this._celebrationToken,
+    };
     this._deliveryConfirmTimer = setTimeout(() => {
-      this._deliveryConfirmTimer = null;
-      this.pendingDeliveryConfirmId = null;
+      this.pendingDeliveryConfirm = null;
       this.changeStatus(parcel, statusName);
     }, 3000);
   },
 
   cancelDeliveryConfirm() {
     this.clearDeliveryConfirm();
-    this.pendingDeliveryConfirmId = null;
+    this.pendingDeliveryConfirm = null;
   },
 
   clearDeliveryConfirm() {
