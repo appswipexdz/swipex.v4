@@ -45,11 +45,11 @@ window.i18n_fr = {
     "status.no_action": "Aucune action",
     "status.waiting": "En attente",
     "status.delivered": "Livré",
-    "status.closed": "Fermé",
-    "status.no_answer": "Pas de réponse",
-    "status.wrong_number": "Numéro incorrect",
-    "status.postponed": "Reporté à demain",
-    "status.cancelled": "Annulation de la commande",
+    "status.closed": "Injoignable",
+    "status.no_answer": "ne répond pas",
+    "status.wrong_number": "faux numéro",
+    "status.postponed": "Absent - Reporté",
+    "status.cancelled": "Annulé par le client",
     "status.custom": "Personnalisé",
 
     // ============ Boutons ============
