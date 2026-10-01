@@ -1476,6 +1476,9 @@ const appMethods = {
   },
 
   syncLocalStorage() {
+    // تُحدَّث التفضيلات الصغيرة أيضاً هنا، لأن مسار المزامنة السحابية
+    // يمرّ عبر applyCloudData -> syncLocalStorage دون saveSettings
+    if (typeof this.persistBootPrefs === "function") this.persistBootPrefs();
     localStorage.setItem(
       "swipex_pro_v2",
       JSON.stringify({
@@ -1577,7 +1580,26 @@ const appMethods = {
     this.normalizeStatusGroups();
     this.normalizeTagSettings();
     this._settingsDirty = true;
+    this.persistBootPrefs();
     this.saveData();
+  },
+
+  // كتابة تفضيلات الواجهة في مفتاح صغير مستقل ('swipex_prefs')
+  // ليعيد boot-prefs.js قراءته في <head> قبل أول paint بلا تحليل
+  // 'swipex_pro_v2' كاملاً (قد يكون ميغابايتات مع آلاف الطرود).
+  persistBootPrefs() {
+    try {
+      localStorage.setItem(
+        "swipex_prefs",
+        JSON.stringify({
+          language: this.settings.language,
+          direction: this.settings.direction,
+          themeMode: this.settings.themeMode,
+        }),
+      );
+    } catch (e) {
+      console.warn("persistBootPrefs:", e);
+    }
   },
 
   // ========== Favorite Phones ==========

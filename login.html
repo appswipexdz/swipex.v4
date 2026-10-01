@@ -36,9 +36,17 @@
         }
     </script>
     <script>
-        // i18n: لغة الواجهة واتجاهها يُقرآن من الإعدادات المحفوظة محلياً (نفس مفتاح التطبيق) قبل أول paint
-        (function () {
+// i18n: لغة الواجهة واتجاهها يُقرآن من الإعدادات المحفوظة محلياً قبل أول paint
+            // تُقرأ من المفتاح المصغّر 'swipex_prefs' (يكتبه التطبيق عند كل تغيير)،
+            // وتُقرأ من 'swipex_pro_v2' كمُهاجِر لمرة واحدة إن غاب المفتاح المصغّر.
+            (function () {
             function readStoredSettings() {
+                try {
+                    const cached = localStorage.getItem('swipex_prefs');
+                    if (cached) return JSON.parse(cached);
+                } catch (e) {
+                    /* نُكمل بالمفتاح القديم */
+                }
                 try {
                     const raw = localStorage.getItem('swipex_pro_v2');
                     if (!raw) return null;

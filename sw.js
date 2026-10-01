@@ -1,6 +1,8 @@
-const CACHE_NAME = 'swipex-v4-shell-9';
-// رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال
-const OFFLINE_FALLBACK = new URL('./index.html', self.location.href).href;
+const CACHE_NAME = 'swipex-v4-shell-10';
+// رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
+// './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
+// Workers، وحارس الرجوع يجب أن يكون رابطاً مباشراً لا إعادة توجيه.
+const OFFLINE_FALLBACK = new URL('./', self.location.href).href;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,6 +12,7 @@ const ASSETS_TO_CACHE = [
   './login.html',
   './manifest.json',
   './assets/css/style.css',
+  './assets/js/boot-prefs.js',
   './assets/js/app.js',
   './assets/js/state.js',
   './assets/js/firebase-init.js',

@@ -277,3 +277,16 @@ showYalidineMenu: false,
 };
 
 if (typeof window !== 'undefined') window.appState = appState;
+
+// i18n/theme: تفضيلات الواجهة تُقرأ من localStorage قبل أول paint
+// (assets/js/boot-prefs.js في <head>) وتُحقن هنا، لأن loadData()
+// التي تقرأ 'swipex_pro_v2' لا تعمل إلا بعد تأكيد Firebase للمصادقة.
+// بدون هذا الحقن يبقى language على 'ar' في أول render، فيظهر نص
+// t('app.loading') بلغة خاطئة قبل أن تقفز الواجهة إلى لغة المستخدم.
+(function applyBootSpecs() {
+    const specs = (typeof window !== 'undefined' && window.__swipexBootSpecs) || null;
+    if (!specs) return;
+    if (specs.language) appState.settings.language = specs.language;
+    if (specs.direction) appState.settings.direction = specs.direction;
+    if (specs.themeMode) appState.settings.themeMode = specs.themeMode;
+})();
