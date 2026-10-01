@@ -1,10 +1,13 @@
-const CACHE_NAME = 'swipex-v4-shell-8';
+const CACHE_NAME = 'swipex-v4-shell-9';
+// رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال
+const OFFLINE_FALLBACK = new URL('./index.html', self.location.href).href;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './tasks.html',
   './archive.html',
   './settings.html',
+  './login.html',
   './manifest.json',
   './assets/css/style.css',
   './assets/js/app.js',
@@ -30,6 +33,14 @@ const ASSETS_TO_CACHE = [
   './assets/libs/pdf.worker.min.js',
   './assets/libs/fontawesome.min.css',
   './assets/libs/cairo-font.css',
+  // Leaflet محلي (كان من unpkg فلم يكن يُخزَّن إطلاقاً)
+  './assets/libs/leaflet/leaflet.css',
+  './assets/libs/leaflet/leaflet.js',
+  './assets/libs/leaflet/images/marker-icon.png',
+  './assets/libs/leaflet/images/marker-icon-2x.png',
+  './assets/libs/leaflet/images/marker-shadow.png',
+  './assets/libs/leaflet/images/layers.png',
+  './assets/libs/leaflet/images/layers-2x.png',
   './assets/libs/webfonts/fa-solid-900.woff2',
   './assets/libs/webfonts/fa-brands-400.woff2',
   './assets/libs/webfonts/fa-regular-400.woff2',
@@ -41,19 +52,29 @@ const ASSETS_TO_CACHE = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
 ];
 
+// تخزين متسامح مع الأخطاء: كل ملف على حدة، ففشل واحد لا يُسقط البقية
+async function cacheAllAssets() {
+  const cache = await caches.open(CACHE_NAME);
+  const results = await Promise.allSettled(
+    ASSETS_TO_CACHE.map((url) => cache.add(new Request(url, { cache: 'reload' })))
+  );
+  const failed = ASSETS_TO_CACHE.filter((_, i) => results[i].status === 'rejected');
+  if (failed.length) {
+    console.warn(`[SW] تعذّر تخزين ${failed.length}/${ASSETS_TO_CACHE.length}:`, failed);
+  } else {
+    console.log(`[SW] تم تخزين ${ASSETS_TO_CACHE.length} ملفاً بنجاح`);
+  }
+  return cache;
+}
+
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching all assets for offline use...');
-      return cache.addAll(ASSETS_TO_CACHE).catch(err => {
-        console.error('[SW] Failed to cache some assets:', err);
-        return Promise.resolve();
-      });
-    }).then(() => {
-      console.log('[SW] Installation complete - App ready for offline use');
-      return self.skipWaiting();
-    })
+    cacheAllAssets()
+      .then(() => {
+        console.log('[SW] Installation complete - App ready for offline use');
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -76,62 +97,89 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// أنواع الطلبات التي يجب أن تذهب للشبكة دائماً (بيانات حيّة)
+function isNetworkOnly(url, request) {
+  if (request.method !== 'GET') return true;
+  if (url.hostname === 'www.gstatic.com' || url.hostname.endsWith('googleapis.com')) return true;
+  if (url.hostname.endsWith('firebaseio.com') || url.hostname.endsWith('firebaseapp.com')) return true;
+  if (url.hostname.endsWith('google-analytics.com')) return true;
+  if (url.pathname.startsWith('/api/')) return true;
+  return false;
+}
+
+// ملفات التطبيق (HTML/JS/CSS) => Cache-First مع تحديث صامت بالخلفية
+function isAppShell(url) {
+  return (
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('/')
+  );
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  
+
   if (!url.protocol.startsWith('http')) {
     return;
   }
 
-  // Network First للملفات الديناميكية (HTML, JS, CSS)
-  const isDynamic = event.request.url.includes('.html') || 
-                    event.request.url.includes('.js') || 
-                    event.request.url.includes('.css') ||
-                    event.request.url.endsWith('/');
+  // 1) بيانات حيّة: شبكة فقط، ولا نلمس الكاش إطلاقاً
+  if (isNetworkOnly(url, event.request)) {
+    return;
+  }
 
-  if (isDynamic) {
-    // Network First: جرب الشبكة أولاً، ثم الكاش
+  // 2) ملفات التطبيق: الكاش أولاً (يعمل فوراً دون اتصال) + تحديث صامت
+  if (isAppShell(url)) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (response.status === 200 && event.request.method === 'GET') {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseClone);
-            });
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(event.request).then((cachedResponse) => {
+          const networkFetch = fetch(event.request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                cache.put(event.request, response.clone());
+              }
+              return response;
+            })
+            .catch(() => null);
+
+          if (cachedResponse) {
+            // لا ننتظر الشبكة إطلاقاً
+            event.waitUntil(networkFetch);
+            return cachedResponse;
           }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request).then(cachedResponse => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
+
+          // لا يوجد في الكاش بعد: انتظر الشبكة، وإلا ارجع لصفحة التطبيق
+          return networkFetch.then((response) => {
+            if (response) return response;
             if (event.request.headers.get('accept')?.includes('text/html')) {
-              return caches.match('./index.html');
+              return cache.match(OFFLINE_FALLBACK);
             }
+            return new Response('', { status: 504, statusText: 'Offline' });
           });
         })
+      )
     );
-  } else {
-    // Cache First للملفات الثابتة (صور، خطوط، مكتبات)
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then(response => {
-          if (response.status === 200 && event.request.method === 'GET') {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return response;
-        });
-      })
-    );
+    return;
   }
+
+  // 3) بقية الملفات الثابتة (صور، خطوط، مكتبة Leaflet): الكاش أولاً
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then((response) => {
+        if (response.status === 200 && event.request.method === 'GET') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      });
+    })
+  );
 });
 
 // === نظام التذكيرات في الخلفية ===
