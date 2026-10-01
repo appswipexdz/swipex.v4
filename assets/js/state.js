@@ -130,7 +130,6 @@ showYalidineMenu: false,
     reminderTime: { hour: '12', minute: '00' },
     notificationCheckInterval: null,
     showNotificationHistory: false,
-    isPageLoading: true,
     toasts: [], // نظام الإشعارات المؤقتة
     statusList: [
         { name: "دون إجراء", color: "border-gray-300", dot: "bg-gray-400", icon: "fa-hourglass-start" },
@@ -281,8 +280,7 @@ if (typeof window !== 'undefined') window.appState = appState;
 // i18n/theme: تفضيلات الواجهة تُقرأ من localStorage قبل أول paint
 // (assets/js/boot-prefs.js في <head>) وتُحقن هنا، لأن loadData()
 // التي تقرأ 'swipex_pro_v2' لا تعمل إلا بعد تأكيد Firebase للمصادقة.
-// بدون هذا الحقن يبقى language على 'ar' في أول render، فيظهر نص
-// t('app.loading') بلغة خاطئة قبل أن تقفز الواجهة إلى لغة المستخدم.
+// بدون هذا الحقن يبقى language على 'ar' في أول render قبل أن تُحمّل بيانات المستخدم.
 (function applyBootSpecs() {
     const specs = (typeof window !== 'undefined' && window.__swipexBootSpecs) || null;
     if (!specs) return;

@@ -333,29 +333,17 @@ const appOptions = {
             if (file === this.__currentPageFile) return;
             this.navigate(window.location.pathname.split('/').pop() + window.location.hash, { push: false });
         });
-        
-        // إخفاء شاشة التحميل بعد تحميل الصفحة
-        const hideLoadingScreen = () => {
+
+        const resetScannerOnLoad = () => {
             this.$nextTick(() => {
                 this.showScanner = false;
-                this.isPageLoading = false;
             });
         };
-        
-        // في حالة تحميل الصفحة بسرعة (مُخزن مؤقتاً)
         if (document.readyState === 'complete') {
-            hideLoadingScreen();
+            resetScannerOnLoad();
         } else {
-            window.addEventListener('load', hideLoadingScreen);
+            window.addEventListener('load', resetScannerOnLoad, { once: true });
         }
-        
-        // ضمان إخفاء شاشة التحميل خلال 3 ثوانٍ كحد أقصى
-        setTimeout(() => {
-            if (this.isPageLoading) {
-                console.log('⏳ إخفاء شاشة التحميل (تجاوز المهلة)');
-                hideLoadingScreen();
-            }
-        }, 3000);
         
         // Close filter/search popups whenever the user touches or scrolls outside them.
         const closeFilterPopups = (event) => {

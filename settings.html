@@ -46,17 +46,6 @@
 
 <body class="text-gray-800 antialiased" data-page="settings">
     <div id="app" class="pb-20">
-        <!-- Page Loading Screen -->
-        <div v-if="isPageLoading"
-            class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white dark:bg-gray-900">
-            <div
-                class="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-t-red-600 rounded-full animate-spin">
-            </div>
-            <p class="mt-6 text-gray-600 dark:text-gray-400 font-semibold">
-                {{ t('app.loading') }}
-            </p>
-        </div>
-
         <div v-if="isProcessingPdf" v-cloak class="loading-overlay">
             <div class="spinner"></div>
             <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">
