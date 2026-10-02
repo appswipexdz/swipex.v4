@@ -187,9 +187,20 @@
                         <button @click="hasActiveFilters ? clearFilters() : null" class="filter-clear-btn"
                             :class="hasActiveFilters ? 'text-red-500 border-red-200 dark:border-red-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 glass-panel shadow-sm' : 'text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 glass-panel'"
                             :title="hasActiveFilters ? t('search.clear_filters') : t('search.no_filter_active')"
+                            :aria-label="hasActiveFilters ? t('search.clear_filters') : t('search.no_filter_active')"
                             :disabled="!hasActiveFilters">
-                            <i class="fas text-xs" :class="hasActiveFilters ? 'fa-eraser' : 'fa-filter'"></i>
-                            <span v-if="hasActiveFilters" class="text-xs font-bold">{{ t('search.clear') }}</span>
+                            <svg v-if="!hasActiveFilters" viewBox="0 0 24 24" class="filter-clear-icon" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                aria-hidden="true">
+                                <path d="M4 5h16l-6.5 7.2v5.2l-3 1.6v-6.8L4 5Z"></path>
+                            </svg>
+                            <svg v-else viewBox="0 0 24 24" class="filter-clear-icon" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                                aria-hidden="true">
+                                <path d="m7 21-4.3-4.3a2 2 0 0 1 0-2.8l9.9-9.9a2 2 0 0 1 2.8 0l5.6 5.6a2 2 0 0 1 0 2.8L13 21"></path>
+                                <path d="M22 21H7"></path>
+                                <path d="m5 11 9 9"></path>
+                            </svg>
                         </button>
 
                         <button

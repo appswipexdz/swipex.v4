@@ -3331,11 +3331,13 @@ const appMethods = {
   },
 
   hasActiveFilters() {
-    return (
+    const hasStatusFilter = Array.isArray(this.filters.status)
+      ? this.filters.status.length > 0
+      : Boolean(this.filters.status);
+    return Boolean(
       this.filters.search ||
       this.filters.municipality ||
-      this.filters.status ||
-      Array.isArray(this.filters.status) ||
+      hasStatusFilter ||
       this.filters.tag ||
       this.filters.favorite
     );

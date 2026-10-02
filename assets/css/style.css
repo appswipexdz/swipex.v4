@@ -1247,9 +1247,9 @@ select {
 
 /* ========== Filter bar always-visible clear button ========== */
 .filter-clear-btn {
-    min-width: 44px;
-    min-height: 36px;
-    padding: 0 12px;
+    width: 40px;
+    height: 36px;
+    padding: 0;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -1264,6 +1264,13 @@ select {
     font-weight: 600;
     gap: 0.5rem;
     white-space: nowrap;
+}
+
+.filter-clear-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
 }
 
 .filter-clear-btn:disabled {
