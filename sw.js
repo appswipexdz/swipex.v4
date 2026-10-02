@@ -103,6 +103,7 @@ self.addEventListener('activate', (event) => {
 // أنواع الطلبات التي يجب أن تذهب للشبكة دائماً (بيانات حيّة)
 function isNetworkOnly(url, request) {
   if (request.method !== 'GET') return true;
+  if (url.searchParams.has('__connectivity_check')) return true;
   if (url.hostname === 'www.gstatic.com' || url.hostname.endsWith('googleapis.com')) return true;
   if (url.hostname.endsWith('firebaseio.com') || url.hostname.endsWith('firebaseapp.com')) return true;
   if (url.hostname.endsWith('google-analytics.com')) return true;

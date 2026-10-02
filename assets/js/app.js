@@ -429,9 +429,10 @@ const appOptions = {
         // ملاحظة: initFirestoreListener يتم استدعاؤه في loadCurrentUser بعد تأكيد المصادقة
         
         // تحديث حالة الإنترنت
-        this.updateOnlineStatus();
-        window.addEventListener('online', () => this.updateOnlineStatus());
-        window.addEventListener('offline', () => this.updateOnlineStatus());
+        this.checkInternetConnection();
+        window.addEventListener('online', () => this.checkInternetConnection());
+        window.addEventListener('offline', () => this.updateOnlineStatus(false));
+        setInterval(() => this.checkInternetConnection(), 10000);
         
         // حفظ محلي فقط عند إغلاق/تجديد الصفحة (beforeunload)
         // الكتابة غير المتزامنة (Firestore) لا تعمل في beforeunload
@@ -447,10 +448,36 @@ const appOptions = {
         ...(typeof window.scannerFunctions !== 'undefined' ? window.scannerFunctions : {}),
         
         // تحديث حالة الإنترنت
-        updateOnlineStatus() {
-            const isOnline = navigator.onLine;
+        async checkInternetConnection() {
+            if (!navigator.onLine) {
+                this.updateOnlineStatus(false);
+                return;
+            }
+            if (this._connectivityCheckPromise) return this._connectivityCheckPromise;
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            this._connectivityCheckPromise = fetch('./manifest.json?__connectivity_check=1', {
+                cache: 'no-store',
+                signal: controller.signal,
+            })
+                .then((response) => this.updateOnlineStatus(response.ok && navigator.onLine))
+                .catch(() => this.updateOnlineStatus(false))
+                .finally(() => {
+                    clearTimeout(timeout);
+                    this._connectivityCheckPromise = null;
+                });
+
+            return this._connectivityCheckPromise;
+        },
+
+        updateOnlineStatus(isOnline = navigator.onLine) {
+            const previousStatus = this._lastOnlineStatus;
+            this._lastOnlineStatus = isOnline;
             this.isOnline = isOnline;
             console.log('🌐 حالة الإنترنت:', isOnline ? '✓ متصل' : '❌ غير متصل');
+
+            if (previousStatus === isOnline) return;
             
             // تحديث Firestore listener إذا كان متصلاً
             if (isOnline) {
