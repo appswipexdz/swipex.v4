@@ -379,20 +379,12 @@
                                     @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)"
                                     @touchend="touchEnd($event, parcel)" :style="getTransformStyle(parcel)">
                                     <div class="p-3 cursor-pointer relative" @click="toggleExpand(parcel.id)">
-                                        <div class="parcel-drag-handle absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5"
+                                        <div class="parcel-drag-handle absolute right-2 top-1/2 -translate-y-1/2"
                                             @touchstart.stop>
-                                            <button @click.stop="moveParcelUp(parcel)"
-                                                class="w-7 h-6 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
-                                                <i class="fas fa-chevron-up text-[11px]"></i>
-                                            </button>
                                             <div
-                                                class="handle w-8 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
+                                                class="handle w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
                                                 <i class="fas fa-grip-lines text-[11px]"></i>
                                             </div>
-                                            <button @click.stop="moveParcelDown(parcel)"
-                                                class="w-7 h-6 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition">
-                                                <i class="fas fa-chevron-down text-[11px]"></i>
-                                            </button>
                                         </div>
 
                                         <div class="flex items-center justify-between gap-2 mb-2 pr-1">

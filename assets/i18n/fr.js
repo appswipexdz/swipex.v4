@@ -324,7 +324,7 @@ window.i18n_fr = {
     "guide.card.swipe_left_label": "→ Glisser vers la gauche :",
     "guide.card.swipe_left_body": "ouvrir la page du colis sur Yalidine.",
     "guide.card.handle_label": "≡ Poignée de glissement :",
-    "guide.card.handle_body": "glissez-la pour réordonner les colis, ou utilisez ▲ ▼ pour monter/descendre la carte.",
+    "guide.card.handle_body": "Faites glisser la poignée pour réordonner les colis.",
     "guide.card.badge_label": "Badge rouge :",
     "guide.card.badge_body": "signale des numéros de téléphone en double. Appuyez pour filtrer les colis portant ce numéro.",
 

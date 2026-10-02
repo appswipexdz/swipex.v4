@@ -2453,26 +2453,6 @@ const appMethods = {
     });
   },
 
-  moveParcelUp(parcel) {
-    const idx = this.parcels.findIndex(p => p.id === parcel.id);
-    if (idx > 0) {
-      const item = this.parcels.splice(idx, 1)[0];
-      this.parcels.splice(idx - 1, 0, item);
-      this.reassignParcelSortOrder();
-      this.saveData();
-    }
-  },
-
-  moveParcelDown(parcel) {
-    const idx = this.parcels.findIndex(p => p.id === parcel.id);
-    if (idx !== -1 && idx < this.parcels.length - 1) {
-      const item = this.parcels.splice(idx, 1)[0];
-      this.parcels.splice(idx + 1, 0, item);
-      this.reassignParcelSortOrder();
-      this.saveData();
-    }
-  },
-
   // ========== Status Methods ==========
   getStatusColor(status) {
     const s = this.allStatuses.find((x) => x.name === status);

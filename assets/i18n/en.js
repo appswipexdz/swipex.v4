@@ -324,7 +324,7 @@ window.i18n_en = {
     "guide.card.swipe_left_label": "→ Swipe left:",
     "guide.card.swipe_left_body": "open the parcel page on Yalidine.",
     "guide.card.handle_label": "≡ Swipe handle:",
-    "guide.card.handle_body": "drag it to reorder parcels, or use ▲ ▼ to move the card up or down.",
+    "guide.card.handle_body": "Drag the handle to reorder parcels.",
     "guide.card.badge_label": "Red badge:",
     "guide.card.badge_body": "warns about duplicate phone numbers. Tap it to filter parcels with the same number.",
 

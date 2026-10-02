@@ -327,7 +327,7 @@ window.i18n_ar = {
     "guide.card.swipe_left_label": "→ سحب لليسار:",
     "guide.card.swipe_left_body": "فتح صفحة الطرد في ياليدين.",
     "guide.card.handle_label": "≡ مقبض السحب:",
-    "guide.card.handle_body": "اسحب من الأيقونة لإعادة ترتيب الطرود، أو استخدم سهمي ▲ ▼ لنقل البطاقة للأعلى أو الأسفل.",
+    "guide.card.handle_body": "اسحب من الأيقونة لإعادة ترتيب الطرود.",
     "guide.card.badge_label": "شارة حمراء:",
     "guide.card.badge_body": "تنبيه بوجود أرقام هاتف مكررة. اضغط عليها لتصفية الطرود بنفس الرقم.",
 
