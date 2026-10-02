@@ -168,12 +168,12 @@ const appOptions = {
             }
             return result;
         },
-        // إحصائيات مجمّعة: إظهار فقط الحالات التي بها أكثر من طرد واحد (> 1)
+        // إحصائيات مجمّعة: إظهار الحالات التي لديها طرود فعلية
         dashboardGroups() {
             return this.groupedStatuses
                 .map(g => ({
                     ...g,
-                    statuses: g.statuses.filter(s => (this.getDashboardStats()[s.name] || 0) > 1),
+                    statuses: g.statuses.filter(s => (this.getDashboardStats()[s.name] || 0) > 0),
                 }))
                 .filter(g => g.statuses.length > 0);
         }
