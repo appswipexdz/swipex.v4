@@ -1309,15 +1309,8 @@
                 </div>
 
                 <div class="p-3 space-y-3">
-                    <div v-for="g in groupedStatuses" :key="g.group.id" class="space-y-2">
-                        <div v-if="g.group.name"
-                            class="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 px-1">
-                            <span class="w-6 h-6 rounded-lg flex items-center justify-center text-white flex-shrink-0"
-                                :style="{ backgroundColor: g.group.color || '#9ca3af' }">
-                                <i class="fas text-[10px]" :class="g.group.icon"></i>
-                            </span>
-                            {{ g.group.name }}
-                        </div>
+                    <div v-for="(g, groupIndex) in groupedStatuses.filter(group => group.statuses.length)" :key="g.group.id"
+                        class="space-y-2" :class="groupIndex > 0 ? 'border-t border-gray-200 dark:border-gray-700 pt-3' : ''">
                         <div :class="g.group.layout === 'row' ? 'flex flex-wrap gap-2' : 'space-y-2'">
                             <div v-for="status in g.statuses" :key="status.name"
                                 class="flex items-center rounded-xl transition-all status-option-row"
