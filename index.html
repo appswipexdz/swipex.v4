@@ -227,17 +227,26 @@
                         </button>
 
                         <button v-for="status in visibleStatusFilters" :key="status.name"
-                            @click="quickFilterStatus(status.name)" :class="[
-                        'px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all border whitespace-nowrap shadow-sm',
-                        filters.status === status.name 
+                            @pointerdown.stop="startQuickStatusLongPress(status.name, $event)"
+                            @pointerup.stop="finishQuickStatusLongPress()"
+                            @pointerleave="cancelQuickStatusLongPress()"
+                            @pointercancel="cancelQuickStatusLongPress(true)"
+                            @contextmenu.prevent
+                            @click="quickFilterStatus(status.name)"
+                            :aria-pressed="isQuickStatusSelected(status.name)"
+                            :class="[
+                        'status-filter-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all border whitespace-nowrap shadow-sm',
+                        isQuickStatusSelected(status.name)
                             ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-red-400/30 shadow-lg' 
                             : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-red-300'
                     ]">
                             <span class="w-2 h-2 rounded-full ring-2 ring-white/50 shadow-sm"
                                 :class="status.dot"></span>
                             <span>{{ statusLabel(status.name) }}</span>
+                            <i v-if="Array.isArray(filters.status) && isQuickStatusSelected(status.name)"
+                                class="fas fa-check text-[10px]" aria-hidden="true"></i>
                             <span
-                                :class="filters.status === status.name ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700'"
+                                :class="isQuickStatusSelected(status.name) ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700'"
                                 class="px-1.5 py-0.5 rounded-lg text-[10px] font-bold min-w-[20px] text-center">
                                 {{ status.count }}
                             </span>

@@ -256,6 +256,12 @@ body.dark-mode::after {
     touch-action: manipulation;
 }
 
+.status-filter-button {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
 @keyframes sheetUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }

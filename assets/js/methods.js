@@ -2358,6 +2358,7 @@ const appMethods = {
   },
 
   clearFilters() {
+    this.cancelQuickStatusLongPress(true);
     this.filters.search = "";
     this.filters.municipality = "";
     this.filters.status = "";
@@ -2382,12 +2383,66 @@ const appMethods = {
   },
 
   quickFilterStatus(statusName) {
-    this.filters.status = this.filters.status === statusName ? "" : statusName;
+    if (this.quickStatusLongPressTriggered) {
+      const suppressClick = this.quickStatusLongPressStatus === statusName;
+      this.quickStatusLongPressTriggered = false;
+      this.quickStatusLongPressStatus = null;
+      if (suppressClick) return;
+    }
+
+    if (Array.isArray(this.filters.status)) {
+      this.filters.status = this.filters.status.includes(statusName)
+        ? this.filters.status.filter((status) => status !== statusName)
+        : [...this.filters.status, statusName];
+    } else {
+      this.filters.status = this.filters.status === statusName ? "" : statusName;
+    }
     this.saveFilters();
     // إعادة تهيئة Sortable بعد تطبيق المرشح
     this.$nextTick(() => {
       this.initSortable();
     });
+  },
+
+  isQuickStatusSelected(statusName) {
+    return Array.isArray(this.filters.status)
+      ? this.filters.status.includes(statusName)
+      : this.filters.status === statusName;
+  },
+
+  startQuickStatusLongPress(statusName, event) {
+    if (event && event.button !== 0) return;
+    this.cancelQuickStatusLongPress(true);
+    this.quickStatusLongPressTriggered = false;
+    this.quickStatusLongPressStatus = statusName;
+    this.quickStatusLongPressTimer = setTimeout(() => {
+      const selectedStatuses = Array.isArray(this.filters.status)
+        ? [...this.filters.status]
+        : this.filters.status
+          ? [this.filters.status]
+          : [];
+      if (!selectedStatuses.includes(statusName)) selectedStatuses.push(statusName);
+      this.quickStatusLongPressTriggered = true;
+      this.filters.status = selectedStatuses;
+      this.saveFilters();
+      this.quickStatusLongPressTimer = null;
+    }, 500);
+  },
+
+  finishQuickStatusLongPress() {
+    if (this.quickStatusLongPressTimer) {
+      clearTimeout(this.quickStatusLongPressTimer);
+      this.quickStatusLongPressTimer = null;
+    }
+    if (!this.quickStatusLongPressTriggered) this.quickStatusLongPressStatus = null;
+  },
+
+  cancelQuickStatusLongPress(resetTriggered = false) {
+    this.finishQuickStatusLongPress();
+    if (resetTriggered) {
+      this.quickStatusLongPressTriggered = false;
+      this.quickStatusLongPressStatus = null;
+    }
   },
 
   saveFilters() {
@@ -3280,6 +3335,7 @@ const appMethods = {
       this.filters.search ||
       this.filters.municipality ||
       this.filters.status ||
+      Array.isArray(this.filters.status) ||
       this.filters.tag ||
       this.filters.favorite
     );
@@ -3314,29 +3370,29 @@ const appMethods = {
 
   filteredParcels() {
     const query = this.filters.search.toLowerCase();
-    let list = [];
-    if (query) {
-      list = this.parcels.filter((p) =>
+    const selectedStatuses = Array.isArray(this.filters.status)
+      ? this.filters.status
+      : this.filters.status
+        ? [this.filters.status]
+        : [];
+    const list = this.parcels.filter((p) => {
+      const matchesSearch =
+        !query ||
         (p.receiver && p.receiver.toLowerCase().includes(query)) ||
         (p.phone && p.phone.includes(query)) ||
         (p.phone2 && p.phone2.includes(query)) ||
         (p.tracking && p.tracking.toLowerCase().includes(query)) ||
         (p.notes && p.notes.toLowerCase().includes(query)) ||
         this.getLocationSearchText(p).includes(query) ||
-        this.getSubTrackingSearchText(p).includes(query)
-      );
-    } else {
-      list = this.parcels.filter((p) => {
-        const matchesMuni =
-          !this.filters.municipality ||
-          p.municipality === this.filters.municipality;
-        const matchesStatus =
-          !this.filters.status || p.status === this.filters.status;
-        const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
-        const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
-        return matchesMuni && matchesStatus && matchesTag && matchesFav;
-      });
-    }
+        this.getSubTrackingSearchText(p).includes(query);
+      const matchesMuni =
+        !this.filters.municipality || p.municipality === this.filters.municipality;
+      const matchesStatus =
+        selectedStatuses.length === 0 || selectedStatuses.includes(p.status);
+      const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
+      const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
+      return matchesSearch && matchesMuni && matchesStatus && matchesTag && matchesFav;
+    });
 
     const order = Array.isArray(this.settings.tagOrder) && this.settings.tagOrder.length > 0
       ? this.settings.tagOrder
