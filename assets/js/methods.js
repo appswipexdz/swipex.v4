@@ -2614,6 +2614,24 @@ const appMethods = {
     }
   },
 
+  setParcelStatus(parcel, newStatus, onSaved) {
+    const saveStatus = () => {
+      if (parcel.status !== newStatus) {
+        parcel.status = newStatus;
+        parcel.statusUpdatedAt = new Date().toISOString();
+      }
+      this.markParcelDirty(parcel);
+      this.saveData();
+      if (onSaved) onSaved();
+    };
+
+    if (newStatus === "تم التسليم") {
+      this.celebrateDelivered(parcel, saveStatus);
+    } else {
+      saveStatus();
+    }
+  },
+
   changeStatus(parcel, newStatus) {
     // لا تفتح Yalidine عند النقر العادي؛ فقط عند الضغط المطوّل.
     const statusSmsEnabled =
@@ -2625,14 +2643,8 @@ const appMethods = {
       // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسله
       const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
       if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
-        if (parcel.status !== newStatus) {
-          parcel.status = newStatus;
-          parcel.statusUpdatedAt = new Date().toISOString();
-        }
-      this.statusModalParcel = null;
-      this.markParcelDirty(parcel);
-      this.saveData();
-      if (newStatus === "تم التسليم") this.celebrateDelivered(parcel);
+        this.setParcelStatus(parcel, newStatus);
+        this.statusModalParcel = null;
       return;
       }
       this.statusSmsConfirmParcel = parcel;
@@ -2642,17 +2654,8 @@ const appMethods = {
       return;
     }
 
-    if (parcel.status !== newStatus) {
-      parcel.status = newStatus;
-      parcel.statusUpdatedAt = new Date().toISOString();
-    }
     this.statusModalParcel = null;
-    this.markParcelDirty(parcel);
-    this.saveData();
-
-    if (newStatus === "تم التسليم") {
-      this.celebrateDelivered(parcel);
-    }
+    this.setParcelStatus(parcel, newStatus);
   },
 
   // بناء رسالة SMS حسب الحالة
@@ -2688,52 +2691,33 @@ const appMethods = {
     const parcel = this.statusSmsConfirmParcel;
     const newStatus = this.statusSmsConfirmStatus;
 
-    // تغيير الحالة
-    if (parcel.status !== newStatus) {
-      parcel.status = newStatus;
-      parcel.statusUpdatedAt = new Date().toISOString();
-    }
-    this.markParcelDirty(parcel);
-    this.saveData();
+    if (newStatus === "تم التسليم") this.closeStatusSmsConfirm();
+    this.setParcelStatus(parcel, newStatus, () => {
+      // إنشاء رسالة SMS بعد اعتماد الحالة
+      const message = this.buildSmsMessage(parcel, newStatus);
 
-    if (newStatus === "تم التسليم") {
-      this.celebrateDelivered(parcel);
-    }
+      // تحديد رقم الهاتف: للمرسل أو للمستلم
+      const phone =
+        newStatus === "رقم خاطئ" ? parcel.senderPhone || "" : parcel.phone || "";
 
-    // إنشاء رسالة SMS
-    const message = this.buildSmsMessage(parcel, newStatus);
+      if (newStatus === "رقم خاطئ") {
+        parcel.senderSmsSent = true;
+      } else {
+        parcel.smsSent = true;
+      }
+      this.markParcelDirty(parcel);
+      this.saveData();
+      window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
 
-    // تحديد رقم الهاتف: للمرسل أو للمستلم
-    const phone =
-      newStatus === "رقم خاطئ" ? parcel.senderPhone || "" : parcel.phone || "";
-
-    if (newStatus === "رقم خاطئ") {
-      parcel.senderSmsSent = true;
-    } else {
-      parcel.smsSent = true;
-    }
-    this.markParcelDirty(parcel);
-    this.saveData();
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
-
-    this.closeStatusSmsConfirm();
+      this.closeStatusSmsConfirm();
+    });
   },
 
   // تأكيد تغيير الحالة بدون SMS
   confirmStatusChangeOnly() {
     if (!this.statusSmsConfirmParcel) return;
 
-    if (this.statusSmsConfirmParcel.status !== this.statusSmsConfirmStatus) {
-      this.statusSmsConfirmParcel.status = this.statusSmsConfirmStatus;
-      this.statusSmsConfirmParcel.statusUpdatedAt = new Date().toISOString();
-    }
-    this.markParcelDirty(this.statusSmsConfirmParcel);
-    this.saveData();
-
-    if (this.statusSmsConfirmStatus === "تم التسليم") {
-      this.celebrateDelivered(this.statusSmsConfirmParcel);
-    }
-
+    this.setParcelStatus(this.statusSmsConfirmParcel, this.statusSmsConfirmStatus);
     this.closeStatusSmsConfirm();
   },
 
@@ -4602,13 +4586,15 @@ const appMethods = {
 
   // 2) المحطات + 3) بلوغ هدف اليوم: لحظة واحدة كبيرة، مرة واحدة يومياً لكل محطة
   //    يُرجع true إذا أُطلقت نغمة كبيرة، حتى لا تُضاف إليها نغمة التسليم العادية
-  _celebrateMilestone(count, parcel) {
+  _celebrateMilestone(count, parcel, activeCount) {
     const list = this.deliveryMilestones || [10, 25, 50, 100];
     const hit = list.find((m) => count === m);
 
     // هدف اليوم = لم يبقَ أي طرد نشط (نفس تعريف remainingCount في التطبيق)
-    const active = typeof this.remainingCount === "function"
-      ? this.remainingCount()
+    const active = Number.isFinite(activeCount)
+      ? activeCount
+      : typeof this.remainingCount === "function"
+        ? this.remainingCount()
       : (this.parcels || []).filter(
           (p) => ["تم التسليم", "إلغاء الطلبية", "استرجاع"].indexOf(p.status) === -1
         ).length;
@@ -4684,17 +4670,30 @@ const appMethods = {
     }
   },
 
-  // نقطة الدخول الوحيدة: تُستدعى بعد حفظ حالة "تم التسليم"
-  // الاحتفال تجميلي فقط: أي خطأ فيه يجب ألا يوقف منطق تغيير الحالة أو إرسال SMS
-  celebrateDelivered(parcel) {
+  // يبدأ الاحتفال قبل حفظ حالة التسليم، ثم يكمل الحفظ بعد اختفاء عناصره المرئية.
+  celebrateDelivered(parcel, onComplete) {
+    let duration = 0;
     try {
-      const count = (this.parcels || []).filter((p) => p.status === "تم التسليم").length;
+      const wasDelivered = parcel.status === "تم التسليم";
+      const count = (this.parcels || []).filter((p) => p.status === "تم التسليم").length +
+        (wasDelivered ? 0 : 1);
+      const activeCount = Math.max(
+        0,
+        (typeof this.remainingCount === "function" ? this.remainingCount() : 0) -
+          (wasDelivered ? 0 : 1)
+      );
       this._celebrateLocal(parcel);
       // نغمة واحدة فقط: إن أطلقت المحطة/الهدف نغمة كبيرة فلا نضيف العادية فوقها
-      if (!this._celebrateMilestone(count, parcel)) this._playDeliveryCue(false);
+      const milestone = this._celebrateMilestone(count, parcel, activeCount);
+      if (milestone) duration = this.celebrationGoal ? 4500 : 3100;
+      else {
+        this._playDeliveryCue(false);
+        duration = this._celebrationReducedMotion() ? 0 : 700;
+      }
     } catch (e) {
       console.warn("تعذّر تشغيل احتفال التسليم:", e);
     }
+    if (onComplete) setTimeout(onComplete, duration);
   },
 
   // ========== Dashboard Stats ==========
@@ -4851,15 +4850,7 @@ const appMethods = {
   },
 
   focusChangeStatus(parcel, newStatus) {
-    if (parcel.status !== newStatus) {
-      parcel.status = newStatus;
-      parcel.statusUpdatedAt = new Date().toISOString();
-    }
-    this.markParcelDirty(parcel);
-    this.saveData();
-    if (newStatus === "تم التسليم") {
-      this.celebrateDelivered(parcel);
-    }
+    this.setParcelStatus(parcel, newStatus);
   },
 
   focusCall(parcel) {
