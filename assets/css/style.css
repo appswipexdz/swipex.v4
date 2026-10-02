@@ -164,6 +164,7 @@ body.dark-mode::after {
     transition: transform 0.1s linear;
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    touch-action: pan-y;
 }
 
 .dark-mode .card-content {
@@ -174,6 +175,11 @@ body.dark-mode::after {
 
 .card-content.snapping {
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.card-content.swiping {
+    transition: none;
+    will-change: transform;
 }
 
 .swipe-background {

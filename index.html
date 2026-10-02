@@ -395,7 +395,7 @@
                                 </div>
 
                                 <div class="card-content border-r-4"
-                                    :class="[getStatusColor(parcel.status), {'snapping': !isDragging || activeSwipeId !== parcel.id}]"
+                                    :class="[getStatusColor(parcel.status), {'snapping': !isDragging || activeSwipeId !== parcel.id, 'swiping': isDragging && activeSwipeId === parcel.id}]"
                                     @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)"
                                     @touchend="touchEnd($event, parcel)" :style="getTransformStyle(parcel)">
                                     <div class="p-3 cursor-pointer relative" @click="toggleExpand(parcel.id)">
