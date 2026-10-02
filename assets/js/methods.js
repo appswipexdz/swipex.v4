@@ -4702,6 +4702,10 @@ const appMethods = {
     this.drawerOpen = false;
   },
 
+  openGuide() {
+    this.showGuide = true;
+  },
+
   openArchive() {
     // الأرشيف صفحة مستقلة الآن
     this.showTopMenu = false;

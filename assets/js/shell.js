@@ -129,7 +129,7 @@
         { id: "archive", labelKey: "nav.archive", icon: "fa-archive", color: "text-purple-500", href: "archive.html" },
         { id: "export", labelKey: "topmenu.export", icon: "fa-file-export", color: "text-green-500", run: "exportExcel", homeOnly: true },
         { divider: true },
-        { id: "guide", labelKey: "topmenu.guide", icon: "fa-book-open", color: "text-teal-500", run: "showGuide", homeOnly: true },
+        { id: "guide", labelKey: "topmenu.guide", icon: "fa-book-open", color: "text-teal-500", run: "openGuide", homeOnly: true },
     ];
 
     // ============ الهيدر الموحّد ============

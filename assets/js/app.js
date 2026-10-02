@@ -696,7 +696,7 @@ const appOptions = {
                 'pdf': () => this.triggerPdfInput && this.triggerPdfInput(),
                 'excel': () => this.triggerFileInput && this.triggerFileInput(),
                 'export': () => this.exportExcel && this.exportExcel(),
-                'guide': () => { this.showGuide = true; },
+                'guide': () => this.openGuide && this.openGuide(),
                 'dashboard': () => this.openDashboard && this.openDashboard(),
                 'add-parcel': () => { this.showAddModal = true; },
                 'focus': () => this.enterFocusMode && this.enterFocusMode(),
