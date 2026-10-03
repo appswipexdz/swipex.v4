@@ -1,15 +1,16 @@
-const CACHE_NAME = 'swipex-v4-shell-10';
+const CACHE_NAME = 'swipex-v4-shell-11';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
 // Workers، وحارس الرجوع يجب أن يكون رابطاً مباشراً لا إعادة توجيه.
 const OFFLINE_FALLBACK = new URL('./', self.location.href).href;
 const ASSETS_TO_CACHE = [
   './',
-  './index.html',
-  './tasks.html',
-  './archive.html',
-  './settings.html',
-  './login.html',
+  // './index.html' محذوفة عمداً: يُعاد توجيهها من Cloudflare إلى './' أصلاً (نفس المحتوى)،
+  // وتخزينها بامتدادها يُنتج رداً "مُعاد توجيهه" لا يصلح للرد على طلبات التصفّح لاحقاً
+  './tasks',
+  './archive',
+  './settings',
+  './login',
   './manifest.json',
   './assets/css/style.css',
   './assets/js/boot-prefs.js',
@@ -135,13 +136,22 @@ self.addEventListener('fetch', (event) => {
 
   // 2) ملفات التطبيق: الكاش أولاً (يعمل فوراً دون اتصال) + تحديث صامت
   if (isAppShell(url)) {
+    // عنوان الكاش المعتمد هو المسار النهائي بلا امتداد .html.
+    const canonicalUrl = url.pathname.endsWith('.html')
+      ? new URL(
+          url.pathname === '/index.html' ? '/' : url.pathname.slice(0, -5) || './',
+          url.origin
+        ).href
+      : event.request.url;
+
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
-        cache.match(event.request).then((cachedResponse) => {
+        cache.match(canonicalUrl).then((cachedResponse) => {
           const networkFetch = fetch(event.request)
             .then((response) => {
-              if (response && response.status === 200) {
-                cache.put(event.request, response.clone());
+              // لا نخزّن أي رد نتج عن إعادة توجيه؛ صفحات التنقل تحتاج ردوداً مباشرة.
+              if (response && response.status === 200 && !response.redirected) {
+                cache.put(canonicalUrl, response.clone());
               }
               return response;
             })
@@ -174,7 +184,7 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((response) => {
-        if (response.status === 200 && event.request.method === 'GET') {
+        if (response.status === 200 && event.request.method === 'GET' && !response.redirected) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
