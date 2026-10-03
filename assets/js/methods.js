@@ -2337,7 +2337,7 @@ const appMethods = {
 
   // ========== Filters ==========
   toggleSearch() {
-    if (!this.showFilters && this.filters.search) {
+    if (!this.showFilters && this.directSearch) {
       this.clearSearchText();
       return;
     }
@@ -2353,8 +2353,7 @@ const appMethods = {
   },
 
   clearSearchText() {
-    this.filters.search = "";
-    this.saveFilters();
+    this.directSearch = "";
   },
 
   clearFilters() {
@@ -3355,7 +3354,9 @@ const appMethods = {
   },
 
   filteredParcels() {
-    const query = this.filters.search.toLowerCase();
+    const directQuery = String(this.directSearch || "").trim().toLowerCase();
+    const isDirectSearch = Boolean(directQuery);
+    const query = (isDirectSearch ? directQuery : this.filters.search).toLowerCase();
     const selectedStatuses = Array.isArray(this.filters.status)
       ? this.filters.status
       : this.filters.status
@@ -3377,6 +3378,7 @@ const appMethods = {
         selectedStatuses.length === 0 || selectedStatuses.includes(p.status);
       const matchesTag = !this.filters.tag || p.tag === this.filters.tag;
       const matchesFav = !this.filters.favorite || this.isFavoriteParcel(p);
+      if (isDirectSearch) return matchesSearch;
       return matchesSearch && matchesMuni && matchesStatus && matchesTag && matchesFav;
     });
 

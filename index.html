@@ -142,9 +142,9 @@
                     <template #actions>
                         <swipex-top-menu></swipex-top-menu>
                         <button @click.stop="toggleSearch" class="header-action top-search-toggle"
-                            :title="showFilters ? t('search.toggle_close') : (filters.search ? t('search.toggle_clear') : t('search.toggle_open'))">
+                            :title="showFilters ? t('search.toggle_close') : (directSearch ? t('search.toggle_clear') : t('search.toggle_open'))">
                             <i class="fas text-sm transition-transform duration-300"
-                                :class="showFilters || filters.search ? 'fa-times rotate-90' : 'fa-search rotate-0'"></i>
+                                :class="showFilters || directSearch ? 'fa-times rotate-90' : 'fa-search rotate-0'"></i>
                         </button>
                     </template>
                 </swipex-header>
@@ -158,10 +158,10 @@
                             <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
                                 <i class="fas fa-search"></i>
                             </span>
-                            <input ref="searchInput" v-model="filters.search" type="text"
+                            <input ref="searchInput" v-model="directSearch" type="text"
                                 :placeholder="t('search.placeholder')"
                                 class="w-full pr-10 pl-10 py-3 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all border border-gray-200/50 dark:border-gray-600/50" />
-                            <button v-if="filters.search" @click.stop="clearSearchText"
+                            <button v-if="directSearch" @click.stop="clearSearchText"
                                 class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 hover:text-red-500 transition"
                                 :title="t('search.clear')">
                                 <i class="fas fa-times"></i>

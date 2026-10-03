@@ -12,6 +12,7 @@ const appState = {
         cancelled: "إلغاء الطلبية",
     },
     filters: { search: "", municipality: "", status: "", tag: "", favorite: false },
+    directSearch: "",
     showFilters: false,
     whatsappLongPressTimer: null,
     whatsappLongPressTriggered: false,
