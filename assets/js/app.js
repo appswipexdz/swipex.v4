@@ -77,14 +77,11 @@ const appOptions = {
             }).filter(item => item.latest !== undefined || item.events.length > 0)
             .sort((a, b) => new Date(b.lastUpdate || 0) - new Date(a.lastUpdate || 0));
         },
-        filteredArchive() {
+        archiveFilterContext() {
             let list = this.archiveList;
-            if (this.archiveStatusFilter) {
-                list = list.filter(item => item.status === this.archiveStatusFilter);
-            }
-            if (this.archiveSearch) {
-                const q = this.archiveSearch.toLowerCase();
-                list = list.filter(item => {
+            const q = String(this.archiveSearch || '').trim().toLowerCase();
+            if (q) {
+                return list.filter(item => {
                     const subTrackings = Array.isArray(item.subTrackings) ? item.subTrackings : [];
                     const subText = subTrackings.map(s => (s.tracking || '') + ' ' + (s.pin || '')).join(' ').toLowerCase();
                     return (item.tracking || '').toLowerCase().includes(q) ||
@@ -98,7 +95,44 @@ const appOptions = {
                         ((typeof window.appMethods !== 'undefined' && window.appMethods.getLocationSearchText) ? window.appMethods.getLocationSearchText.call(this, item) : '').includes(q);
                 });
             }
+            if (this.archiveMunicipalityFilter) {
+                list = list.filter(item => item.municipality === this.archiveMunicipalityFilter);
+            }
+            if (this.archiveTagFilter) {
+                list = list.filter(item => item.tag === this.archiveTagFilter);
+            }
             return list;
+        },
+        filteredArchive() {
+            let list = this.archiveFilterContext;
+            if (!String(this.archiveSearch || '').trim() && this.archiveStatusFilter) {
+                list = list.filter(item => item.status === this.archiveStatusFilter);
+            }
+            return list;
+        },
+        archiveMunicipalityOptions() {
+            const set = new Set();
+            this.archiveList.forEach((item) => {
+                if (item.municipality) set.add(item.municipality);
+            });
+            return Array.from(set).sort((a, b) => a.localeCompare(b, "ar"));
+        },
+        archiveTagOptions() {
+            const set = new Set();
+            this.archiveList.forEach((item) => {
+                if ((!this.archiveMunicipalityFilter || item.municipality === this.archiveMunicipalityFilter) && item.tag) {
+                    set.add(item.tag);
+                }
+            });
+            return Array.from(set).sort((a, b) => a.localeCompare(b, "ar"));
+        },
+        archiveStatusOptions() {
+            return this.allStatuses
+                .map((status) => ({
+                    ...status,
+                    count: this.archiveFilterContext.filter((item) => item.status === status.name).length,
+                }))
+                .filter((status) => status.count > 0);
         },
         _archivePhoneMap() {
             return this._buildArchivePhoneMap();
@@ -212,6 +246,21 @@ const appOptions = {
         // i18n/dir: عند تغيّر اتجاه التطبيق (يمين/يسار/تلقائي) يُعاد تطبيقه فوراً
         'settings.direction'() {
             this.applyLanguageDirection();
+        },
+        archiveMunicipalityFilter() {
+            if (this.archiveTagFilter && !this.archiveTagOptions.includes(this.archiveTagFilter)) {
+                this.archiveTagFilter = '';
+            }
+            if (this.archiveStatusFilter && !this.archiveStatusOptions.some((status) => status.name === this.archiveStatusFilter)) {
+                this.archiveStatusFilter = '';
+            }
+            this.archiveVisibleCount = 30;
+        },
+        archiveTagFilter() {
+            if (this.archiveStatusFilter && !this.archiveStatusOptions.some((status) => status.name === this.archiveStatusFilter)) {
+                this.archiveStatusFilter = '';
+            }
+            this.archiveVisibleCount = 30;
         }
     },
     
@@ -315,6 +364,10 @@ const appOptions = {
         // ============ التنقل الداخلي ============
         // الصفحة الحالية + اعتراض روابط الصفحات الداخلية + زر الرجوع في المتصفح
         this.__currentPageFile = (window.location.pathname.split('/').pop() || 'index.html');
+        const initialArchiveSearch = new URLSearchParams(window.location.search);
+        if (this.__currentPageFile === 'archive.html' && initialArchiveSearch.has('search')) {
+            this.archiveSearch = initialArchiveSearch.get('search') || '';
+        }
 
         document.addEventListener('click', (e) => {
             const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
@@ -616,6 +669,11 @@ const appOptions = {
             if (ROUTABLE_PAGES.indexOf(file) === -1) {
                 window.location.href = target;
                 return Promise.resolve(false);
+            }
+
+            const targetParams = new URLSearchParams((rawPath || '').split('?')[1] || '');
+            if (file === 'archive.html' && targetParams.has('search')) {
+                this.archiveSearch = targetParams.get('search') || '';
             }
 
             const onCurrentPage = (file === this.__currentPageFile);

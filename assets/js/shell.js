@@ -120,6 +120,24 @@
         },
     ];
 
+    // ---------- إجراءات زر + (الأرشيف) ----------
+    const FAB_ACTIONS_ARCHIVE = [
+        {
+            id: "archive-export",
+            labelKey: "archive.action_export",
+            icon: "fa-file-export",
+            gradient: "from-emerald-500 to-green-600",
+            run: "exportArchive",
+        },
+        {
+            id: "archive-import",
+            labelKey: "archive.action_import",
+            icon: "fa-file-import",
+            gradient: "from-blue-500 to-indigo-600",
+            run: "openArchiveImport",
+        },
+    ];
+
     // ---------- قائمة النقاط الثلاث (موحّدة في كل الصفحات) ----------
     const TOP_MENU = [
         { id: "pdf", labelKey: "topmenu.import_pdf", icon: "fa-file-pdf", color: "text-red-500", run: "triggerPdfInput", homeOnly: true },
@@ -846,16 +864,19 @@
                 return YALIDINE_LINKS;
             },
             fabActions() {
+                if (this.page === "archive") {
+                    return FAB_ACTIONS_ARCHIVE;
+                }
                 return FAB_ACTIONS_HOME.filter(
                     (a) => !a.requiresFlag || this.$root.settings[a.requiresFlag]
                 );
             },
-            // زر + العائم يظهر في الرئيسية (يفتح قائمة الإجراءات) وفي المهام (ينشئ مهمة جديدة)
+            // زر + العائم يفتح قائمة إجراءات في الرئيسية والأرشيف، وينشئ مهمة في صفحة المهام
             fabEnabled() {
-                return this.page === "home" || this.page === "tasks";
+                return this.page === "home" || this.page === "tasks" || this.page === "archive";
             },
             fabMenuOpen() {
-                return this.page === "home" && this.showFabMenu === true;
+                return (this.page === "home" || this.page === "archive") && this.showFabMenu === true;
             },
             pendingTasks() {
                 const list = this.$root.tasks || [];

@@ -87,49 +87,31 @@
                     </span>
                     <input v-model="archiveSearch" @input="archiveVisibleCount = 30" type="text"
                         :placeholder="t('archive.search_placeholder')"
-                        class="w-full pr-10 pl-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                        class="w-full pr-10 pl-10 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all border border-gray-200 dark:border-gray-700 shadow-sm" />
+                    <button v-if="archiveSearch" @click.stop="archiveSearch = ''; archiveVisibleCount = 30"
+                        class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 hover:text-red-500 transition"
+                        :title="t('search.clear')">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Archive Import / Export / Sync -->
-            <div class="mx-3 mt-2 grid grid-cols-3 gap-2">
-                <button @click="exportArchive"
-                    class="py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition flex items-center justify-center gap-2 border border-emerald-200 dark:border-emerald-800/50">
-                    <i class="fas fa-file-export"></i>
-                    <span>{{ t('archive.action_export') }}</span>
-                </button>
-                <button @click="openArchiveImport"
-                    class="py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition flex items-center justify-center gap-2 border border-blue-200 dark:border-blue-800/50">
-                    <i class="fas fa-file-import"></i>
-                    <span>{{ t('archive.action_import') }}</span>
-                </button>
-                <button @click="syncArchiveToCloud"
-                    class="py-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-bold text-sm hover:bg-purple-100 dark:hover:bg-purple-900/30 transition flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800/50">
-                    <i class="fas fa-cloud-arrow-up"></i>
-                    <span>{{ t('archive.action_sync') }}</span>
-                </button>
-                <input ref="archiveImportInput" type="file"
-                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"
-                    @change="handleArchiveImport" />
-            </div>
+            <input ref="archiveImportInput" type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"
+                @change="handleArchiveImport" />
 
-            <!-- Archive Sync Toggle -->
-            <div class="mx-3 mt-2 glass-panel rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/30">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-cloud-arrow-up text-purple-500"></i>
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ t('archive.sync_with_cloud') }}</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" :checked="settings.archiveSyncEnabled"
-                            @change="toggleArchiveSync($event.target.checked)" class="sr-only peer" />
-                        <div class="w-12 h-7 rounded-full transition-all relative overflow-hidden"
-                            :class="settings.archiveSyncEnabled ? 'bg-purple-500' : 'bg-gray-300'">
-                            <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all"
-                                :class="settings.archiveSyncEnabled ? 'left-1' : 'right-1'"></span>
-                        </div>
-                    </label>
-                </div>
+            <!-- Archive Filters: Municipality + Tag -->
+            <div class="mx-3 mt-2 grid grid-cols-2 gap-2">
+                <select v-model="archiveMunicipalityFilter" @change="archiveVisibleCount = 30"
+                    class="py-2.5 px-3 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-bold border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                    <option value="">{{ t('archive.filter_all_municipalities') }}</option>
+                    <option v-for="m in archiveMunicipalityOptions" :key="m" :value="m">{{ m }}</option>
+                </select>
+                <select v-model="archiveTagFilter" @change="archiveVisibleCount = 30"
+                    class="py-2.5 px-3 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-bold border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50">
+                    <option value="">{{ t('archive.filter_all_tags') }}</option>
+                    <option v-for="tg in archiveTagOptions" :key="tg" :value="tg">{{ getTagNameForDisplay(tg) }}</option>
+                </select>
             </div>
 
             <!-- Archive Filter Pills -->
@@ -140,29 +122,17 @@
                 ]">
                     {{ t('common.all') }}
                 </button>
-                <button @click="archiveStatusFilter = 'تم التسليم'; archiveVisibleCount = 30" :class="[
-                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
-                    archiveStatusFilter === 'تم التسليم' ? 'bg-green-600 text-white border-green-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                ]">
-                    {{ statusLabel(statusMap.delivered) }}
-                </button>
-                <button @click="archiveStatusFilter = 'إلغاء الطلبية'; archiveVisibleCount = 30" :class="[
-                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
-                    archiveStatusFilter === 'إلغاء الطلبية' ? 'bg-red-600 text-white border-red-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                ]">
-                    {{ statusLabel(statusMap.cancelled) }}
-                </button>
-                <button @click="archiveStatusFilter = 'لا يرد'; archiveVisibleCount = 30" :class="[
-                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
-                    archiveStatusFilter === 'لا يرد' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                ]">
-                    {{ statusLabel(statusMap.no_answer) }}
-                </button>
-                <button @click="archiveStatusFilter = 'رقم خاطئ'; archiveVisibleCount = 30" :class="[
-                    'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all',
-                    archiveStatusFilter === 'رقم خاطئ' ? 'bg-yellow-600 text-white border-yellow-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                ]">
-                    {{ statusLabel(statusMap.wrong_number) }}
+                <button v-for="status in archiveStatusOptions" :key="status.name"
+                    @click="archiveStatusFilter = status.name; archiveVisibleCount = 30" :class="[
+                        'px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap transition-all flex items-center gap-1.5',
+                        archiveStatusFilter === status.name ? 'bg-purple-600 text-white border-purple-500' : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                    ]">
+                    <span class="w-2 h-2 rounded-full" :class="status.dot"></span>
+                    <span>{{ statusLabel(status.name) }}</span>
+                    <span :class="archiveStatusFilter === status.name ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700'"
+                        class="px-1.5 py-0.5 rounded-lg text-[10px] font-bold min-w-[20px] text-center">
+                        {{ status.count }}
+                    </span>
                 </button>
             </div>
 

@@ -107,6 +107,7 @@ window.i18n_ar = {
     "search.all_municipalities": "كل البلديات",
     "search.no_tag": "دون تحديد",
     "search.no_results": "لا توجد طرود مطابقة.",
+    "search.archive": "البحث في الأرشيف",
     "search.clear_filtering": "إلغاء التصفية",
 
     // ============ الرئيسية: ملخص اليوم ============
@@ -608,6 +609,8 @@ window.i18n_ar = {
 
     "archive.action_export": "تصدير",
     "archive.action_import": "استيراد",
+    "archive.filter_all_municipalities": "كل البلديات",
+    "archive.filter_all_tags": "كل التمييزات",
     "archive.action_sync": "مزامنة",
     "archive.sync_with_cloud": "مزامنة الأرشيف مع السحابة",
     "archive.showing": "يعرض {{shown}} من {{total}} طرد",

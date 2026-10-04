@@ -104,6 +104,7 @@ window.i18n_en = {
     "search.all_municipalities": "All municipalities",
     "search.no_tag": "Not specified",
     "search.no_results": "No matching parcels.",
+    "search.archive": "Search the archive",
     "search.clear_filtering": "Clear filtering",
 
     // ============ Home: today summary ============
@@ -617,6 +618,8 @@ window.i18n_en = {
 
     "archive.action_export": "Export",
     "archive.action_import": "Import",
+    "archive.filter_all_municipalities": "All municipalities",
+    "archive.filter_all_tags": "All tags",
     "archive.action_sync": "Sync",
     "archive.sync_with_cloud": "Sync archive with cloud",
     "archive.showing": "Showing {{shown}} of {{total}} parcels",

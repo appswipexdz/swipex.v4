@@ -363,6 +363,10 @@
                             <i class="fas fa-box-open text-4xl text-gray-400 dark:text-gray-600"></i>
                         </div>
                         <p class="font-bold">{{ t('search.no_results') }}</p>
+                        <button v-if="directSearch.trim()" @click="navigate('archive.html?search=' + encodeURIComponent(directSearch.trim()))"
+                            class="mt-2 text-purple-600 dark:text-purple-400 text-sm font-bold hover:underline">
+                            {{ t('search.archive') }}
+                        </button>
                         <button @click="clearFilters" v-if="hasActiveFilters" class="mt-2 text-red-500 text-sm">
                             {{ t('search.clear_filtering') }}
                         </button>

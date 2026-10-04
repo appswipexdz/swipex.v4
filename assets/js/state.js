@@ -271,6 +271,8 @@ showYalidineMenu: false,
     // الأرشيف
     archiveSearch: '',
     archiveStatusFilter: '',
+    archiveMunicipalityFilter: '',
+    archiveTagFilter: '',
     archiveVisibleCount: 30,
     // سجل العميل
     showCustomerHistory: false,

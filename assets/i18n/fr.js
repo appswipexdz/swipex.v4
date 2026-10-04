@@ -104,6 +104,7 @@ window.i18n_fr = {
     "search.all_municipalities": "Toutes les communes",
     "search.no_tag": "Non spécifié",
     "search.no_results": "Aucun colis correspondant.",
+    "search.archive": "Rechercher dans les archives",
     "search.clear_filtering": "Annuler le filtrage",
 
     // ============ Accueil : résumé du jour ============
@@ -617,6 +618,8 @@ window.i18n_fr = {
 
     "archive.action_export": "Exporter",
     "archive.action_import": "Importer",
+    "archive.filter_all_municipalities": "Toutes les communes",
+    "archive.filter_all_tags": "Tous les tags",
     "archive.action_sync": "Synchroniser",
     "archive.sync_with_cloud": "Synchroniser les archives avec le cloud",
     "archive.showing": "Affichage de {{shown}} sur {{total}} colis",
