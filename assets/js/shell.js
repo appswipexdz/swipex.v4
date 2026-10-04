@@ -127,7 +127,7 @@
             labelKey: "archive.action_export",
             icon: "fa-file-export",
             gradient: "from-emerald-500 to-green-600",
-            run: "exportArchive",
+            run: "openArchiveExportDialog",
         },
         {
             id: "archive-import",

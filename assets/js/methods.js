@@ -1916,15 +1916,33 @@ const appMethods = {
     }
   },
 
-  exportArchive() {
-    const archiveCount = Object.keys(this.archive || {}).length;
+  openArchiveExportDialog() {
+    if (!Object.keys(this.archive || {}).length) {
+      this.exportArchive();
+      return;
+    }
+    this.showArchiveExportDialog = true;
+  },
+
+  confirmArchiveExport(filteredOnly) {
+    this.showArchiveExportDialog = false;
+    this.exportArchive(filteredOnly);
+  },
+
+  exportArchive(filteredOnly = false) {
+    const archiveEntries = filteredOnly
+      ? Array.from(new Set((this.filteredArchive || []).map(item => item.tracking)))
+          .map(tracking => [tracking, this.archive[tracking]])
+          .filter(([, data]) => data)
+      : Object.entries(this.archive || {});
+    const archiveCount = archiveEntries.length;
     if (!archiveCount) {
       this.showToast(this.t("msg.no_archive_export"), "info");
       return;
     }
 
     const rows = [];
-    Object.entries(this.archive).forEach(([tracking, data]) => {
+    archiveEntries.forEach(([tracking, data]) => {
       const events = this.getArchiveEvents(data);
       events.forEach((event, idx) => {
         rows.push({
@@ -2217,6 +2235,7 @@ const appMethods = {
     if (!item || !this.customerHistoryParcel) return;
 
     const parcel = this.customerHistoryParcel;
+    parcel.municipality = item.municipality || '';
     parcel.tag = item.tag || '';
     parcel.notes = item.notes || '';
     this.markParcelDirty(parcel);

@@ -274,6 +274,7 @@ showYalidineMenu: false,
     archiveMunicipalityFilter: '',
     archiveTagFilter: '',
     archiveVisibleCount: 30,
+    showArchiveExportDialog: false,
     // سجل العميل
     showCustomerHistory: false,
     customerHistoryParcel: null,

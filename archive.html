@@ -96,6 +96,39 @@
                 </div>
             </div>
 
+            <transition name="fade">
+                <div v-if="showArchiveExportDialog" class="fixed inset-0 z-[300] flex items-center justify-center p-4"
+                    role="dialog" aria-modal="true" :aria-label="t('archive.export_dialog_title')"
+                    @click.self="showArchiveExportDialog = false">
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                    <div class="relative w-full max-w-sm glass-panel rounded-2xl p-5 animate-scale-in text-center">
+                        <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-file-export text-emerald-600 dark:text-emerald-400 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">
+                            {{ t('archive.export_dialog_title') }}
+                        </h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                            {{ t('archive.export_dialog_body') }}
+                        </p>
+                        <div class="flex flex-col gap-2">
+                            <button @click="confirmArchiveExport(false)"
+                                class="w-full py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition">
+                                {{ t('archive.export_all') }}
+                            </button>
+                            <button @click="confirmArchiveExport(true)"
+                                class="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition">
+                                {{ t('archive.export_filtered') }}
+                            </button>
+                            <button @click="showArchiveExportDialog = false"
+                                class="w-full py-3 rounded-xl glass-input text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                {{ t('common.cancel') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
             <input ref="archiveImportInput" type="file"
                 accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden"
                 @change="handleArchiveImport" />

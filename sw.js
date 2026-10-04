@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swipex-v4-shell-13';
+const CACHE_NAME = 'swipex-v4-shell-15';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
 // Workers، وحارس الرجوع يجب أن يكون رابطاً مباشراً لا إعادة توجيه.

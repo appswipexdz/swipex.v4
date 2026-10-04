@@ -740,7 +740,7 @@ const appOptions = {
         closePageOverlays() {
             const flags = [
                 'showTopMenu', 'showYalidineMenu', 'showFabMenu',
-                'showNotificationsPanel', 'showNotificationHistory',
+                'showNotificationsPanel', 'showNotificationHistory', 'showArchiveExportDialog',
                 'drawerOpen', 'showFilters', 'headerHidden', 'showTagsDropdown',
             ];
             flags.forEach((k) => { this[k] = false; });
