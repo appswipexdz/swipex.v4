@@ -690,6 +690,7 @@ window.i18n_fr = {
     "msg.app_update_available": "Une nouvelle mise à jour {{version}} est disponible. Consultez la bannière.",
     "msg.app_up_to_date": "L'application est à jour {{version}}.",
     "msg.app_update_not_ready": "Une version plus récente existe, mais ses fichiers ne sont pas encore prêts. Réessayez plus tard.",
+    "msg.app_update_preparing": "Téléchargement des fichiers de mise à jour, patientez un instant puis relancez la recherche.",
     "msg.app_update_failed": "Impossible de rechercher les mises à jour. Réessayez.",
     "msg.not_logged_in": "Non connecté",
     "msg.syncing_items": "Synchronisation de {{count}} éléments...",

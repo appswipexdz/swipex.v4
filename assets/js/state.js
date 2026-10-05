@@ -223,7 +223,12 @@ showYalidineMenu: false,
     appPage: (typeof document !== 'undefined' && document.body && document.body.dataset && document.body.dataset.page) || 'home',
     appUpdateAvailable: false,
     appUpdateInfo: null,
-    appVersion: '4.0',
+    // يُقرأ من النسخة التي حفظها عامل الخدمة سابقاً؛ القيمة الثابتة كانت
+    // تُرجع التطبيق إلى "4.0" إلى أن ينجح الاتصال بعامل الخدمة.
+    appVersion: (function () {
+        try { return localStorage.getItem('swipex_app_version') || '4.0'; }
+        catch (e) { return '4.0'; }
+    })(),
     appUpdateApplying: false,
     appUpdateChecking: false,
     appUpdateDismissKey: '',

@@ -690,6 +690,7 @@ window.i18n_en = {
     "msg.app_update_available": "A new update {{version}} is available. See the update banner.",
     "msg.app_up_to_date": "The app is up to date {{version}}.",
     "msg.app_update_not_ready": "A newer release was found, but its files are not ready to install. Try again later.",
+    "msg.app_update_preparing": "Downloading the update files, please wait a moment and check again.",
     "msg.app_update_failed": "Could not check for updates. Please try again.",
     "msg.not_logged_in": "Not logged in",
     "msg.syncing_items": "Syncing {{count}} items...",

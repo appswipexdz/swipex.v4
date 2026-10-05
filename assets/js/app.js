@@ -77,22 +77,29 @@ function announceWaitingAppUpdate(app, registration, force = false) {
     })();
 }
 
+// يُرجع { waiting, installing } بدل قيمة واحدة، حتى لا نخلط بين
+// "لا يوجد عامل خدمة جديد" و"العامل الجديد ما زال يثبّت الملفات".
 function waitForAppWorkerInstall(registration) {
-    if (registration.waiting) return Promise.resolve(registration.waiting);
+    if (registration.waiting) return Promise.resolve({ waiting: registration.waiting, installing: false });
     const worker = registration.installing;
-    if (!worker) return Promise.resolve(null);
-    if (worker.state === 'installed') return Promise.resolve(registration.waiting || worker);
+    if (!worker) return Promise.resolve({ waiting: null, installing: false });
+    if (worker.state === 'installed') {
+        return Promise.resolve({ waiting: registration.waiting || worker, installing: false });
+    }
 
     return new Promise((resolve) => {
         const finish = () => {
             worker.removeEventListener('statechange', onStateChange);
             clearTimeout(timeout);
-            resolve(registration.waiting || (worker.state === 'installed' ? worker : null));
+            const settled = registration.waiting || (worker.state === 'installed' ? worker : null);
+            resolve({ waiting: settled, installing: !settled });
         };
         const onStateChange = () => {
             if (worker.state === 'installed' || worker.state === 'redundant') finish();
         };
-        const timeout = setTimeout(finish, 20000);
+        // التثبيت يخزّن كل ملفات التطبيق + سكربتات Firebase، وقد يتجاوز 20 ثانية
+        // على اتصال بطيء؛ نُبقي supervising بدل التصريح بأن الملفات لن تجهز أبداً.
+        const timeout = setTimeout(finish, 45000);
         worker.addEventListener('statechange', onStateChange);
     });
 }
@@ -662,9 +669,9 @@ const appOptions = {
                 const registration = appServiceWorkerRegistration || await navigator.serviceWorker.ready;
                 appServiceWorkerRegistration = registration;
                 await registration.update();
-                await waitForAppWorkerInstall(registration);
+                const install = await waitForAppWorkerInstall(registration);
 
-                if (registration.waiting) {
+                if (install.waiting) {
                     await announceWaitingAppUpdate(this, registration, true);
                     this.showToast(this.t('msg.app_update_available', {
                         version: this.appUpdateInfo && this.appUpdateInfo.version
@@ -674,17 +681,29 @@ const appOptions = {
                     return;
                 }
 
-                const [activeRelease, latestRelease] = await Promise.all([
-                    readWorkerRelease(registration.active),
-                    fetchReleaseInfo(),
-                ]);
-                const activeVersion = activeRelease && activeRelease.version || this.appVersion;
-                const latestVersion = latestRelease && latestRelease.version;
-                if (latestVersion && activeVersion && compareAppVersions(latestVersion, activeVersion) > 0) {
+                // عامل خدمة جديد ثُبِّت فعلاً ولم يستقر في waiting: دعنا نلتقط
+                // controllerchange بدل أن نُبلغ عن "الملفات لم تجهز" وهي في الحقيقة جارية.
+                if (install.installing) {
+                    this.showToast(this.t('msg.app_update_preparing'), 'info', 5000);
+                    return;
+                }
+
+                // لا يوجد عامل خدمة منتظر: إمّا أن sw.js على الخادم مطابق للمثبَّت،
+                // أو لا نعرف النسخة النشطة. نقارن فقط عندما تكون معروفة، وإلا فلا
+                // نَزعم وجود إصدار أحدث لم نتمكّن من إثباته.
+                const activeRelease = await readWorkerRelease(registration.active);
+                const activeVersion = (activeRelease && activeRelease.version)
+                    || localStorage.getItem('swipex_app_version')
+                    || '';
+                const latestVersion = (await fetchReleaseInfo() || {}).version;
+
+                if (activeVersion && latestVersion && compareAppVersions(latestVersion, activeVersion) > 0) {
                     this.showToast(this.t('msg.app_update_not_ready'), 'warning');
                     return;
                 }
-                this.showToast(this.t('msg.app_up_to_date', { version: activeVersion ? `v${activeVersion}` : '' }), 'info');
+                this.showToast(this.t('msg.app_up_to_date', {
+                    version: activeVersion ? `v${activeVersion}` : '',
+                }), 'info');
             } catch (e) {
                 console.error('checkForAppUpdates:', e);
                 this.showToast(this.t('msg.app_update_failed'), 'error');

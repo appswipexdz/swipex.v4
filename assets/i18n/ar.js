@@ -681,6 +681,7 @@ window.i18n_ar = {
     "msg.app_update_available": "يتوفر تحديث جديد {{version}}. راجع شريط التحديث.",
     "msg.app_up_to_date": "التطبيق محدّث إلى آخر إصدار {{version}}.",
     "msg.app_update_not_ready": "عُثر على إصدار أحدث، لكن ملفاته لم تجهز للتثبيت بعد. أعد المحاولة لاحقًا.",
+    "msg.app_update_preparing": "جارٍ تنزيل ملفات التحديث، انتظر قليلاً ثم أعد البحث.",
     "msg.app_update_failed": "تعذر البحث عن تحديثات الآن. حاول مرة أخرى.",
     "msg.not_logged_in": "غير مسجل الدخول",
     "msg.syncing_items": "جاري مزامنة {{count}} عنصر...",
