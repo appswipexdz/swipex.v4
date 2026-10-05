@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swipex-v4-shell-24';
+const CACHE_NAME = 'swipex-v4-shell-27';
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare

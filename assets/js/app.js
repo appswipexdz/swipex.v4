@@ -9,8 +9,6 @@ appState.showImportSummary = false;
 appState.showHistoryModal = false;
 appState.drawerOpen = false;
 
-const { createApp } = Vue;
-
 // الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
 const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
@@ -49,26 +47,57 @@ async function fetchReleaseInfo() {
     }
 }
 
-function initializeAppUpdates(app) {
-    if (app._appUpdateFlowInitialized || !('serviceWorker' in navigator)) return;
-    app._appUpdateFlowInitialized = true;
+function compareAppVersions(left, right) {
+    const parse = (version) => String(version || '').split('.').map((part) => Number.parseInt(part, 10) || 0);
+    const a = parse(left);
+    const b = parse(right);
+    for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+        const difference = (a[index] || 0) - (b[index] || 0);
+        if (difference !== 0) return difference;
+    }
+    return 0;
+}
 
-    const dismissKey = (version) => `swipex-update-dismissed-${version || 'available'}`;
-    const announceWaitingWorker = async (registration) => {
-        const worker = registration.waiting;
-        if (!worker) return;
-        pendingAppUpdateWorker = worker;
-
+function announceWaitingAppUpdate(app, registration, force = false) {
+    const worker = registration && registration.waiting;
+    if (!worker) return Promise.resolve(false);
+    pendingAppUpdateWorker = worker;
+    return (async () => {
         const release = await readWorkerRelease(worker) || await fetchReleaseInfo();
-
         app.appUpdateInfo = release && typeof release === 'object'
             ? release
             : { version: '', notes: {} };
-        app.appUpdateDismissKey = dismissKey(app.appUpdateInfo.version);
-        if (sessionStorage.getItem(app.appUpdateDismissKey) !== '1') {
+        app.appUpdateDismissKey = `swipex-update-dismissed-${app.appUpdateInfo.version || 'available'}`;
+        if (force || sessionStorage.getItem(app.appUpdateDismissKey) !== '1') {
             app.appUpdateAvailable = true;
         }
-    };
+        return true;
+    })();
+}
+
+function waitForAppWorkerInstall(registration) {
+    if (registration.waiting) return Promise.resolve(registration.waiting);
+    const worker = registration.installing;
+    if (!worker) return Promise.resolve(null);
+    if (worker.state === 'installed') return Promise.resolve(registration.waiting || worker);
+
+    return new Promise((resolve) => {
+        const finish = () => {
+            worker.removeEventListener('statechange', onStateChange);
+            clearTimeout(timeout);
+            resolve(registration.waiting || (worker.state === 'installed' ? worker : null));
+        };
+        const onStateChange = () => {
+            if (worker.state === 'installed' || worker.state === 'redundant') finish();
+        };
+        const timeout = setTimeout(finish, 20000);
+        worker.addEventListener('statechange', onStateChange);
+    });
+}
+
+function initializeAppUpdates(app) {
+    if (app._appUpdateFlowInitialized || !('serviceWorker' in navigator)) return;
+    app._appUpdateFlowInitialized = true;
 
     // This marker tells the next worker release that the consent UI is installed.
     if ('caches' in window) {
@@ -96,23 +125,23 @@ function initializeAppUpdates(app) {
             if (!installing) return;
             installing.addEventListener('statechange', () => {
                 if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                    announceWaitingWorker(registration);
+                    announceWaitingAppUpdate(app, registration);
                 }
             });
         });
 
-        announceWaitingWorker(registration);
+        announceWaitingAppUpdate(app, registration);
 
         const lastCheck = Number(localStorage.getItem('swipex_update_last_check') || 0);
         if (navigator.onLine && Date.now() - lastCheck > 6 * 60 * 60 * 1000) {
             registration.update().then(() => {
                 localStorage.setItem('swipex_update_last_check', String(Date.now()));
-                announceWaitingWorker(registration);
+                announceWaitingAppUpdate(app, registration);
             }).catch((e) => console.warn('تعذر التحقق من تحديث التطبيق:', e));
         }
 
         window.addEventListener('online', () => {
-            registration.update().then(() => announceWaitingWorker(registration))
+            registration.update().then(() => announceWaitingAppUpdate(app, registration))
                 .catch((e) => console.warn('تعذر التحقق من تحديث التطبيق:', e));
         });
     }).catch((e) => console.warn('تعذر بدء فحص تحديث التطبيق:', e));
@@ -617,6 +646,49 @@ const appOptions = {
         dismissAppUpdate() {
             if (this.appUpdateDismissKey) sessionStorage.setItem(this.appUpdateDismissKey, '1');
             this.appUpdateAvailable = false;
+        },
+
+        async checkForAppUpdates() {
+            if (this.appUpdateChecking) return;
+            if (!navigator.onLine) {
+                this.showToast(this.t('msg.app_update_offline'), 'info');
+                return;
+            }
+
+            this.appUpdateChecking = true;
+            try {
+                const registration = appServiceWorkerRegistration || await navigator.serviceWorker.ready;
+                appServiceWorkerRegistration = registration;
+                await registration.update();
+                await waitForAppWorkerInstall(registration);
+
+                if (registration.waiting) {
+                    await announceWaitingAppUpdate(this, registration, true);
+                    this.showToast(this.t('msg.app_update_available', {
+                        version: this.appUpdateInfo && this.appUpdateInfo.version
+                            ? `v${this.appUpdateInfo.version}`
+                            : '',
+                    }), 'success');
+                    return;
+                }
+
+                const [activeRelease, latestRelease] = await Promise.all([
+                    readWorkerRelease(registration.active),
+                    fetchReleaseInfo(),
+                ]);
+                const activeVersion = activeRelease && activeRelease.version || this.appVersion;
+                const latestVersion = latestRelease && latestRelease.version;
+                if (latestVersion && activeVersion && compareAppVersions(latestVersion, activeVersion) > 0) {
+                    this.showToast(this.t('msg.app_update_not_ready'), 'warning');
+                    return;
+                }
+                this.showToast(this.t('msg.app_up_to_date', { version: activeVersion ? `v${activeVersion}` : '' }), 'info');
+            } catch (e) {
+                console.error('checkForAppUpdates:', e);
+                this.showToast(this.t('msg.app_update_failed'), 'error');
+            } finally {
+                this.appUpdateChecking = false;
+            }
         },
 
         applyAppUpdate() {

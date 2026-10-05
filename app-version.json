@@ -1,21 +1,24 @@
 {
-  "version": "4.2.0",
+  "version": "4.2.3",
   "releasedAt": "2026-10-05",
   "notes": {
     "ar": [
       "تحديد عدة طرود بالضغط المطوّل على البطاقة.",
       "حذف الطرود المحددة أو تغيير حالتها دفعة واحدة.",
-      "تحسينات عامة على إدارة البطاقات."
+      "إضافة فحص يدوي للتحديثات مع مقارنة دقيقة لأرقام الإصدارات.",
+      "إصلاح بدء التطبيق بعد تحديث النسخة."
     ],
     "en": [
       "Select multiple parcels by long-pressing a card.",
       "Delete selected parcels or change their status in bulk.",
-      "General improvements to parcel card management."
+      "Added a manual update check with proper version comparison.",
+      "Fixed app startup after updating."
     ],
     "fr": [
       "Sélectionnez plusieurs colis en maintenant une carte appuyée.",
       "Supprimez les colis sélectionnés ou modifiez leur statut en lot.",
-      "Améliorations générales de la gestion des cartes."
+      "Ajout d'une recherche manuelle avec comparaison correcte des versions.",
+      "Correction du démarrage après la mise à jour."
     ]
   }
 }
