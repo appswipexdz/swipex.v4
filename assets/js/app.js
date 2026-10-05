@@ -867,6 +867,7 @@ const appOptions = {
 
         // إغلاق كل القوائم/اللوحات المفتوحة قبل تبديل الصفحة
         closePageOverlays() {
+            if (this.selectionMode) this.exitParcelSelection();
             const flags = [
                 'showTopMenu', 'showYalidineMenu', 'showFabMenu',
                 'showNotificationsPanel', 'showNotificationHistory', 'showArchiveExportDialog',

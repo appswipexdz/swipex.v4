@@ -2415,8 +2415,152 @@ const appMethods = {
   },
 
   // ========== Touch/Swipe Handlers ==========
+  startParcelSelectionPress(parcel, event) {
+    if (!parcel || this.selectionMode || (event && event.button !== 0)) return;
+    const target = event && event.target;
+    if (target && target.closest && target.closest("button, a, input, textarea, select, label, .handle")) return;
+
+    this.cancelParcelSelectionPress();
+    this.selectionPressParcelId = parcel.id;
+    this.selectionPressTimer = setTimeout(() => {
+      this.selectionPressTimer = null;
+      this.selectionLongPressTriggered = true;
+      this.enterParcelSelection(parcel.id);
+    }, 550);
+  },
+
+  finishParcelSelectionPress() {
+    if (this.selectionPressTimer) {
+      clearTimeout(this.selectionPressTimer);
+      this.selectionPressTimer = null;
+    }
+    if (!this.selectionLongPressTriggered) this.selectionPressParcelId = null;
+  },
+
+  suppressSelectionLongPressClick(event) {
+    if (!this.selectionLongPressTriggered) return;
+    this.selectionLongPressTriggered = false;
+    this.selectionPressParcelId = null;
+    event.preventDefault();
+    event.stopPropagation();
+  },
+
+  cancelParcelSelectionPress() {
+    if (this.selectionPressTimer) clearTimeout(this.selectionPressTimer);
+    this.selectionPressTimer = null;
+    this.selectionPressParcelId = null;
+    this.selectionLongPressTriggered = false;
+  },
+
+  enterParcelSelection(parcelId) {
+    this.selectionMode = true;
+    this.selectedParcelIds = [parcelId];
+    this.showSelectionActions = false;
+    this.showFabMenu = false;
+    this.$nextTick(() => this.initSortable());
+  },
+
+  handleParcelCardClick(parcel, event) {
+    if (this.selectionLongPressTriggered && this.selectionPressParcelId === parcel.id) {
+      this.selectionLongPressTriggered = false;
+      this.selectionPressParcelId = null;
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+    if (this.selectionMode) {
+      this.toggleParcelSelection(parcel.id);
+      if (event) event.stopPropagation();
+      return;
+    }
+    this.toggleExpand(parcel.id);
+  },
+
+  toggleParcelSelection(parcelId) {
+    const selected = new Set(this.selectedParcelIds || []);
+    if (selected.has(parcelId)) selected.delete(parcelId);
+    else selected.add(parcelId);
+    if (!selected.size) {
+      this.exitParcelSelection();
+      return;
+    }
+    this.selectedParcelIds = Array.from(selected);
+    this.showSelectionActions = false;
+  },
+
+  exitParcelSelection() {
+    this.cancelParcelSelectionPress();
+    this.selectionMode = false;
+    this.selectedParcelIds = [];
+    this.showSelectionActions = false;
+    this.showFabMenu = false;
+    this.$nextTick(() => this.initSortable());
+  },
+
+  requestDeleteSelected() {
+    if (!this.selectedParcelIds.length) return;
+    this.showSelectionActions = false;
+    this.deleteConfirmId = null;
+    this.showDeleteConfirm = true;
+  },
+
+  cancelDeleteConfirm() {
+    this.showDeleteConfirm = false;
+    this.deleteConfirmId = null;
+  },
+
+  confirmDeleteSelected() {
+    const selected = new Set(this.selectedParcelIds || []);
+    const deleted = this.parcels.filter((parcel) => selected.has(parcel.id));
+    deleted.forEach((parcel) => this.markParcelDirty(parcel));
+    if (deleted.length) {
+      this.parcels = this.parcels.filter((parcel) => !selected.has(parcel.id));
+      this.saveData();
+      this.detectDuplicates();
+      this.showToast(this.t('selection.deleted', { count: deleted.length }), 'success');
+    }
+    this.cancelDeleteConfirm();
+    this.exitParcelSelection();
+    this.$nextTick(() => this.initSortable());
+  },
+
+  openBulkStatusModal() {
+    if (!this.selectedParcelIds.length) return;
+    this.showSelectionActions = false;
+    this.bulkStatusTargetName = '';
+    this.showBulkStatusModal = true;
+  },
+
+  closeBulkStatusModal() {
+    this.showBulkStatusModal = false;
+    this.bulkStatusTargetName = '';
+  },
+
+  confirmBulkStatusChange() {
+    if (!this.bulkStatusTargetName) return;
+    const selected = new Set(this.selectedParcelIds || []);
+    const updatedAt = new Date().toISOString();
+    const changed = this.parcels.filter((parcel) => selected.has(parcel.id));
+    changed.forEach((parcel) => {
+      if (parcel.status !== this.bulkStatusTargetName) {
+        parcel.status = this.bulkStatusTargetName;
+        parcel.statusUpdatedAt = updatedAt;
+      }
+      this.markParcelDirty(parcel);
+    });
+    this.saveData();
+    this.closeBulkStatusModal();
+    this.showToast(this.t('selection.status_changed', {
+      count: changed.length,
+      status: this.statusLabel(this.bulkStatusTargetName),
+    }), 'success');
+    this.exitParcelSelection();
+  },
+
   touchStart(e, parcel) {
-    if (parcel.expanded) return;
+    if (this.selectionMode || parcel.expanded) return;
     this.touchStartX = e.touches[0].clientX;
     this.touchStartY = e.touches[0].clientY;
     this.activeSwipeId = parcel.id;
@@ -2430,6 +2574,7 @@ const appMethods = {
     const touchY = e.touches[0].clientY;
     const diffX = touchX - this.touchStartX;
     const diffY = touchY - this.touchStartY;
+    if (Math.abs(diffX) > 12 || Math.abs(diffY) > 12) this.cancelParcelSelectionPress();
     if (Math.abs(diffY) > Math.abs(diffX)) {
       this.isDragging = false;
       this.currentTouchX = 0;
@@ -2440,6 +2585,12 @@ const appMethods = {
   },
 
   touchEnd(e, parcel) {
+    if (this.selectionMode) {
+      this.isDragging = false;
+      this.currentTouchX = 0;
+      this.activeSwipeId = null;
+      return;
+    }
     if (!this.isDragging || this.activeSwipeId !== parcel.id) return;
     this.isDragging = false;
     if (this.currentTouchX > this.SWIPE_THRESHOLD) {
@@ -2609,6 +2760,7 @@ const appMethods = {
     if (!el) return;
     if (this.sortableInstance) this.sortableInstance.destroy();
     this.sortableInstance = Sortable.create(el, {
+      disabled: this.selectionMode,
       handle: ".handle",
       animation: 150,
       delay: 100,

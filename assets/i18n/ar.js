@@ -500,6 +500,17 @@ window.i18n_ar = {
 
     // ============ نوافذ التأكيد ============
     "confirm.delete_parcel.title": "حذف الطرد",
+    "selection.actions": "إجراءات الطرود المحددة",
+    "selection.delete": "حذف المحدد",
+    "selection.delete_title": "حذف الطرود المحددة؟",
+    "selection.delete_body": "سيتم حذف {{count}} طرداً نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+    "selection.deleted": "تم حذف {{count}} طرد",
+    "selection.change_status": "تغيير الحالة",
+    "selection.status_warning": "سيتم تطبيق الحالة على {{count}} طرد محدد دون إرسال رسائل SMS فردية.",
+    "selection.apply_status": "تطبيق الحالة",
+    "selection.status_changed": "تم تغيير حالة {{count}} طرد إلى {{status}}",
+    "selection.cancel": "إلغاء التحديد",
+    "selection.select_parcel": "تحديد الطرد {{tracking}}",
     "confirm.delete_parcel.body": "هل أنت متأكد من حذف هذا الطرد؟ لا يمكن التراجع عن هذا الإجراء.",
     "confirm.clear_data.title": "حذف البيانات الظاهرة",
     "confirm.clear_data.body": "سيتم حذف الطرود الظاهرة فقط ({{count}} طرد). لا يمكن التراجع عن هذا الإجراء!",

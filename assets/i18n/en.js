@@ -509,6 +509,17 @@ window.i18n_en = {
 
     // ============ Confirmations ============
     "confirm.delete_parcel.title": "Delete parcel",
+    "selection.actions": "Selected parcel actions",
+    "selection.delete": "Delete selected",
+    "selection.delete_title": "Delete selected parcels?",
+    "selection.delete_body": "{{count}} parcels will be permanently deleted. This cannot be undone.",
+    "selection.deleted": "{{count}} parcels deleted",
+    "selection.change_status": "Change status",
+    "selection.status_warning": "The selected status will be applied to {{count}} parcels. Individual SMS messages will not be sent.",
+    "selection.apply_status": "Apply status",
+    "selection.status_changed": "Changed {{count}} parcel statuses to {{status}}",
+    "selection.cancel": "Cancel selection",
+    "selection.select_parcel": "Select parcel {{tracking}}",
     "confirm.delete_parcel.body": "Are you sure you want to delete this parcel? This cannot be undone.",
     "confirm.clear_data.title": "Delete visible data",
     "confirm.clear_data.body": "Only the visible parcels will be deleted ({{count}} parcels). This cannot be undone!",

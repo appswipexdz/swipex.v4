@@ -509,6 +509,17 @@ window.i18n_fr = {
 
     // ============ Confirmations ============
     "confirm.delete_parcel.title": "Supprimer le colis",
+    "selection.actions": "Actions des colis sélectionnés",
+    "selection.delete": "Supprimer la sélection",
+    "selection.delete_title": "Supprimer les colis sélectionnés ?",
+    "selection.delete_body": "{{count}} colis seront supprimés définitivement. Cette action est irréversible.",
+    "selection.deleted": "{{count}} colis supprimés",
+    "selection.change_status": "Modifier le statut",
+    "selection.status_warning": "Le statut sera appliqué à {{count}} colis. Aucun SMS individuel ne sera envoyé.",
+    "selection.apply_status": "Appliquer le statut",
+    "selection.status_changed": "Statut de {{count}} colis modifié en {{status}}",
+    "selection.cancel": "Annuler la sélection",
+    "selection.select_parcel": "Sélectionner le colis {{tracking}}",
     "confirm.delete_parcel.body": "Voulez-vous vraiment supprimer ce colis ? Cette action est irréversible.",
     "confirm.clear_data.title": "Supprimer les données affichées",
     "confirm.clear_data.body": "Seuls les colis affichés seront supprimés ({{count}} colis). Cette action est irréversible !",

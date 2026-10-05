@@ -295,18 +295,32 @@
                 </a>
 
                 <template v-if="fabEnabled">
-                    <button type="button" class="fab-float" :class="{ 'rotate-45': fabMenuOpen }"
-                        :aria-label="page === 'tasks' ? t('nav.new_task') : t('nav.quick_actions')" @click.stop="onFabClick()">
+                    <button type="button" class="fab-float" :class="{ 'rotate-45': fabMenuOpen && !$root.selectionMode }"
+                        :aria-label="page === 'tasks' ? t('nav.new_task') : ($root.selectionMode ? t('selection.actions') : t('nav.quick_actions'))" @click.stop="onFabClick()">
                         <span v-if="!fabMenuOpen" class="fab-pulse"></span>
-                        <i class="fas fa-plus"></i>
+                        <i class="fas" :class="$root.selectionMode ? 'fa-ellipsis-v' : 'fa-plus'"></i>
                     </button>
-                    <div v-if="fabMenuOpen" class="fab-action-menu" @click.stop>
+                    <div v-if="fabMenuOpen && !$root.selectionMode" class="fab-action-menu" @click.stop>
                         <button v-for="act in fabActions" :key="act.id" type="button" class="fab-action-item"
                             @click="onFabAction(act)">
                             <span class="fab-action-icon bg-gradient-to-br" :class="act.gradient">
                                 <i class="fas" :class="act.icon"></i>
                             </span>
                             <span class="fab-action-label">{{ t(act.labelKey) }}</span>
+                        </button>
+                    </div>
+                    <div v-if="fabMenuOpen && $root.selectionMode" class="fab-action-menu" @click.stop>
+                        <button type="button" class="fab-action-item" @click="$root.requestDeleteSelected()">
+                            <span class="fab-action-icon bg-gradient-to-br from-red-500 to-rose-600"><i class="fas fa-trash-alt"></i></span>
+                            <span class="fab-action-label">{{ t('selection.delete') }}</span>
+                        </button>
+                        <button type="button" class="fab-action-item" @click="$root.openBulkStatusModal()">
+                            <span class="fab-action-icon bg-gradient-to-br from-blue-500 to-indigo-600"><i class="fas fa-exchange-alt"></i></span>
+                            <span class="fab-action-label">{{ t('selection.change_status') }}</span>
+                        </button>
+                        <button type="button" class="fab-action-item" @click="$root.exitParcelSelection()">
+                            <span class="fab-action-icon bg-gradient-to-br from-gray-500 to-gray-700"><i class="fas fa-times"></i></span>
+                            <span class="fab-action-label">{{ t('selection.cancel') }}</span>
                         </button>
                     </div>
                 </template>
@@ -367,7 +381,7 @@
 <!-- Click-away overlays -->
 <div v-if="showTopMenu" @click="showTopMenu = false" class="fixed inset-0 z-30"></div>
 <div v-if="showYalidineMenu" @click="showYalidineMenu = false" class="fixed inset-0 z-40"></div>
-<div v-if="showFabMenu" @click="showFabMenu = false; showYalidineMenu = false" class="fixed inset-0 z-[35]"></div>
+<div v-if="showFabMenu || showSelectionActions" @click="showFabMenu = false; showSelectionActions = false; showYalidineMenu = false" class="fixed inset-0 z-[35]"></div>
 
 <!-- ============ Notifications Panel ============ -->
 <div v-if="showNotificationsPanel"
@@ -857,6 +871,7 @@
             // --- أعلام الحالة المشتركة (قابلة للقراءة والكتابة عبر $root) ---
             showYalidineMenu: rootState("showYalidineMenu"),
             showFabMenu: rootState("showFabMenu"),
+            showSelectionActions: rootState("showSelectionActions"),
             showTopMenu: rootState("showTopMenu"),
             showNotificationsPanel: rootState("showNotificationsPanel"),
             showNotificationHistory: rootState("showNotificationHistory"),
@@ -918,7 +933,8 @@
                 return this.page === "home" || this.page === "tasks" || this.page === "archive";
             },
             fabMenuOpen() {
-                return (this.page === "home" || this.page === "archive") && this.showFabMenu === true;
+                return (this.page === "home" || this.page === "archive") &&
+                    (this.showFabMenu === true || (this.page === "home" && this.$root.selectionMode && this.$root.showSelectionActions));
             },
             pendingTasks() {
                 const list = this.$root.tasks || [];
@@ -974,6 +990,14 @@
                     // في صفحة المهام: زر + ينشئ مهمة مباشرة (لا يفتح صفحة المهام)
                     r.showFabMenu = false;
                     global.dispatchEvent(new CustomEvent("swipex:new-task"));
+                    return;
+                }
+                if (this.page === "home" && r.selectionMode) {
+                    r.showSelectionActions = !r.showSelectionActions;
+                    r.showFabMenu = false;
+                    r.showYalidineMenu = false;
+                    r.showTopMenu = false;
+                    r.showNotificationsPanel = false;
                     return;
                 }
                 r.showFabMenu = !r.showFabMenu;

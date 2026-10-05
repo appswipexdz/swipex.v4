@@ -401,11 +401,22 @@
                                 <div class="card-content border-r-4"
                                     :class="[getStatusColor(parcel.status), {'snapping': !isDragging || activeSwipeId !== parcel.id, 'swiping': isDragging && activeSwipeId === parcel.id}]"
                                     @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)"
-                                    @touchend="touchEnd($event, parcel)" :style="getTransformStyle(parcel)">
-                                    <div class="p-3 cursor-pointer relative" @click="toggleExpand(parcel.id)">
+                                    @touchend="touchEnd($event, parcel)" @pointerdown="startParcelSelectionPress(parcel, $event)"
+                                    @click.capture="suppressSelectionLongPressClick($event)"
+                                    @pointerup="finishParcelSelectionPress()" @pointerleave="finishParcelSelectionPress()"
+                                    @pointercancel="cancelParcelSelectionPress()" :style="getTransformStyle(parcel)">
+                                    <div class="p-3 cursor-pointer relative"
+                                        @click="handleParcelCardClick(parcel, $event)">
                                         <div class="parcel-drag-handle absolute right-2 top-1/2 -translate-y-1/2"
                                             @touchstart.stop>
-                                            <div
+                                            <label v-if="selectionMode" class="w-6 h-6 rounded bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer shadow-sm"
+                                                @click.stop>
+                                                <input type="checkbox" :checked="selectedParcelIds.includes(parcel.id)"
+                                                    @change.stop="toggleParcelSelection(parcel.id)"
+                                                    :aria-label="t('selection.select_parcel', { tracking: parcel.tracking })"
+                                                    class="w-4 h-4 accent-red-600 cursor-pointer" />
+                                            </label>
+                                            <div v-else
                                                 class="handle w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
                                                 <i class="fas fa-grip-lines text-[11px]"></i>
                                             </div>
@@ -3038,7 +3049,7 @@
         <!-- Delete Confirm Modal -->
         <transition name="fade">
             <div v-if="showDeleteConfirm" class="fixed inset-0 z-[300] flex items-center justify-center p-4"
-                @click.self="showDeleteConfirm = false; deleteConfirmId = null">
+                @click.self="cancelDeleteConfirm()">
                 <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
                 <div class="relative w-full max-w-sm glass-panel rounded-3xl p-6 animate-scale-in text-center">
                     <div
@@ -3046,21 +3057,57 @@
                         <i class="fas fa-trash-alt text-red-500 text-2xl"></i>
                     </div>
                     <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">
-                        {{ t('confirm.delete_parcel.title') }}
+                        {{ deleteConfirmId !== null ? t('confirm.delete_parcel.title') : t('selection.delete_title') }}
                     </h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        {{ t('confirm.delete_parcel.body') }}
+                        {{ deleteConfirmId !== null ? t('confirm.delete_parcel.body') : t('selection.delete_body', { count: selectedParcelIds.length }) }}
                     </p>
                     <div class="flex gap-3">
-                        <button @click="showDeleteConfirm = false; deleteConfirmId = null"
+                        <button @click="cancelDeleteConfirm()"
                             class="flex-1 py-3 rounded-xl glass-input text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                             {{ t('common.cancel') }}
                         </button>
-                        <button @click="confirmDelete"
+                        <button @click="deleteConfirmId !== null ? confirmDelete() : confirmDeleteSelected()"
                             class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition shadow-lg">
                             <i class="fas fa-trash-alt ml-1"></i>
                             {{ t('common.delete') }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- Bulk status change -->
+        <transition name="fade">
+            <div v-if="showBulkStatusModal" class="fixed inset-0 z-[300] flex items-center justify-center p-4"
+                @click.self="closeBulkStatusModal()">
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                <div class="relative w-full max-w-md max-h-[85vh] overflow-hidden glass-panel rounded-2xl p-5 animate-scale-in flex flex-col">
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-900 dark:text-white">{{ t('selection.change_status') }}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ t('selection.status_warning', { count: selectedParcelIds.length }) }}</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto space-y-2 py-2">
+                        <button v-for="status in allStatuses" :key="status.name" type="button"
+                            @click="bulkStatusTargetName = status.name"
+                            :class="bulkStatusTargetName === status.name ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700 glass-input'"
+                            class="w-full p-3 rounded-xl border flex items-center gap-3 text-start transition">
+                            <span class="w-8 h-8 rounded-full flex items-center justify-center" :class="status.dot">
+                                <i class="fas text-white text-xs" :class="status.icon"></i>
+                            </span>
+                            <span class="flex-1 font-bold text-sm text-gray-800 dark:text-gray-100">{{ statusLabel(status.name) }}</span>
+                            <i v-if="bulkStatusTargetName === status.name" class="fas fa-check text-red-600"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-2 pt-3">
+                        <button @click="closeBulkStatusModal()" class="flex-1 py-3 rounded-xl glass-input text-gray-700 dark:text-gray-300 font-bold">{{ t('common.cancel') }}</button>
+                        <button @click="confirmBulkStatusChange()" :disabled="!bulkStatusTargetName"
+                            class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold disabled:opacity-50">{{ t('selection.apply_status') }}</button>
                     </div>
                 </div>
             </div>

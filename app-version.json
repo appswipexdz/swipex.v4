@@ -1,21 +1,21 @@
 {
-  "version": "4.1.1",
+  "version": "4.2.0",
   "releasedAt": "2026-10-05",
   "notes": {
     "ar": [
-      "شريط تحديث جديد يعرض تفاصيل النسخة ويتيح تأجيلها.",
-      "أصبحت الإصدارات الجديدة تنتظر موافقتك قبل التفعيل.",
-      "يبقى الكاش السابق حتى الموافقة على التحديث."
+      "تحديد عدة طرود بالضغط المطوّل على البطاقة.",
+      "حذف الطرود المحددة أو تغيير حالتها دفعة واحدة.",
+      "تحسينات عامة على إدارة البطاقات."
     ],
     "en": [
-      "A new update banner shows release details and lets you postpone.",
-      "New releases wait for your approval before activation.",
-      "The previous cache remains until you approve the update."
+      "Select multiple parcels by long-pressing a card.",
+      "Delete selected parcels or change their status in bulk.",
+      "General improvements to parcel card management."
     ],
     "fr": [
-      "Une nouvelle bannière affiche les détails et permet de reporter la mise à jour.",
-      "Les nouvelles versions attendent votre accord avant activation.",
-      "L'ancien cache est conservé jusqu'à votre approbation."
+      "Sélectionnez plusieurs colis en maintenant une carte appuyée.",
+      "Supprimez les colis sélectionnés ou modifiez leur statut en lot.",
+      "Améliorations générales de la gestion des cartes."
     ]
   }
 }
