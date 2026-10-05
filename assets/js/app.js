@@ -9,6 +9,8 @@ appState.showImportSummary = false;
 appState.showHistoryModal = false;
 appState.drawerOpen = false;
 
+const { createApp } = Vue;
+
 // الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
 const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
