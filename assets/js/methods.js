@@ -1003,8 +1003,11 @@ const appMethods = {
       }
 
       const savePayload = { tasks: this.tasks };
+      let settingsRevision = null;
       // الإعدادات تُرسَل فقط إن تغيّرت فعلاً منذ آخر إرسال ناجح، وبعد اكتمال أول تحميل للجلسة
       if (this._settingsDirty && firestoreSync._initialLoadDone) {
+        settingsRevision = this._settingsRevision;
+        savePayload.settingsKeys = [...new Set([...this.collectChangedSettingsKeys(), "_sessionDate"])];
         savePayload.settings = JSON.parse(
           JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate }),
         );
@@ -1015,8 +1018,14 @@ const appMethods = {
         .then((ok) => {
           this.syncStatus = ok ? "synced" : "error";
           if (ok && savePayload.settings) {
-            this._settingsDirty = false;
-            this._settingsLocalUpdatedAt = new Date().toISOString();
+            const currentSettings = JSON.stringify({ ...this.settings, _sessionDate: this.sessionDate });
+            const savedSettings = JSON.stringify(savePayload.settings);
+            this._settingsDirty = settingsRevision !== this._settingsRevision || currentSettings !== savedSettings;
+            if (!this._settingsDirty) {
+              this._settingsLocalUpdatedAt = new Date().toISOString();
+              this._settingsSnapshot = JSON.stringify(this.settings);
+              this._settingsChangedKeys = [];
+            }
           }
           console.log(
             ok ? "✓ " + this.t("msg.saved_to_firestore") : "❌ " + this.t("msg.save_failed"),
@@ -1132,6 +1141,9 @@ const appMethods = {
       console.log("⚠ لا توجد بيانات محلية - سيتم التحميل من السحابة فقط");
     }
 
+
+    this._settingsSnapshot = JSON.stringify(this.settings);
+    this._settingsChangedKeys = [];
     // تطبيق الثيم فوراً على البيانات المحلية
     this.applyTheme();
 
@@ -1244,25 +1256,32 @@ const appMethods = {
 
       // اختيار الإعدادات الأحدثة
       if (cloud.settings && typeof cloud.settings === "object") {
-        const selectedSettings = localDataCache?.settings
-          ? this.selectLatestVersion(localDataCache, { settings: cloud.settings }, cloudMetadata, 'settings').settings
-          : cloud.settings;
-        if (selectedSettings) {
-          const { _sessionDate, ...restSettings } = selectedSettings;
-          // استخدام أحدث sessionDate (لا نعيده لتاريخ أقدم مما هو مسجل محلياً)
-          if (_sessionDate) {
-            if (!this.sessionDate || new Date(_sessionDate) > new Date(this.sessionDate)) {
-              this.sessionDate = _sessionDate;
+        if (this._settingsDirty) {
+          console.warn("تم تجاهل إعدادات السحابة لوجود تغييرات محلية لم تُزامن بعد");
+        } else {
+          const selectedSettings = localDataCache?.settings
+            ? this.selectLatestVersion(localDataCache, { settings: cloud.settings }, cloudMetadata, 'settings').settings
+            : cloud.settings;
+          if (selectedSettings) {
+            const { _sessionDate, ...restSettings } = selectedSettings;
+            // استخدام أحدث sessionDate (لا نعيده لتاريخ أقدم مما هو مسجل محلياً)
+            if (_sessionDate) {
+              if (!this.sessionDate || new Date(_sessionDate) > new Date(this.sessionDate)) {
+                this.sessionDate = _sessionDate;
+              }
             }
+            const nextSettings = { ...this.settings, ...restSettings };
+            // لا نعيد تعيين الإعدادات إلا عند تغيّر فعلي (تفادي إعادة التجهيز الثقيلة)
+            if (JSON.stringify(nextSettings) !== JSON.stringify(this.settings)) {
+              this.backupSettingsSnapshot(this.settings, "cloud-overwrite");
+              this.settings = nextSettings;
+              this.normalizeTagSettings();
+            }
+            this._settingsSnapshot = JSON.stringify(this.settings);
+            this._settingsChangedKeys = [];
+            loaded = true;
+            console.log("✓ تم تطبيق الإعدادات الأحدثة");
           }
-          const nextSettings = { ...this.settings, ...restSettings };
-          // لا نعيد تعيين الإعدادات إلا عند تغيّر فعلي (تفادي إعادة التجهيز الثقيلة)
-          if (JSON.stringify(nextSettings) !== JSON.stringify(this.settings)) {
-            this.settings = nextSettings;
-            this.normalizeTagSettings();
-          }
-          loaded = true;
-          console.log("✓ تم تطبيق الإعدادات الأحدثة");
         }
       }
 
@@ -1579,9 +1598,114 @@ const appMethods = {
   saveSettings() {
     this.normalizeStatusGroups();
     this.normalizeTagSettings();
+    this.collectChangedSettingsKeys();
+    this._settingsRevision = (this._settingsRevision || 0) + 1;
     this._settingsDirty = true;
     this.persistBootPrefs();
     this.saveData();
+  },
+
+  collectChangedSettingsKeys() {
+    let previous = {};
+    try {
+      previous = this._settingsSnapshot ? JSON.parse(this._settingsSnapshot) : {};
+    } catch (e) {
+      previous = {};
+    }
+    const keys = new Set(this._settingsChangedKeys || []);
+    const current = this.settings || {};
+    if (this._settingsSnapshot && JSON.stringify(previous) !== JSON.stringify(current)) {
+      this.backupSettingsSnapshot(previous, "before-local-change");
+    }
+    new Set([...Object.keys(previous), ...Object.keys(current)]).forEach((key) => {
+      if (JSON.stringify(previous[key]) !== JSON.stringify(current[key])) keys.add(key);
+    });
+    this._settingsChangedKeys = Array.from(keys);
+    return this._settingsChangedKeys;
+  },
+
+  backupSettingsSnapshot(settings, reason) {
+    if (!settings || typeof settings !== "object") return false;
+    try {
+      const parsed = JSON.parse(localStorage.getItem("swipex_settings_backups") || "[]");
+      const backups = Array.isArray(parsed) ? parsed : [];
+      const serialized = JSON.stringify(settings);
+      if (backups.some((backup) => backup && JSON.stringify(backup.settings) === serialized)) return false;
+      backups.unshift({ createdAt: new Date().toISOString(), reason, settings });
+      localStorage.setItem("swipex_settings_backups", JSON.stringify(backups.slice(0, 10)));
+      this._settingsBackupRevision = (this._settingsBackupRevision || 0) + 1;
+      return true;
+    } catch (e) {
+      console.warn("backupSettingsSnapshot:", e);
+      return false;
+    }
+  },
+
+  downloadSettingsFile(settings, suffix) {
+    const payload = {
+      format: "swipex-settings-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      settings,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `SwiPex_Settings_${suffix}_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  exportSettingsBackup() {
+    this.downloadSettingsFile({ ...this.settings }, "backup");
+  },
+
+  exportPreviousSettingsBackup() {
+    try {
+      const backups = JSON.parse(localStorage.getItem("swipex_settings_backups") || "[]");
+      if (!Array.isArray(backups) || !backups.length) return;
+      this.downloadSettingsFile(backups[0].settings, "recovery");
+    } catch (e) {
+      console.warn("exportPreviousSettingsBackup:", e);
+    }
+  },
+
+  triggerSettingsImport() {
+    if (this.$refs.settingsImportInput) this.$refs.settingsImportInput.click();
+  },
+
+  handleSettingsImport(event) {
+    const input = event && event.target;
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    file.text().then((text) => {
+      const parsed = JSON.parse(text);
+      const imported = parsed && parsed.format === "swipex-settings-backup"
+        ? parsed.settings
+        : parsed && parsed.settings && typeof parsed.settings === "object"
+          ? parsed.settings
+          : parsed;
+      if (!imported || typeof imported !== "object" || Array.isArray(imported)) {
+        throw new Error("invalid settings backup");
+      }
+      if (!Object.keys(this.settings).some((key) => Object.prototype.hasOwnProperty.call(imported, key))) {
+        throw new Error("settings backup contains no known setting keys");
+      }
+      if (!window.confirm(this.t("settings.import_confirm"))) return;
+      this.backupSettingsSnapshot(this.settings, "before-import");
+      const { _sessionDate, ...settings } = imported;
+      this.settings = { ...this.settings, ...settings };
+      this.normalizeStatusGroups();
+      this.normalizeTagSettings();
+      this.saveSettings();
+      this.showToast(this.t("settings.imported"), "success");
+    }).catch((e) => {
+      console.error("handleSettingsImport:", e);
+      this.showToast(this.t("settings.import_failed"), "error");
+    }).finally(() => {
+      if (input) input.value = "";
+    });
   },
 
   // كتابة تفضيلات الواجهة في مفتاح صغير مستقل ('swipex_prefs')
@@ -2554,9 +2678,11 @@ const appMethods = {
       this.statusLongPressTriggered = true;
       const parcel = this.statusModalParcel;
       if (!parcel) return;
-      // ضغط مطوّل = تطبيق فوري، ويُلغي أي عدّاد "تم التسليم" المعلّق لنفس الطرد
+      // الضغط المطوّل تطبيق مباشر؛ لا توقفه نافذة SMS أو احتفال التسليم.
       this.cancelDeliveryConfirm();
-      this.changeStatus(parcel, statusName);
+      this.statusModalParcel = null;
+      this.closeStatusSmsConfirm();
+      this.setParcelStatus(parcel, statusName, null, { skipCelebration: true });
       if (!['دون إجراء', 'في الإنتظار'].includes(statusName) && parcel.tracking) {
         this.openYalidine(parcel.tracking, parcel);
       }
@@ -2587,7 +2713,7 @@ const appMethods = {
     }
     if (!this.statusModalParcel) return;
 
-    if (statusName === "تم التسليم") {
+    if (statusName === "تم التسليم" && this.settings.deliveryConfirmEnabled !== false) {
       const parcel = this.statusModalParcel;
       this.statusModalParcel = null; // إغلاق القائمة فوراً
       this.startDeliveryConfirm(parcel, statusName);
@@ -2607,17 +2733,20 @@ const appMethods = {
   // ========== تأكيد "تم التسليم" بعد 3 ثوانٍ (دائرة × في وسط البطاقة) ==========
   startDeliveryConfirm(parcel, statusName) {
     this.clearDeliveryConfirm();
+    const seconds = Math.max(1, Math.min(30, Number(this.settings.deliveryConfirmSeconds) || 3));
     const o = this._celebrationOrigin(parcel);
     this.pendingDeliveryConfirm = {
       parcelId: parcel.id,
       x: o.x,
       y: o.y,
+      seconds,
       token: ++this._celebrationToken,
     };
     this._deliveryConfirmTimer = setTimeout(() => {
+      this._deliveryConfirmTimer = null;
       this.pendingDeliveryConfirm = null;
       this.changeStatus(parcel, statusName);
-    }, 3000);
+    }, seconds * 1000);
   },
 
   cancelDeliveryConfirm() {
@@ -2632,7 +2761,7 @@ const appMethods = {
     }
   },
 
-  setParcelStatus(parcel, newStatus, onSaved) {
+  setParcelStatus(parcel, newStatus, onSaved, options = {}) {
     const saveStatus = () => {
       if (parcel.status !== newStatus) {
         parcel.status = newStatus;
@@ -2643,7 +2772,7 @@ const appMethods = {
       if (onSaved) onSaved();
     };
 
-    if (newStatus === "تم التسليم") {
+    if (newStatus === "تم التسليم" && !options.skipCelebration) {
       this.celebrateDelivered(parcel, saveStatus);
     } else {
       saveStatus();
@@ -4394,10 +4523,11 @@ const appMethods = {
         // حفظ الإعدادات والمهام فقط (كتلة واحدة صغيرة لكل منهما - لا كتلة طرود/أرشيف)
         console.log("💾 حفظ البيانات المدمجة...");
 
-        const syncPayload = {
-          settings: { ...this.settings, _sessionDate: this.sessionDate },
-          tasks: this.tasks,
-        };
+        const syncPayload = { tasks: this.tasks };
+        if (this._settingsDirty) {
+          syncPayload.settings = { ...this.settings, _sessionDate: this.sessionDate };
+          syncPayload.settingsKeys = [...new Set([...this.collectChangedSettingsKeys(), "_sessionDate"])];
+        }
         const saved = await Promise.race([
           firestoreSync.saveAll(syncPayload),
           new Promise((_, reject) =>

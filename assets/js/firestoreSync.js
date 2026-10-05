@@ -4,6 +4,7 @@ const firestoreSync = {
     _maxRetries: 10,
     _retryCount: 0,
     _initialLoadDone: false,  // منع الكتابة قبل اكتمال أول تحميل
+    _settingsSaveQueue: Promise.resolve(),
 
     // تخطي التحميل الأولي (يستخدم عند العمل داخل جلسة تعاونية)
     skipInitialLoadCheck() {
@@ -78,25 +79,49 @@ const firestoreSync = {
         }
     },
 
-    async saveSettings(settings) {
-        this.updateSyncStatus('syncing');
-        try {
-            const ref = this._docRef('settings');
-            if (!ref) {
+    saveSettings(settings, changedKeys) {
+        const keysToSave = Array.isArray(changedKeys) ? changedKeys : Object.keys(settings || {});
+        if (!keysToSave.length) return Promise.resolve(true);
+        const save = async () => {
+            this.updateSyncStatus('syncing');
+            try {
+                const ref = this._docRef('settings');
+                if (!ref || !window.db || typeof window.db.runTransaction !== 'function') {
+                    this.updateSyncStatus('error');
+                    return false;
+                }
+                await window.db.runTransaction(async (transaction) => {
+                    const snapshot = await transaction.get(ref);
+                    let mergedSettings = {};
+                    if (snapshot.exists && snapshot.data().data) {
+                        try {
+                            mergedSettings = JSON.parse(snapshot.data().data);
+                        } catch (e) {
+                            throw new Error('تعذر قراءة إعدادات السحابة؛ أُوقف الحفظ لحمايتها من الاستبدال');
+                        }
+                    }
+                    keysToSave.forEach((key) => {
+                        if (Object.prototype.hasOwnProperty.call(settings, key)) {
+                            mergedSettings[key] = settings[key];
+                        } else {
+                            delete mergedSettings[key];
+                        }
+                    });
+                    transaction.set(ref, {
+                        data: JSON.stringify(mergedSettings),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                });
+                this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
+                return true;
+            } catch (e) {
+                console.error('firestoreSync.saveSettings:', e);
                 this.updateSyncStatus('error');
                 return false;
             }
-            await ref.set({
-                data: JSON.stringify(settings),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-            this.updateSyncStatus(navigator.onLine ? 'synced' : 'offline');
-            return true;
-        } catch (e) {
-            console.error('firestoreSync.saveSettings:', e);
-            this.updateSyncStatus('error');
-            return false;
-        }
+        };
+        this._settingsSaveQueue = this._settingsSaveQueue.catch(() => false).then(save);
+        return this._settingsSaveQueue;
     },
 
     async saveArchive(archive) {
@@ -232,7 +257,7 @@ const firestoreSync = {
         try {
             const results = await Promise.all([
                 data.parcels !== undefined ? this.saveParcels(data.parcels) : true,
-                data.settings !== undefined ? this.saveSettings(data.settings) : true,
+                data.settings !== undefined ? this.saveSettings(data.settings, data.settingsKeys) : true,
                 data.archive !== undefined ? this.saveArchive(data.archive) : true,
                 data.tasks !== undefined ? this.saveTasks(data.tasks) : true
             ]);

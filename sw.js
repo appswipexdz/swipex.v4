@@ -1,4 +1,5 @@
-const CACHE_NAME = 'swipex-v4-shell-15';
+const CACHE_NAME = 'swipex-v4-shell-21';
+const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
 // Workers، وحارس الرجوع يجب أن يكون رابطاً مباشراً لا إعادة توجيه.
@@ -12,6 +13,7 @@ const ASSETS_TO_CACHE = [
   './settings',
   './login',
   './manifest.json',
+  './app-version.json',
   './assets/css/style.css',
   './assets/js/boot-prefs.js',
   './assets/js/app.js',
@@ -75,9 +77,10 @@ self.addEventListener('install', (event) => {
   console.log('[SW] Installing...');
   event.waitUntil(
     cacheAllAssets()
-      .then(() => {
+      .then(async () => {
         console.log('[SW] Installation complete - App ready for offline use');
-        return self.skipWaiting();
+        // One bootstrap update installs the consent UI; later workers wait for approval.
+        if (!(await caches.has(UPDATE_CONTROL_CACHE))) return self.skipWaiting();
       })
   );
 });
@@ -88,7 +91,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== UPDATE_CONTROL_CACHE) {
             console.log('[SW] Deleting old cache:', key);
             return caches.delete(key);
           }
@@ -105,6 +108,7 @@ self.addEventListener('activate', (event) => {
 function isNetworkOnly(url, request) {
   if (request.method !== 'GET') return true;
   if (url.searchParams.has('__connectivity_check')) return true;
+  if (url.pathname.endsWith('/app-version.json')) return true;
   if (url.hostname === 'www.gstatic.com' || url.hostname.endsWith('googleapis.com')) return true;
   if (url.hostname.endsWith('firebaseio.com') || url.hostname.endsWith('firebaseapp.com')) return true;
   if (url.hostname.endsWith('google-analytics.com')) return true;
@@ -247,6 +251,19 @@ function checkScheduledReminders() {
 }
 
 self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_APP_VERSION' && event.ports && event.ports[0]) {
+    event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        const response = await cache.match(new URL('./app-version.json', self.location.href));
+        const release = response ? await response.json() : null;
+        event.ports[0].postMessage({ type: 'APP_VERSION', release });
+      } catch (e) {
+        event.ports[0].postMessage({ type: 'APP_VERSION', release: null });
+      }
+    })());
+  }
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

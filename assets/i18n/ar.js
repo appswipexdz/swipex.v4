@@ -20,6 +20,11 @@ window.i18n_ar = {
     "nav.menu": "القائمة",
     "nav.new_task": "مهمة جديدة",
     "nav.quick_actions": "إجراءات سريعة",
+    "update.available": "يتوفر تحديث جديد للتطبيق",
+    "update.generic_note": "يتضمن هذا التحديث تحسينات للتطبيق.",
+    "update.apply": "تحديث الآن",
+    "update.applying": "جارٍ تطبيق التحديث...",
+    "update.later": "لاحقًا",
 
     "topmenu.import_pdf": "استيراد ملف PDF",
     "topmenu.import_excel": "استيراد ملف Excel",
@@ -86,8 +91,8 @@ window.i18n_ar = {
 
     // ============ الاحتفال عند التسليم ============
     "celebration.milestone": "ممتاز — تم تسليم {{count}} طرداً اليوم",
-    "celebration.goal_title": "تم تسليم كل الطرد اليوم",
-    "celebration.goal_sub": "{{count}} طرداً في يوم واحد — عمل ممتاز",
+    "celebration.goal_title": "رائع! تم تسليم أول طرد لهذا اليوم",
+    "celebration.goal_sub": "بداية موفقة",
 
     // ============ شاشة التحميل ============
     "app.loading": "جاري تحميل التطبيق...",
@@ -815,6 +820,9 @@ window.i18n_ar = {
     "settings.status_empty": "لا توجد حالات مخصصة",
     "settings.status_reorder": "ترتيب الحالات",
     "settings.status_reorder_hint": "اسحب أو استخدم الأسهم لإعادة ترتيب الحالات كما تظهر في نافذة تغيير الحالة.",
+    "settings.delivery_confirm": "تأخير تأكيد تم التسليم",
+    "settings.delivery_confirm_desc": "إظهار عدّاد قابل للإلغاء قبل تطبيق حالة التسليم.",
+    "settings.delivery_confirm_seconds": "مدة العدّاد بالثواني",
     "settings.status_default_order": "الحالات الأساسية",
 
     "settings.sms_template": "قالب رسالة التسليم",
@@ -837,6 +845,12 @@ window.i18n_ar = {
     "settings.favorites_empty": "لا توجد أرقام مفضلة",
 
     "settings.data_export": "تصدير إلى Excel",
+    "settings.export_settings": "تنزيل نسخة من الإعدادات",
+    "settings.import_settings": "استيراد إعدادات من ملف",
+    "settings.recover_settings": "تنزيل آخر نسخة تلقائية",
+    "settings.import_confirm": "سيتم استبدال الإعدادات الحالية بما في الملف. تم حفظ نسخة تلقائية من الإعدادات الحالية. هل تريد المتابعة؟",
+    "settings.imported": "تم استيراد الإعدادات وحفظها",
+    "settings.import_failed": "تعذر استيراد الملف. تأكد أنه ملف إعدادات SwiPex صالح.",
     "settings.data_import_pdf": "استيراد ملف PDF",
     "settings.data_import_excel": "استيراد ملف Excel",
     "settings.data_archive": "الأرشيف",

@@ -27,5 +27,8 @@
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
+/app-version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /manifest.json
   Cache-Control: max-age=0, must-revalidate

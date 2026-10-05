@@ -76,7 +76,7 @@
                 <svg class="delivery-confirm-svg" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="3"></circle>
                     <circle cx="18" cy="18" r="16" fill="none" stroke="#ef4444" stroke-width="3"
-                        class="delivery-confirm-ring"></circle>
+                        class="delivery-confirm-ring" :style="{ animationDuration: pendingDeliveryConfirm.seconds + 's' }"></circle>
                 </svg>
                 <i class="fas fa-xmark delivery-confirm-x"></i>
             </div>

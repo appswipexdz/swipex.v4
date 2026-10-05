@@ -248,6 +248,39 @@
 
     // ============ الشريط السفلي +FAB + المودالات المشتركة ============
     const ShellTemplate = `
+<div v-if="$root.appUpdateAvailable" class="fixed inset-x-0 top-0 z-[250] p-2 sm:p-3 pointer-events-none"
+    role="status" aria-live="polite">
+    <section class="pointer-events-auto mx-auto max-w-3xl rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-white/95 dark:bg-gray-900/95 shadow-xl backdrop-blur-md">
+        <div class="flex items-start gap-3 p-3 sm:p-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h2 class="font-bold text-gray-900 dark:text-white">{{ t('update.available') }}</h2>
+                    <span v-if="appUpdateVersion" class="text-xs font-bold text-emerald-700 dark:text-emerald-300">v{{ appUpdateVersion }}</span>
+                </div>
+                <ul v-if="appUpdateNotes.length" class="mt-1.5 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                    <li v-for="(note, index) in appUpdateNotes" :key="index" class="flex gap-2">
+                        <span class="text-emerald-500">•</span><span>{{ note }}</span>
+                    </li>
+                </ul>
+                <p v-else class="mt-1 text-xs text-gray-600 dark:text-gray-300">{{ t('update.generic_note') }}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" @click="$root.applyAppUpdate()" :disabled="$root.appUpdateApplying"
+                        class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
+                        {{ $root.appUpdateApplying ? t('update.applying') : t('update.apply') }}
+                    </button>
+                    <button type="button" @click="$root.dismissAppUpdate()" :disabled="$root.appUpdateApplying"
+                        class="px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 transition">
+                        {{ t('update.later') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
 <!-- ============ Bottom Navigation Bar ============ -->
 <div class="bottom-nav" v-if="navVisible">
     <div class="bottom-nav-inner">
@@ -811,6 +844,15 @@
         computed: {
             page() {
                 return this.$root.appPage;
+            },
+            appUpdateVersion() {
+                return (this.$root.appUpdateInfo && this.$root.appUpdateInfo.version) || '';
+            },
+            appUpdateNotes() {
+                const info = this.$root.appUpdateInfo || {};
+                const language = (this.$root.settings && this.$root.settings.language) || 'ar';
+                const notes = info.notes || {};
+                return notes[language] || notes.ar || [];
             },
             // --- أعلام الحالة المشتركة (قابلة للقراءة والكتابة عبر $root) ---
             showYalidineMenu: rootState("showYalidineMenu"),

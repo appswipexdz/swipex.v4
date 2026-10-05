@@ -13,6 +13,110 @@ const { createApp } = Vue;
 
 // الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
 const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
+const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
+let pendingAppUpdateWorker = null;
+let appServiceWorkerRegistration = null;
+
+function readWorkerRelease(worker) {
+    if (!worker || typeof MessageChannel === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const timeout = setTimeout(() => {
+            channel.port1.close();
+            resolve(null);
+        }, 2000);
+        channel.port1.onmessage = (event) => {
+            clearTimeout(timeout);
+            channel.port1.close();
+            resolve(event.data && event.data.release ? event.data.release : null);
+        };
+        try {
+            worker.postMessage({ type: 'GET_APP_VERSION' }, [channel.port2]);
+        } catch (e) {
+            clearTimeout(timeout);
+            channel.port1.close();
+            resolve(null);
+        }
+    });
+}
+
+async function fetchReleaseInfo() {
+    try {
+        const response = await fetch('./app-version.json', { cache: 'no-store' });
+        return response.ok ? await response.json() : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function initializeAppUpdates(app) {
+    if (app._appUpdateFlowInitialized || !('serviceWorker' in navigator)) return;
+    app._appUpdateFlowInitialized = true;
+
+    const dismissKey = (version) => `swipex-update-dismissed-${version || 'available'}`;
+    const announceWaitingWorker = async (registration) => {
+        const worker = registration.waiting;
+        if (!worker) return;
+        pendingAppUpdateWorker = worker;
+
+        const release = await readWorkerRelease(worker) || await fetchReleaseInfo();
+
+        app.appUpdateInfo = release && typeof release === 'object'
+            ? release
+            : { version: '', notes: {} };
+        app.appUpdateDismissKey = dismissKey(app.appUpdateInfo.version);
+        if (sessionStorage.getItem(app.appUpdateDismissKey) !== '1') {
+            app.appUpdateAvailable = true;
+        }
+    };
+
+    // This marker tells the next worker release that the consent UI is installed.
+    if ('caches' in window) {
+        caches.open(UPDATE_CONTROL_CACHE).then((cache) =>
+            cache.put(new URL('./ready', window.location.href), new Response('ready'))
+        ).catch((e) => console.warn('تعذر تهيئة تحديثات التطبيق:', e));
+    }
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!app.appUpdateApplying) return;
+        const version = app.appUpdateInfo && app.appUpdateInfo.version;
+        if (version) localStorage.setItem('swipex_app_version', version);
+        window.location.reload();
+    });
+
+    navigator.serviceWorker.ready.then((registration) => {
+        appServiceWorkerRegistration = registration;
+        readWorkerRelease(registration.active).then((release) => {
+            if (!release || !release.version) return;
+            app.appVersion = release.version;
+            localStorage.setItem('swipex_app_version', release.version);
+        });
+        registration.addEventListener('updatefound', () => {
+            const installing = registration.installing;
+            if (!installing) return;
+            installing.addEventListener('statechange', () => {
+                if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    announceWaitingWorker(registration);
+                }
+            });
+        });
+
+        announceWaitingWorker(registration);
+
+        const lastCheck = Number(localStorage.getItem('swipex_update_last_check') || 0);
+        if (navigator.onLine && Date.now() - lastCheck > 6 * 60 * 60 * 1000) {
+            registration.update().then(() => {
+                localStorage.setItem('swipex_update_last_check', String(Date.now()));
+                announceWaitingWorker(registration);
+            }).catch((e) => console.warn('تعذر التحقق من تحديث التطبيق:', e));
+        }
+
+        window.addEventListener('online', () => {
+            registration.update().then(() => announceWaitingWorker(registration))
+                .catch((e) => console.warn('تعذر التحقق من تحديث التطبيق:', e));
+        });
+    }).catch((e) => console.warn('تعذر بدء فحص تحديث التطبيق:', e));
+}
 
 const appOptions = {
     data() {
@@ -28,6 +132,15 @@ const appOptions = {
             const entry = registry[lang] || registry[window.i18nDefaultLang || "ar"];
             const pack = entry ? (typeof entry === "function" ? entry() : entry) : null;
             return ((pack && pack.meta && pack.meta.dir) || "rtl") === "rtl";
+        },
+        settingsBackupAvailable() {
+            const revision = this._settingsBackupRevision;
+            try {
+                const backups = JSON.parse(localStorage.getItem("swipex_settings_backups") || "[]");
+                return Number.isFinite(revision) && Array.isArray(backups) && backups.length > 0;
+            } catch (e) {
+                return false;
+            }
         },
         // i18n: خريطة مفاتيح محرر SMS → عناوين القواميس (العربية/الفرنسية/الإنجليزية)
         smsEditorTitleKeys() {
@@ -286,6 +399,7 @@ const appOptions = {
         mergeGlobalMethods('pdfFunctions');
         mergeGlobalMethods('importExcelFunctions');
         mergeGlobalMethods('scannerFunctions');
+        initializeAppUpdates(this);
 
         // تحميل المستخدم أولاً (متزامن)
         console.log('🚀 بدء التطبيق...');
@@ -499,6 +613,21 @@ const appOptions = {
         ...(typeof window.pdfFunctions !== 'undefined' ? window.pdfFunctions : {}),
         ...(typeof window.importExcelFunctions !== 'undefined' ? window.importExcelFunctions : {}),
         ...(typeof window.scannerFunctions !== 'undefined' ? window.scannerFunctions : {}),
+
+        dismissAppUpdate() {
+            if (this.appUpdateDismissKey) sessionStorage.setItem(this.appUpdateDismissKey, '1');
+            this.appUpdateAvailable = false;
+        },
+
+        applyAppUpdate() {
+            const worker = pendingAppUpdateWorker || appServiceWorkerRegistration?.waiting;
+            if (!worker) {
+                this.appUpdateAvailable = false;
+                return;
+            }
+            this.appUpdateApplying = true;
+            worker.postMessage({ type: 'SKIP_WAITING' });
+        },
         
         // تحديث حالة الإنترنت
         async checkInternetConnection() {

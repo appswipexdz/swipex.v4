@@ -68,6 +68,7 @@
 
         <input type="file" ref="fileInput" @change="handleFileUpload" class="hidden" accept=".xlsx, .xls, .csv" />
         <input type="file" ref="pdfInput" @change="handlePdfUpload" class="hidden" accept=".pdf" />
+        <input type="file" ref="settingsImportInput" @change="handleSettingsImport" class="hidden" accept=".json,application/json" />
 
         <!-- ============ صفحة الإعدادات ============ -->
         <div class="min-h-screen">
@@ -569,6 +570,27 @@
                             :class="{ 'rotate-180': settingsExpanded.statuses }"></i>
                     </div>
                     <div v-show="settingsExpanded.statuses" class="px-4 pb-4 space-y-3">
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-xl glass-panel">
+                            <div class="min-w-0">
+                                <div class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ t('settings.delivery_confirm') }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('settings.delivery_confirm_desc') }}</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" v-model="settings.deliveryConfirmEnabled" @change="saveSettings()" class="sr-only peer" />
+                                <div class="w-12 h-7 rounded-full transition-all relative overflow-hidden"
+                                    :class="settings.deliveryConfirmEnabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'">
+                                    <span class="absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all"
+                                        :class="settings.deliveryConfirmEnabled ? 'left-1' : 'right-1'"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <label class="flex items-center justify-between gap-3 px-3 py-2 text-sm font-bold text-gray-700 dark:text-gray-200">
+                            <span>{{ t('settings.delivery_confirm_seconds') }}</span>
+                            <input type="number" min="1" max="30" step="1" v-model.number="settings.deliveryConfirmSeconds"
+                                @change="settings.deliveryConfirmSeconds = Math.max(1, Math.min(30, Number(settings.deliveryConfirmSeconds) || 3)); saveSettings()"
+                                :disabled="!settings.deliveryConfirmEnabled"
+                                class="w-20 p-2 rounded-lg glass-input text-center disabled:opacity-50" />
+                        </label>
                         <div class="flex gap-2">
                             <input v-model="newCustomStatus.name" @keyup.enter="addCustomStatus"
                                 :placeholder="t('settings.status_name')"
@@ -948,6 +970,21 @@
                             <i class="fas fa-file-export"></i>
                             {{ t('settings.data_export') }}
                         </button>
+                        <button @click="exportSettingsBackup"
+                            class="w-full bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                            <i class="fas fa-file-download"></i>
+                            {{ t('settings.export_settings') }}
+                        </button>
+                        <button @click="triggerSettingsImport"
+                            class="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                            <i class="fas fa-file-upload"></i>
+                            {{ t('settings.import_settings') }}
+                        </button>
+                        <button v-if="settingsBackupAvailable" @click="exportPreviousSettingsBackup"
+                            class="w-full bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                            <i class="fas fa-history"></i>
+                            {{ t('settings.recover_settings') }}
+                        </button>
                         <button @click="manualArchive"
                             class="w-full bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
                             <i class="fas fa-box-archive"></i>
@@ -981,7 +1018,7 @@
                                     {{ t('settings.section_info') }}
                                 </h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ t('settings.info_version') }} v4.0
+                                    {{ t('settings.info_version') }} v{{ appVersion }}
                                 </p>
                             </div>
                         </div>
@@ -992,7 +1029,7 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t('settings.info_version') }}</span>
-                                <span class="font-bold text-gray-800 dark:text-white">v4.0</span>
+                                <span class="font-bold text-gray-800 dark:text-white">v{{ appVersion }}</span>
                             </div>
                             <div class="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                                 <span class="text-gray-500 dark:text-gray-400">{{ t('settings.info_parcel_count') }}</span>
@@ -1016,7 +1053,7 @@
                 </button>
 
                 <div class="pt-2 text-center text-xs text-gray-400">
-                    <p>SwiPex Pro v4.0 © 2026</p>
+                    <p>SwiPex Pro v{{ appVersion }} © 2026</p>
                 </div>
             </div>
         </div>

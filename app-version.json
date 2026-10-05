@@ -1,0 +1,21 @@
+{
+  "version": "4.1.1",
+  "releasedAt": "2026-10-05",
+  "notes": {
+    "ar": [
+      "شريط تحديث جديد يعرض تفاصيل النسخة ويتيح تأجيلها.",
+      "أصبحت الإصدارات الجديدة تنتظر موافقتك قبل التفعيل.",
+      "يبقى الكاش السابق حتى الموافقة على التحديث."
+    ],
+    "en": [
+      "A new update banner shows release details and lets you postpone.",
+      "New releases wait for your approval before activation.",
+      "The previous cache remains until you approve the update."
+    ],
+    "fr": [
+      "Une nouvelle bannière affiche les détails et permet de reporter la mise à jour.",
+      "Les nouvelles versions attendent votre accord avant activation.",
+      "L'ancien cache est conservé jusqu'à votre approbation."
+    ]
+  }
+}
