@@ -1,15 +1,15 @@
 {
-  "version": "4.3.0",
+  "version": "4.4.0",
   "releasedAt": "2026-10-07",
   "notes": {
     "ar": [
-      "تصحيح في ظهور علبة حوار SMS."
+      "إنشاء service-worker.js وتصحيح manifest وأيقونات الإعداد لأجل تحويل التطبيق إلى APK."
     ],
     "en": [
-      "Fixed SMS dialog appearance."
+      "Added service-worker.js and fixed the manifest and install icons for APK packaging."
     ],
     "fr": [
-      "Correction de l'affichage de la boîte de dialogue SMS."
+      "Ajout de service-worker.js et correction du manifest et des icônes pour l'empaquetage APK."
     ]
   }
 }

@@ -688,7 +688,7 @@ const appOptions = {
                     return;
                 }
 
-                // لا يوجد عامل خدمة منتظر: إمّا أن sw.js على الخادم مطابق للمثبَّت،
+                // لا يوجد عامل خدمة منتظر: إمّا أن service-worker.js على الخادم مطابق للمثبَّت،
                 // أو لا نعرف النسخة النشطة. نقارن فقط عندما تكون معروفة، وإلا فلا
                 // نَزعم وجود إصدار أحدث لم نتمكّن من إثباته.
                 const activeRelease = await readWorkerRelease(registration.active);
