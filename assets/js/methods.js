@@ -2830,13 +2830,19 @@ const appMethods = {
       this.statusLongPressTriggered = true;
       const parcel = this.statusModalParcel;
       if (!parcel) return;
-      // الضغط المطوّل تطبيق مباشر؛ لا توقفه نافذة SMS أو احتفال التسليم.
+      // الضغط المطوّل تطبيق مباشر؛ لا توقفه احتفال التسليم.
       this.cancelDeliveryConfirm();
       this.statusModalParcel = null;
       this.closeStatusSmsConfirm();
       this.setParcelStatus(parcel, statusName, null, { skipCelebration: true });
       if (!['دون إجراء', 'في الإنتظار'].includes(statusName) && parcel.tracking) {
         this.openYalidine(parcel.tracking, parcel);
+      }
+      // علبة حوار إرسال SMS تُفتح بعد فتح ياليند لتظهر عند العودة للتطبيق
+      if (!this.shouldSkipStatusSmsConfirm(parcel, statusName)) {
+        this.statusSmsConfirmParcel = parcel;
+        this.statusSmsConfirmStatus = statusName;
+        this.showStatusSmsConfirm = true;
       }
     }, 550);
   },
@@ -2931,20 +2937,28 @@ const appMethods = {
     }
   },
 
-  changeStatus(parcel, newStatus) {
-    // لا تفتح Yalidine عند النقر العادي؛ فقط عند الضغط المطوّل.
-    const statusSmsEnabled =
+  isStatusSmsEnabled(newStatus) {
+    return (
       (newStatus === "مغلق" && this.settings.smsOnStatusClosed) ||
       (newStatus === "لا يرد" && this.settings.smsOnStatusNoAnswer) ||
-      (newStatus === "رقم خاطئ" && this.settings.smsOnStatusWrongNumber);
+      (newStatus === "رقم خاطئ" && this.settings.smsOnStatusWrongNumber)
+    );
+  },
 
-    if (statusSmsEnabled) {
-      // توفير الرسائل: تخطي التأكيد إذا الطرد من يوم سابق وتم مراسله
-      const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
-      if (this.settings.smsSaving && parcel.isUpdated && alreadySent) {
+  // توفير الرسائل: تخطي نافذة التأكيد إذا الطرد من يوم سابق وتم مراسله
+  shouldSkipStatusSmsConfirm(parcel, newStatus) {
+    if (!this.isStatusSmsEnabled(newStatus)) return true;
+    const alreadySent = newStatus === "رقم خاطئ" ? parcel.senderSmsSent : parcel.smsSent;
+    return Boolean(this.settings.smsSaving && parcel.isUpdated && alreadySent);
+  },
+
+  changeStatus(parcel, newStatus) {
+    // لا تفتح Yalidine عند النقر العادي؛ فقط عند الضغط المطوّل.
+    if (this.isStatusSmsEnabled(newStatus)) {
+      if (this.shouldSkipStatusSmsConfirm(parcel, newStatus)) {
         this.setParcelStatus(parcel, newStatus);
         this.statusModalParcel = null;
-      return;
+        return;
       }
       this.statusSmsConfirmParcel = parcel;
       this.statusSmsConfirmStatus = newStatus;

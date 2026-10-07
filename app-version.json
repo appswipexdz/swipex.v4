@@ -1,24 +1,15 @@
 {
-  "version": "4.2.3",
-  "releasedAt": "2026-10-05",
+  "version": "4.3.0",
+  "releasedAt": "2026-10-07",
   "notes": {
     "ar": [
-      "تحديد عدة طرود بالضغط المطوّل على البطاقة.",
-      "حذف الطرود المحددة أو تغيير حالتها دفعة واحدة.",
-      "إضافة فحص يدوي للتحديثات مع مقارنة دقيقة لأرقام الإصدارات.",
-      "إصلاح بدء التطبيق بعد تحديث النسخة."
+      "تصحيح في ظهور علبة حوار SMS."
     ],
     "en": [
-      "Select multiple parcels by long-pressing a card.",
-      "Delete selected parcels or change their status in bulk.",
-      "Added a manual update check with proper version comparison.",
-      "Fixed app startup after updating."
+      "Fixed SMS dialog appearance."
     ],
     "fr": [
-      "Sélectionnez plusieurs colis en maintenant une carte appuyée.",
-      "Supprimez les colis sélectionnés ou modifiez leur statut en lot.",
-      "Ajout d'une recherche manuelle avec comparaison correcte des versions.",
-      "Correction du démarrage après la mise à jour."
+      "Correction de l'affichage de la boîte de dialogue SMS."
     ]
   }
 }
