@@ -145,6 +145,8 @@ window.i18n_fr = {
     "parcel.location": "Localisation",
     "parcel.save_current_location": "Enregistrer la position actuelle",
     "parcel.pick_on_map": "Choisir sur la carte",
+    "parcel.save_location_short": "Enregistrer",
+    "parcel.pick_location_short": "Localiser",
     "parcel.location_hint": "Choisissez un emplacement manuellement sur la carte ou utilisez la position actuelle de l'appareil.",
     "parcel.open_in_maps": "Ouvrir dans Maps",
     "parcel.clear_location": "Effacer la localisation",
@@ -807,6 +809,8 @@ window.i18n_fr = {
     "settings.tag_order_reset": "Réinitialiser l'ordre par défaut",
 
     "settings.tags_smart_sort_desc": "Trie automatiquement les colis selon l'ordre des étiquettes après réorganisation.",
+    "settings.card_tracking": "Suivi de la carte",
+    "settings.card_tracking_desc": "Défilement automatique pour garder la carte visible après l'étiquetage et le tri avec les colis de même étiquette.",
     "settings.status_group_empty": "Aucun groupe - créez un groupe pour organiser les statuts dans la fenêtre de changement de statut et les statistiques",
     "settings.group_layout": "Disposition :",
     "settings.group_layout_row": "Côte à côte",

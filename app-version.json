@@ -1,15 +1,27 @@
 {
-  "version": "4.4.0",
-  "releasedAt": "2026-10-07",
+  "version": "4.5.1",
+  "releasedAt": "2026-10-12",
   "notes": {
     "ar": [
-      "إنشاء service-worker.js وتصحيح manifest وأيقونات الإعداد لأجل تحويل التطبيق إلى APK."
+      "تحسين التحديد المتعدد والخروج التلقائي منه.",
+      "إصلاح البحث برقم الهاتف وحفظ الحالة والملاحظات.",
+      "إعادة تنظيم البطاقة الموسعة ودمج التمييز وحالات SMS والتذكير ضمن الملاحظات.",
+      "إضافة زري موقع مصغّرين وشريط تقدم قابل للتخصيص حسب الإعدادات.",
+      "إضافة التمرير التلقائي لتتبّع البطاقة بعد تمييزها، مع إمكانية تفعيل الميزة أو تعطيلها من الإعدادات."
     ],
     "en": [
-      "Added service-worker.js and fixed the manifest and install icons for APK packaging."
+      "Improved multi-selection with automatic exit from selection mode.",
+      "Fixed phone number search and status/note saving.",
+      "Reorganized the expanded card, merging the tag, SMS states and reminder into the notes.",
+      "Added two compact location buttons and a progress bar customizable from Settings.",
+      "Added automatic scrolling to track the card after tagging, with the option to enable or disable it in Settings."
     ],
     "fr": [
-      "Ajout de service-worker.js et correction du manifest et des icônes pour l'empaquetage APK."
+      "Sélection multiple améliorée avec sortie automatique du mode de sélection.",
+      "Recherche par numéro de téléphone corrigée et enregistrement du statut et des notes réparé.",
+      "Carte étendue réorganisée : étiquette, états SMS et rappel intégrés dans les notes.",
+      "Ajout de deux boutons de localisation compacts et d'une barre de progression personnalisable depuis les paramètres.",
+      "Ajout du défilement automatique pour suivre la carte après son étiquetage, avec possibilité d'activer ou de désactiver la fonction dans les paramètres."
     ]
   }
 }

@@ -1782,14 +1782,32 @@ const appMethods = {
 
   openNoteModal(parcel) {
     this.smartTagSortingPaused = true;
+    this.noteModalParcelId = parcel ? parcel.id : null;
     this.noteModalParcel = parcel;
     this.showNoteModal = true;
   },
 
   closeNoteModal() {
+    // مصالحة الملاحظة مع الكائن الحي: قد يُستبدل مرجع الطرد أثناء الدمج/المزامنة
+    const modalParcel = this.noteModalParcel;
+    if (modalParcel) {
+      const live =
+        (this.parcels || []).find((p) => p.id === modalParcel.id) || null;
+      if (live && live !== modalParcel) {
+        if ((live.notes || "") !== (modalParcel.notes || "")) {
+          live.notes = modalParcel.notes || "";
+        }
+        this.markParcelDirty(live);
+      } else if (live) {
+        this.markParcelDirty(live);
+      } else {
+        this.markParcelDirty(modalParcel);
+      }
+    }
     this.saveData();
     this.showNoteModal = false;
     this.noteModalParcel = null;
+    this.noteModalParcelId = null;
     this.resumeSmartTagSorting();
   },
 
@@ -2356,16 +2374,34 @@ const appMethods = {
   },
 
   copyCustomerHistoryDetails(item) {
-    if (!item || !this.customerHistoryParcel) return;
+    if (!item || !this.customerHistoryParcel) return false;
 
     const parcel = this.customerHistoryParcel;
     parcel.municipality = item.municipality || '';
     parcel.tag = item.tag || '';
     parcel.notes = item.notes || '';
-    this.markParcelDirty(parcel);
 
-    this.saveData();
+    const copied =
+      parcel.municipality === (item.municipality || '') &&
+      parcel.tag === (item.tag || '') &&
+      parcel.notes === (item.notes || '');
+    if (!copied) {
+      this.showToast(this.t('msg.save_failed'), 'error');
+      return false;
+    }
+
+    this.markParcelDirty(parcel);
+    try {
+      this.saveData();
+    } catch (e) {
+      console.error('فشل نسخ بيانات سجل العميل:', e);
+      this.showToast(this.t('msg.save_failed'), 'error');
+      return false;
+    }
+
     this.showToast(this.t('msg.tag_notes_copied'), 'success');
+    this.showCustomerHistory = false;
+    return true;
   },
 
   // ========== History ==========
@@ -2665,11 +2701,12 @@ const appMethods = {
   },
 
   filterByPhone(phone) {
-    this.filters.search = phone;
-    this.filters.municipality = "";
-    this.filters.status = "";
-    this.saveFilters();
-    // إعادة تهيئة Sortable بعد تطبيق المرشح
+    // وضع رقم الهاتف في حقل البحث الحالي المؤقت مع الحفاظ على باقي الفلاتر النشطة
+    // دون إظهار لوحة البحث: يُطبَّق البحث مباشرة على الرقم
+    const query = String(phone || "").trim();
+    if (!query) return;
+    this.directSearch = query;
+    // تطبيق البحث عبر آلية حقل البحث المعتادة ثم إعادة تهيئة Sortable
     this.$nextTick(() => {
       this.initSortable();
     });
@@ -2684,9 +2721,11 @@ const appMethods = {
     }
 
     if (Array.isArray(this.filters.status)) {
-      this.filters.status = this.filters.status.includes(statusName)
+      const next = this.filters.status.includes(statusName)
         ? this.filters.status.filter((status) => status !== statusName)
         : [...this.filters.status, statusName];
+      // خروج تلقائي من وضع التحديد المتعدد عند إلغاء آخر حالة محددة
+      this.filters.status = next.length === 0 ? "" : next;
     } else {
       this.filters.status = this.filters.status === statusName ? "" : statusName;
     }
@@ -2748,6 +2787,10 @@ const appMethods = {
       try {
         const filters = JSON.parse(saved);
         this.filters = { ...this.filters, ...filters };
+        // تطبيع مصفوفة حالات فارغة قديمة إلى الوضع الافتراضي
+        if (Array.isArray(this.filters.status) && this.filters.status.length === 0) {
+          this.filters.status = "";
+        }
       } catch (e) {
         console.error("خطأ في تحميل الفلاتر:", e);
       }
@@ -2903,7 +2946,7 @@ const appMethods = {
     this._deliveryConfirmTimer = setTimeout(() => {
       this._deliveryConfirmTimer = null;
       this.pendingDeliveryConfirm = null;
-      this.changeStatus(parcel, statusName);
+      this.changeStatus(this._liveParcel(parcel) || parcel, statusName);
     }, seconds * 1000);
   },
 
@@ -2919,15 +2962,24 @@ const appMethods = {
     }
   },
 
+  // يعيد الكائن الحي للطرد من القائمة (قد يُستبدل المرجع أثناء الدمج/المزامنة)
+  _liveParcel(parcel) {
+    if (!parcel || parcel.id == null) return parcel || null;
+    const live = (this.parcels || []).find((p) => p.id === parcel.id);
+    return live || parcel;
+  },
+
   setParcelStatus(parcel, newStatus, onSaved, options = {}) {
     const saveStatus = () => {
-      if (parcel.status !== newStatus) {
-        parcel.status = newStatus;
-        parcel.statusUpdatedAt = new Date().toISOString();
+      const target = this._liveParcel(parcel) || parcel;
+      if (!target) return;
+      if (target.status !== newStatus) {
+        target.status = newStatus;
+        target.statusUpdatedAt = new Date().toISOString();
       }
-      this.markParcelDirty(parcel);
+      this.markParcelDirty(target);
       this.saveData();
-      if (onSaved) onSaved();
+      if (onSaved) onSaved(target);
     };
 
     if (newStatus === "تم التسليم" && !options.skipCelebration) {
@@ -3005,20 +3057,22 @@ const appMethods = {
     const newStatus = this.statusSmsConfirmStatus;
 
     if (newStatus === "تم التسليم") this.closeStatusSmsConfirm();
-    this.setParcelStatus(parcel, newStatus, () => {
+    this.setParcelStatus(parcel, newStatus, (liveParcel) => {
+      // العمل على الكائن الحي حتى لا تضيع أعلام الرسائل إن استُبدل المرجع
+      const target = liveParcel || parcel;
       // إنشاء رسالة SMS بعد اعتماد الحالة
-      const message = this.buildSmsMessage(parcel, newStatus);
+      const message = this.buildSmsMessage(target, newStatus);
 
       // تحديد رقم الهاتف: للمرسل أو للمستلم
       const phone =
-        newStatus === "رقم خاطئ" ? parcel.senderPhone || "" : parcel.phone || "";
+        newStatus === "رقم خاطئ" ? target.senderPhone || "" : target.phone || "";
 
       if (newStatus === "رقم خاطئ") {
-        parcel.senderSmsSent = true;
+        target.senderSmsSent = true;
       } else {
-        parcel.smsSent = true;
+        target.smsSent = true;
       }
-      this.markParcelDirty(parcel);
+      this.markParcelDirty(target);
       this.saveData();
       window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
 
@@ -4465,6 +4519,8 @@ const appMethods = {
   },
 
   scrollParcelIntoViewAfterUpdate(parcelId) {
+    // ميزة تتبع البطاقة: تمرير تلقائي للحفاظ على رؤية البطاقة بعد إعادة الترتيب
+    if (this.settings && this.settings.cardTrackingEnabled === false) return;
     this.$nextTick(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById('parcel-card-' + parcelId);
@@ -5087,22 +5143,36 @@ const appMethods = {
     };
     const segments = [];
     if (total > 0) {
-      for (const [status, color] of Object.entries(coreColors)) {
-        const count = this.parcels.filter((p) => p.status === status).length;
+      // ترتيب المقاطع حسب ترتيب الحالات المعرف في الإعدادات (allStatuses)
+      const orderedStatuses = Array.isArray(this.allStatuses) ? this.allStatuses : [];
+      const seen = new Set();
+      orderedStatuses.forEach((s) => {
+        if (!s || !s.name || seen.has(s.name)) return;
+        seen.add(s.name);
+        const count = this.parcels.filter((p) => p.status === s.name).length;
         if (count > 0) {
-          segments.push({ status, color, count, pct: (count / total) * 100 });
+          let color = coreColors[s.name];
+          if (!color) {
+            const cs = (this.settings.customStatuses || []).find((c) => c.name === s.name);
+            color = (cs && (cs.hex || cs.color)) || "#9ca3af";
+          }
+          segments.push({ status: s.name, color, count, pct: (count / total) * 100 });
         }
-      }
-      (this.settings.customStatuses || []).forEach((cs) => {
-        const count = this.parcels.filter((p) => p.status === cs.name).length;
-        if (count > 0) {
-          segments.push({
-            status: cs.name,
-            color: cs.hex || "#9ca3af",
-            count,
-            pct: (count / total) * 100,
-          });
+      });
+      // حالات موجودة في البيانات لكنها غير معرفة (احتياط): تُلحق في النهاية
+      const knownCounts = {};
+      this.parcels.forEach((p) => {
+        if (p.status && !seen.has(p.status)) {
+          knownCounts[p.status] = (knownCounts[p.status] || 0) + 1;
         }
+      });
+      Object.keys(knownCounts).forEach((status) => {
+        segments.push({
+          status,
+          color: coreColors[status] || "#9ca3af",
+          count: knownCounts[status],
+          pct: (knownCounts[status] / total) * 100,
+        });
       });
     }
     return { total, delivered, remaining, cancelled, percentage, segments };

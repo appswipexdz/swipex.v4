@@ -2184,3 +2184,141 @@ select {
     padding-right: 2.5rem !important;
     padding-left: 1rem !important;
 }
+
+/* ============================================
+   مربع تحديد الطرود المتعددة (parcel-select-box)
+   تصميم مخصص: محايد عند عدم التحديد، متوهج أحمر عند التحديد
+   يعمل في الاتجاهين RTL/LTR ولا يعتمد على الاتجاه.
+   ============================================ */
+.parcel-select-box {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    background: #ffffff;
+    border: 2px solid #d1d5db;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: background-color 0.2s ease, border-color 0.2s ease,
+        box-shadow 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.parcel-select-box:hover {
+    border-color: #f87171;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.parcel-select-box:active {
+    transform: scale(0.9);
+}
+
+.parcel-select-box.parcel-select-checked {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-color: #b91c1c;
+    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.45);
+}
+
+.parcel-select-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.parcel-select-input:focus-visible + .parcel-select-check,
+.parcel-select-box:focus-within {
+    outline: 2px solid #f87171;
+    outline-offset: 2px;
+}
+
+.parcel-select-check {
+    width: 15px;
+    height: 15px;
+    color: #ffffff;
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+    transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+.parcel-select-box.parcel-select-checked .parcel-select-check {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+.dark-mode .parcel-select-box {
+    background: #1f2937;
+    border-color: #4b5563;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .parcel-select-box:hover {
+    border-color: #f87171;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+}
+
+.dark-mode .parcel-select-box.parcel-select-checked {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    border-color: #ef4444;
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .parcel-select-box,
+    .parcel-select-check {
+        transition: none;
+    }
+}
+
+/* ============================================
+   محرر الملاحظة الموحد داخل البطاقة الموسعة (note-editor)
+   حقل النص + شريط التمييز/الرسائل/التذكير في حاوية واحدة.
+   محايد الاتجاه: يعمل في RTL وLTR دون قواعد خاصة.
+   ============================================ */
+.note-editor {
+    border-radius: 0.9rem;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(255, 251, 235, 0.55);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark-mode .note-editor {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.note-editor:focus-within {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.note-editor textarea {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.note-editor-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    padding: 0.45rem 0.7rem;
+    border-top: 1px dashed rgba(245, 158, 11, 0.4);
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.dark-mode .note-editor-meta {
+    border-top-color: rgba(245, 158, 11, 0.3);
+    background: rgba(255, 255, 255, 0.03);
+}

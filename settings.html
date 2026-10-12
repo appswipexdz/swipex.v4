@@ -528,6 +528,24 @@
                                     </div>
                                 </label>
                             </div>
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                        {{ t('settings.card_tracking') }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ t('settings.card_tracking_desc') }}
+                                    </p>
+                                </div>
+                                <label class="relative inline-block w-14 h-8" dir="ltr" @click.stop>
+                                    <input type="checkbox" v-model="settings.cardTrackingEnabled"
+                                        @change="saveSettings" class="sr-only peer" />
+                                    <div
+                                        class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-purple-600">
+                                    </div>
+                                </label>
+                            </div>
                             <div v-if="settings.tags.length > 0" class="flex flex-wrap gap-2">
                                 <span v-for="tag in settings.tags" :key="tag"
                                     class="px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-2 border"

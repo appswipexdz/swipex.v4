@@ -148,6 +148,8 @@ window.i18n_ar = {
     "parcel.location": "الموقع",
     "parcel.save_current_location": "احفظ الموقع الحالي",
     "parcel.pick_on_map": "حدد موقع على الخريطة",
+    "parcel.save_location_short": "حفظ الموقع",
+    "parcel.pick_location_short": "تحديد الموقع",
     "parcel.location_hint": "اختر موقعاً يدوياً على الخريطة أو استخدم موقع الجهاز الحالي.",
     "parcel.open_in_maps": "فتح في الخرائط",
     "parcel.clear_location": "مسح الموقع",
@@ -811,6 +813,8 @@ window.i18n_ar = {
     "settings.tag_order_reset": "إعادة الترتيب الافتراضي",
 
     "settings.tags_smart_sort_desc": "يفرز الطرود تلقائياً حسب ترتيب التمييزات بعد إعادة ترتيب القائمة.",
+    "settings.card_tracking": "ميزة تتبع البطاقة",
+    "settings.card_tracking_desc": "تمرير تلقائي للحفاظ على رؤية البطاقة بعد إضافة تمييز وإعادة ترتيبها مع بطاقات التمييز نفسه.",
     "settings.status_group_empty": "لا توجد تجميعات - أنشئ تجميعاً لتنظيم الحالات في نافذة تغيير الحالة والإحصائيات",
     "settings.group_layout": "وضعية العرض:",
     "settings.group_layout_row": "بجانب بعض",

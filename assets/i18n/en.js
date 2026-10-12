@@ -145,6 +145,8 @@ window.i18n_en = {
     "parcel.location": "Location",
     "parcel.save_current_location": "Save current location",
     "parcel.pick_on_map": "Pick on map",
+    "parcel.save_location_short": "Save location",
+    "parcel.pick_location_short": "Pick location",
     "parcel.location_hint": "Pick a location manually on the map or use the device's current location.",
     "parcel.open_in_maps": "Open in Maps",
     "parcel.clear_location": "Clear location",
@@ -807,6 +809,8 @@ window.i18n_en = {
     "settings.tag_order_reset": "Reset to default order",
 
     "settings.tags_smart_sort_desc": "Automatically sorts parcels by tag order after you reorder the list.",
+    "settings.card_tracking": "Card tracking",
+    "settings.card_tracking_desc": "Automatically scrolls to keep the card visible after tagging and re-sorting it with same-tag parcels.",
     "settings.status_group_empty": "No groups yet - create a group to organise statuses in the status picker and statistics",
     "settings.group_layout": "Layout:",
     "settings.group_layout_row": "Side by side",
