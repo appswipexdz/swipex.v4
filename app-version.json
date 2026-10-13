@@ -1,5 +1,5 @@
 {
-  "version": "4.5.1",
+  "version": "4.5.3",
   "releasedAt": "2026-10-12",
   "notes": {
     "ar": [
@@ -7,21 +7,27 @@
       "إصلاح البحث برقم الهاتف وحفظ الحالة والملاحظات.",
       "إعادة تنظيم البطاقة الموسعة ودمج التمييز وحالات SMS والتذكير ضمن الملاحظات.",
       "إضافة زري موقع مصغّرين وشريط تقدم قابل للتخصيص حسب الإعدادات.",
-      "إضافة التمرير التلقائي لتتبّع البطاقة بعد تمييزها، مع إمكانية تفعيل الميزة أو تعطيلها من الإعدادات."
+      "إضافة التمرير التلقائي لتتبّع البطاقة بعد تمييزها، مع إمكانية تفعيل الميزة أو تعطيلها من الإعدادات.",
+      "زر تحديد يدوي للموقع بلصق الإحداثيات، وشارة موقع داخل الملاحظات مع حذف زري فتح الخرائط ومسح الموقع.",
+      "إخفاء سطر الإحداثيات أسفل تلميح الموقع في البطاقة الموسعة."
     ],
     "en": [
       "Improved multi-selection with automatic exit from selection mode.",
       "Fixed phone number search and status/note saving.",
       "Reorganized the expanded card, merging the tag, SMS states and reminder into the notes.",
       "Added two compact location buttons and a progress bar customizable from Settings.",
-      "Added automatic scrolling to track the card after tagging, with the option to enable or disable it in Settings."
+      "Added automatic scrolling to track the card after tagging, with the option to enable or disable it in Settings.",
+      "Manual location entry by pasting coordinates, and a location badge inside notes replacing the open-maps and clear buttons.",
+      "Hidden the coordinates line under the location hint in the expanded card."
     ],
     "fr": [
       "Sélection multiple améliorée avec sortie automatique du mode de sélection.",
       "Recherche par numéro de téléphone corrigée et enregistrement du statut et des notes réparé.",
       "Carte étendue réorganisée : étiquette, états SMS et rappel intégrés dans les notes.",
       "Ajout de deux boutons de localisation compacts et d'une barre de progression personnalisable depuis les paramètres.",
-      "Ajout du défilement automatique pour suivre la carte après son étiquetage, avec possibilité d'activer ou de désactiver la fonction dans les paramètres."
+      "Ajout du défilement automatique pour suivre la carte après son étiquetage, avec possibilité d'activer ou de désactiver la fonction dans les paramètres.",
+      "Saisie manuelle de la localisation par collage des coordonnées, et badge de localisation dans les notes remplaçant les boutons carte et effacer.",
+      "Ligne des coordonnées masquée sous l'aide de localisation dans la carte étendue."
     ]
   }
 }

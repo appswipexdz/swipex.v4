@@ -147,6 +147,7 @@ window.i18n_en = {
     "parcel.pick_on_map": "Pick on map",
     "parcel.save_location_short": "Save location",
     "parcel.pick_location_short": "Pick location",
+    "parcel.pick_location_manual": "Manual entry",
     "parcel.location_hint": "Pick a location manually on the map or use the device's current location.",
     "parcel.open_in_maps": "Open in Maps",
     "parcel.clear_location": "Clear location",
@@ -180,6 +181,9 @@ window.i18n_en = {
     "locationpicker.coords": "Coordinates:",
     "locationpicker.current": "Current location",
     "locationpicker.save": "Save location",
+    "locationmanual.title": "Enter location manually",
+    "locationmanual.hint": "Paste the latitude and longitude separated by a comma.",
+    "locationmanual.placeholder": "33.480424682708176, 6.90546617654412",
 
     // ============ Scanner ============
     "scanner.title": "Scanner",
@@ -679,6 +683,9 @@ window.i18n_en = {
     "msg.location_invalid": "No valid location selected.",
     "msg.location_label_map": "Map location",
     "msg.location_saved_map": "Map location saved.",
+    "msg.location_label_manual": "Manual location",
+    "msg.location_saved_manual": "Manual location saved.",
+    "msg.location_invalid_manual": "Invalid coordinates. Format: latitude, longitude.",
     "msg.location_missing": "No saved location for this parcel",
     "msg.location_fetch_failed": "Could not get your location. Allow location access.",
     "msg.location_permission_denied": "Location permission denied.",

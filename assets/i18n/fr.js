@@ -147,6 +147,7 @@ window.i18n_fr = {
     "parcel.pick_on_map": "Choisir sur la carte",
     "parcel.save_location_short": "Enregistrer",
     "parcel.pick_location_short": "Localiser",
+    "parcel.pick_location_manual": "Saisie manuelle",
     "parcel.location_hint": "Choisissez un emplacement manuellement sur la carte ou utilisez la position actuelle de l'appareil.",
     "parcel.open_in_maps": "Ouvrir dans Maps",
     "parcel.clear_location": "Effacer la localisation",
@@ -180,6 +181,9 @@ window.i18n_fr = {
     "locationpicker.coords": "Coordonnées :",
     "locationpicker.current": "Position actuelle",
     "locationpicker.save": "Enregistrer la position",
+    "locationmanual.title": "Saisie manuelle de la localisation",
+    "locationmanual.hint": "Collez la latitude et la longitude séparées par une virgule.",
+    "locationmanual.placeholder": "33.480424682708176, 6.90546617654412",
 
     // ============ Scanner ============
     "scanner.title": "Scanner",
@@ -679,6 +683,9 @@ window.i18n_fr = {
     "msg.location_invalid": "Aucune position valide sélectionnée.",
     "msg.location_label_map": "Position sur la carte",
     "msg.location_saved_map": "Position issue de la carte enregistrée.",
+    "msg.location_label_manual": "Position manuelle",
+    "msg.location_saved_manual": "Position manuelle enregistrée.",
+    "msg.location_invalid_manual": "Coordonnées invalides. Format : latitude, longitude.",
     "msg.location_missing": "Aucune position enregistrée pour ce colis",
     "msg.location_fetch_failed": "Impossible d'obtenir la position. Autorisez l'accès à la localisation.",
     "msg.location_permission_denied": "Autorisation de localisation refusée.",

@@ -150,6 +150,7 @@ window.i18n_ar = {
     "parcel.pick_on_map": "حدد موقع على الخريطة",
     "parcel.save_location_short": "حفظ الموقع",
     "parcel.pick_location_short": "تحديد الموقع",
+    "parcel.pick_location_manual": "تحديد يدوي",
     "parcel.location_hint": "اختر موقعاً يدوياً على الخريطة أو استخدم موقع الجهاز الحالي.",
     "parcel.open_in_maps": "فتح في الخرائط",
     "parcel.clear_location": "مسح الموقع",
@@ -183,6 +184,9 @@ window.i18n_ar = {
     "locationpicker.coords": "إحداثيات:",
     "locationpicker.current": "الموقع الحالي",
     "locationpicker.save": "حفظ الموقع",
+    "locationmanual.title": "تحديد الموقع يدويًا",
+    "locationmanual.hint": "الصق إحداثيات خط العرض وخط الطول مفصولة بفاصلة.",
+    "locationmanual.placeholder": "33.480424682708176, 6.90546617654412",
 
     // ============ الماسح الضوئي ============
     "scanner.title": "المسح الضوئي",
@@ -670,6 +674,9 @@ window.i18n_ar = {
     "msg.location_invalid": "لم يتم تحديد موقع صالح.",
     "msg.location_label_map": "موقع الخريطة",
     "msg.location_saved_map": "تم حفظ الموقع المخصص من الخريطة.",
+    "msg.location_label_manual": "موقع يدوي",
+    "msg.location_saved_manual": "تم حفظ الموقع اليدوي.",
+    "msg.location_invalid_manual": "إحداثيات غير صالحة. الصيغة: خط العرض، خط الطول.",
     "msg.location_missing": "لا يوجد موقع محفوظ لهذا الطرد",
     "msg.location_fetch_failed": "تعذر الحصول على الموقع. تأكد من سماح المتصفح بالوصول إلى الموقع.",
     "msg.location_permission_denied": "تم رفض إذن الموقع. يرجى السماح بالوصول إلى الموقع.",

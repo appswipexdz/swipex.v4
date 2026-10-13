@@ -965,6 +965,64 @@ const appMethods = {
     this.saveData();
   },
 
+  // تحليل إحداثيات ملصوقة يدوياً: "lat, lng" (تقبل مسافات/أقواس/فاصلة منقوطة)
+  parseManualCoordinates(text) {
+    if (!text) return null;
+    const cleaned = String(text).trim().replace(/[()\[\]]/g, " ").replace(/;/g, ",");
+    const parts = cleaned.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length !== 2) return null;
+    const lat = Number(parts[0]);
+    const lng = Number(parts[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    return { lat, lng };
+  },
+
+  openManualLocationModal(parcel) {
+    if (!parcel) return;
+    this.manualLocationParcelId = parcel.id;
+    const loc = this.normalizeLocation(parcel.location);
+    this.manualLocationText =
+      loc.lat !== null && loc.lng !== null ? `${loc.lat}, ${loc.lng}` : "";
+    this.showManualLocationModal = true;
+    this.$nextTick(() => {
+      const el = document.getElementById("manual-location-input");
+      if (el) el.focus();
+    });
+  },
+
+  closeManualLocationModal() {
+    this.showManualLocationModal = false;
+    this.manualLocationParcelId = null;
+    this.manualLocationText = "";
+  },
+
+  saveManualLocation() {
+    const parcel = (this.parcels || []).find((p) => p.id === this.manualLocationParcelId);
+    if (!parcel) {
+      this.closeManualLocationModal();
+      return;
+    }
+    const coords = this.parseManualCoordinates(this.manualLocationText);
+    if (!coords) {
+      this.showToast(this.t("msg.location_invalid_manual"), "error");
+      return;
+    }
+    const live = this._liveParcel(parcel) || parcel;
+    live.location = this.normalizeLocation({
+      lat: coords.lat,
+      lng: coords.lng,
+      label: this.t("msg.location_label_manual"),
+      address: "",
+      source: "manual",
+      updatedAt: new Date().toISOString(),
+    });
+    this.markParcelDirty(live);
+    this.saveData();
+    this.showToast(this.t("msg.location_saved_manual"), "success");
+    this.closeManualLocationModal();
+  },
+
   openParcelLocation(target) {
     const location = this.normalizeLocation(target?.location || target);
     if (!this.hasParcelLocation(location) || !location.mapsUrl) {

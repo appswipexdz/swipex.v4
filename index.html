@@ -626,8 +626,21 @@
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    <div v-if="parcel.tag || parcel.smsSent || parcel.senderSmsSent || parcel.reminderTime"
+                                                    <div v-if="parcel.tag || parcel.smsSent || parcel.senderSmsSent || parcel.reminderTime || hasParcelLocation(parcel)"
                                                         class="note-editor-meta">
+                                                        <div v-if="hasParcelLocation(parcel)"
+                                                            class="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                                            <button @click="openParcelLocation(parcel)"
+                                                                class="flex items-center gap-1 hover:underline"
+                                                                :title="getLocationMeta(parcel)">
+                                                                <i class="fas fa-map-marker-alt"></i>
+                                                                <span>{{ t('parcel.location') }}</span>
+                                                            </button>
+                                                            <button @click="clearParcelLocation(parcel)"
+                                                                class="text-red-400 hover:text-red-600">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
                                                         <div v-if="parcel.tag" class="flex items-center gap-1.5 text-xs">
                                                             <span class="px-2 py-0.5 rounded-lg text-white font-bold"
                                                                 :style="getTagBadgeStyle(parcel.tag)">{{
@@ -696,27 +709,14 @@
                                                                 <i class="fas fa-map-pin"></i>
                                                                 {{ t('parcel.pick_location_short') }}
                                                             </button>
+                                                            <button @click="openManualLocationModal(parcel)"
+                                                                class="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-bold hover:bg-violet-200 dark:hover:bg-violet-800/40 active:scale-95 transition flex items-center justify-center gap-1.5">
+                                                                <i class="fas fa-keyboard"></i>
+                                                                {{ t('parcel.pick_location_manual') }}
+                                                            </button>
                                                         </div>
                                                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
                                                             {{ t('parcel.location_hint') }}
-                                                        </div>
-                                                        <div class="flex flex-wrap items-center gap-2 text-xs">
-                                                            <button v-if="canOpenParcelLocation(parcel)"
-                                                                @click="openParcelLocation(parcel)"
-                                                                class="px-3 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-800/40 transition flex items-center gap-2">
-                                                                <i class="fas fa-route"></i>
-                                                                {{ t('parcel.open_in_maps') }}
-                                                            </button>
-                                                            <button v-if="hasParcelLocation(parcel)"
-                                                                @click="clearParcelLocation(parcel)"
-                                                                class="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 transition flex items-center gap-2">
-                                                                <i class="fas fa-trash-alt"></i>
-                                                                {{ t('parcel.clear_location') }}
-                                                            </button>
-                                                        </div>
-                                                        <div v-if="hasParcelLocation(parcel) && getLocationMeta(parcel)"
-                                                            class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                                                            {{ getLocationMeta(parcel) }}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -909,6 +909,41 @@
                         class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg hover:scale-[1.02] transition transform flex items-center justify-center gap-2">
                         <i class="fas fa-check"></i>
                         {{ t('favinfo.apply') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Location Modal -->
+        <div v-if="showManualLocationModal"
+            class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            @click="closeManualLocationModal">
+            <div class="modal-glass rounded-2xl w-full max-w-md p-4 sm:p-5" @click.stop>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-keyboard text-violet-500"></i>
+                        {{ t('locationmanual.title') }}
+                    </h3>
+                    <button @click="closeManualLocationModal"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    {{ t('locationmanual.hint') }}
+                </p>
+                <input id="manual-location-input" v-model="manualLocationText" type="text" inputmode="decimal"
+                    dir="ltr" :placeholder="t('locationmanual.placeholder')" @keyup.enter="saveManualLocation"
+                    class="w-full p-3 rounded-xl glass-input text-sm font-mono text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-violet-400 outline-none" />
+                <div class="flex items-center gap-2 mt-3">
+                    <button @click="saveManualLocation"
+                        class="flex-1 px-3 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        {{ t('locationpicker.save') }}
+                    </button>
+                    <button @click="closeManualLocationModal"
+                        class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        {{ t('common.close') }}
                     </button>
                 </div>
             </div>
