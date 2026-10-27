@@ -641,8 +641,15 @@ const appOptions = {
         
         // حفظ محلي فقط عند إغلاق/تجديد الصفحة (beforeunload)
         // الكتابة غير المتزامنة (Firestore) لا تعمل في beforeunload
+        // flushDeferredSave: يُنفِّذ أي حفظ مؤجّل معلّق (إعادة ترتيب بالسحب)
+        // فوراً حتى لا يضيع الترتيب عند التنقل السريع بين الصفحات — وعندئذٍ
+        // يكتب البيانات المحلية بنفسه فلا داعي لكتابة مزدوجة معه.
         window.addEventListener('beforeunload', () => {
-            this.syncLocalStorage();
+            if (this._deferredSavePending) {
+                this.flushDeferredSave();
+            } else {
+                this.syncLocalStorage();
+            }
         });
     },
     

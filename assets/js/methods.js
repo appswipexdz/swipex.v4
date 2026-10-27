@@ -29,14 +29,19 @@ const appMethods = {
 
   // ========== Scroll Header ==========
   handleScroll() {
-    const currentScrollY = window.scrollY;
-    if (currentScrollY > this.lastScrollY && currentScrollY > 80) {
-      this.headerHidden = true;
-    } else {
-      this.headerHidden = false;
+    // أثناء سحب إعادة الترتيب (طرود/تمييزات): لا تحديثات تفاعلية إطلاقاً.
+    // التمرير التلقائي أثناء السحب يُطلق عشرات أحداث التمرير في الثانية،
+    // وأي تغيير حالة هنا يعني إعادة رسم القائمة كاملة في كل إطار → تجمّد.
+    if (this._sortDragging || this._tagSortDragging) {
+      this.lastScrollY = window.scrollY;
+      return;
     }
-    // البيانات تظهر فقط عند الرجوع لأعلى الصفحة تماماً
-    this.progressBarCompact = currentScrollY > 50;
+    const currentScrollY = window.scrollY;
+    const hideHeader = currentScrollY > this.lastScrollY && currentScrollY > 80;
+    const compact = currentScrollY > 50;
+    // تحديث مشروط بالقيمة: تجنّب إعادة رسم كاملة عند كل حدث تمرير
+    if (this.headerHidden !== hideHeader) this.headerHidden = hideHeader;
+    if (this.progressBarCompact !== compact) this.progressBarCompact = compact;
     this.lastScrollY = currentScrollY;
   },
 
@@ -1032,7 +1037,64 @@ const appMethods = {
     window.open(location.mapsUrl, "_blank");
   },
 
-  saveData() {
+  // حفظ مؤجّل: يُجّل الكتابة الثقيلة (JSON.stringify للطرود والأرشيف +
+  // دفع Firestore) بعد إعادة الترتيب بالسحب، حتى تعود الواجهة مستجيبة
+  // فوراً بعد الإفلات بدل أن تتجمّد في نفس اللحظة.
+  // التجميع: سحبات متتالية تؤجّل الحفظ حتى تهدأ (حفظ واحد بدل عدة حفظات)،
+  // ثم يُنفَّذ في فترة خاملة عبر requestIdleCallback عند توفره.
+  // يُفرَّغ فوراً عبر flushDeferredSave قبل أي عملية تُنهي الصفحة.
+  _deferredSaveTimer: null,
+  _deferredSaveIdleId: null,
+  _deferredSavePending: false,
+  saveDataDeferred(delay = 350) {
+    this._deferredSavePending = true;
+    this._clearDeferredSaveTimers();
+    this._deferredSaveTimer = setTimeout(() => {
+      this._deferredSaveTimer = null;
+      if (typeof window.requestIdleCallback === "function") {
+        this._deferredSaveIdleId = window.requestIdleCallback(
+          () => {
+            this._deferredSaveIdleId = null;
+            this.flushDeferredSave();
+          },
+          { timeout: 3000 },
+        );
+      } else {
+        this.flushDeferredSave();
+      }
+    }, delay);
+  },
+  _clearDeferredSaveTimers() {
+    if (this._deferredSaveTimer) {
+      clearTimeout(this._deferredSaveTimer);
+      this._deferredSaveTimer = null;
+    }
+    if (this._deferredSaveIdleId !== null && this._deferredSaveIdleId !== undefined) {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(this._deferredSaveIdleId);
+      }
+      this._deferredSaveIdleId = null;
+    }
+  },
+  flushDeferredSave() {
+    this._clearDeferredSaveTimers();
+    if (!this._deferredSavePending) return;
+    this._deferredSavePending = false;
+    this.saveData({ lightweight: true });
+  },
+
+  // حفظ مؤجّل للإعدادات (يُستخدم بعد سحب ترتيب التمييزات)
+  saveSettingsDeferred(delay = 350) {
+    this._settingsRevision = (this._settingsRevision || 0) + 1;
+    this._settingsDirty = true;
+    this.saveDataDeferred(delay);
+  },
+
+  // options.lightweight: حفظ بعد إعادة الترتيب فقط — يُرسل الطرود
+  // المعدَّلة والأرشيف المحمل محلياً، ويتجاوز كتابة المهام/البيانات
+  // الوصفية التي لم تتغيّر (تقليل زمن الكتابة والتجمّد).
+  saveData(options) {
+    const lightweight = !!(options && options.lightweight);
     // حفظ محلي فوري
     localStorage.setItem(
       "swipex_pro_v2",
@@ -1048,19 +1110,23 @@ const appMethods = {
 
     // حفظ في Firestore فوري (بدون تأخير)
     if (firestoreSync.isAvailable()) {
-      this.syncStatus = "syncing";
+      let pushedDirty = false;
 
       // دفع الطرود المعدّلة عبر البنية V2 (سجل منفصل لكل طرد)
       if (this._dirtyParcels && this._dirtyParcels.size) {
+        pushedDirty = true;
         firestoreSync.pushDirtyParcels(this._dirtyParcels, t => this.parcels.find(p => (p.tracking || '').trim() === t) || null);
       }
 
       // دفع عناصر الأرشيف المعدّلة عبر البنية V2 (سجل منفصل لكل عنصر)
       if (this.settings.archiveSyncEnabled && this._dirtyArchive && this._dirtyArchive.size) {
+        pushedDirty = true;
         firestoreSync.pushDirtyArchiveEntries(this._dirtyArchive, t => this.archive[t]);
       }
 
-      const savePayload = { tasks: this.tasks };
+      const savePayload = {};
+      // في الحفظ الخفيف لم تتغيّر المهام: تخطّي كتابتها (وفّر طبقة كتابة كاملة)
+      if (!lightweight) savePayload.tasks = this.tasks;
       let settingsRevision = null;
       // الإعدادات تُرسَل فقط إن تغيّرت فعلاً منذ آخر إرسال ناجح، وبعد اكتمال أول تحميل للجلسة
       if (this._settingsDirty && firestoreSync._initialLoadDone) {
@@ -1071,6 +1137,13 @@ const appMethods = {
         );
       }
 
+      // لا شيء سحابي للإرسال: لا داعي لطبقة الكتابة والبيانات الوصفية
+      if (Object.keys(savePayload).length === 0) {
+        if (!pushedDirty) this.syncStatus = "synced";
+        return;
+      }
+
+      this.syncStatus = "syncing";
       firestoreSync
         .saveAll(savePayload)
         .then((ok) => {
@@ -2856,31 +2929,54 @@ const appMethods = {
   },
 
   // ========== Sortable ==========
+  // تُهيَّئ قائمة الطرود مرة واحدة وتبقى قائمة.
+  // إعادة الإنشاء في كل تغيير كانت السبب الرئيسي في البطؤ:
+  //  1) تدمير المثيل أثناء السحب يقطع سلوك السحب فجأة (تعليق).
+  //  2) destroy + create في كل تغيير للقائمة المفلترة تكلفة غير ضرورية.
   initSortable() {
     const el = document.getElementById("sortable-list");
     if (!el) return;
-    if (this.sortableInstance) this.sortableInstance.destroy();
+    // لا تُعاد التهيئة أثناء السحب إطلاقاً
+    if (this._sortDragging) return;
+
+    if (this.sortableInstance && this.sortableInstance.el === el) {
+      // نفس العنصر: حدّث خيار المعطّل فقط (وضع التحديد) دون إعادة إنشاء
+      this.sortableInstance.options.disabled = !!this.selectionMode;
+      return;
+    }
+    if (this.sortableInstance) {
+      this.sortableInstance.destroy();
+      this.sortableInstance = null;
+    }
     this.sortableInstance = Sortable.create(el, {
-      disabled: this.selectionMode,
+      disabled: !!this.selectionMode,
       handle: ".handle",
-      animation: 150,
-      delay: 100,
-      delayOnTouchOnly: true,
+      animation: 120,
+      // بدون delay: مع delay كان على اللمس "الثبات 100ms" قبل بدء السحب،
+      // وأي حركة أصغر من ~3px خلالها تُلغي السحب صامتاً → سحب متأخّر ومتقطّع.
       scroll: true,
-      scrollSensitivity: 150,
-      scrollSpeed: 20,
+      scrollSensitivity: 100,
+      scrollSpeed: 16,
       ghostClass: "opacity-50",
       chosenClass: "shadow-2xl",
       dragClass: "cursor-grabbing",
+      // أعلام تُقرأ من handleScroll/initSortable فقط (غير مستخدمة في القالب
+      // فلا تُسبّب إعادة رسم عند تغيّرها)
+      onStart: () => {
+        this._sortDragging = true;
+      },
       onEnd: (evt) => {
+        this._sortDragging = false;
         // أثناء المزامنة الأولية تتغيّر القوائم من الخلفية؛ تجنّب إعادة الترتيب
         // اعتماداً على فهارس قد تصبح خاطئة (المستخدم يستطيع السحب بعد اكتمالها).
         if (this.initialSyncProgress) return;
+        if (evt.oldIndex == null || evt.newIndex == null || evt.oldIndex === evt.newIndex) return;
 
-        const movedParcel = this.filteredParcels[evt.oldIndex];
-        const targetParcel = this.filteredParcels[evt.newIndex];
+        const list = this.filteredParcels;
+        const movedParcel = list[evt.oldIndex];
+        const targetParcel = list[evt.newIndex];
 
-        if (!movedParcel || !targetParcel) return;
+        if (!movedParcel || !targetParcel || movedParcel.id === targetParcel.id) return;
 
         const oldGlobalIndex = this.parcels.findIndex(
           (p) => p.id === movedParcel.id,
@@ -2897,7 +2993,8 @@ const appMethods = {
           const item = this.parcels.splice(oldGlobalIndex, 1)[0];
           this.parcels.splice(newGlobalIndex, 0, item);
           this.reassignParcelSortOrder();
-          this.saveData();
+          // حفظ مؤجّل: تُعرض النتيجة فوراً ثم تُكتب البيانات بعد استقرار الواجهة
+          this.saveDataDeferred();
         }
       },
     });
@@ -3813,15 +3910,17 @@ const appMethods = {
       : this.settings.tags || [];
 
     if (!this.smartTagSortingPaused && this.settings.smartTagSortingEnabled && order.length > 0) {
+      // فهرس واحد مبني مرة واحدة بدل indexOf داخل المقارنة
+      // (كانت O(n·log n·m) مع عدد التمييزات m → الآن O(n))
+      const rank = new Map();
+      order.forEach((tag, idx) => {
+        if (tag && !rank.has(tag)) rank.set(tag, idx);
+      });
+      const unknownRank = rank.size;
       return [...list].sort((a, b) => {
-        const indexA = a.tag ? order.indexOf(a.tag) : order.length;
-        const indexB = b.tag ? order.indexOf(b.tag) : order.length;
-        const normalizedA = indexA === -1 ? order.length : indexA;
-        const normalizedB = indexB === -1 ? order.length : indexB;
-        if (normalizedA !== normalizedB) {
-          return normalizedA - normalizedB;
-        }
-        return 0;
+        const indexA = a.tag && rank.has(a.tag) ? rank.get(a.tag) : unknownRank;
+        const indexB = b.tag && rank.has(b.tag) ? rank.get(b.tag) : unknownRank;
+        return indexA - indexB;
       });
     }
 
@@ -4519,15 +4618,26 @@ const appMethods = {
     if (!this.settings.smartTagSortingEnabled) return;
     const el = document.getElementById("tag-order-list");
     if (!el) return;
+    // لا تُعاد التهيئة أثناء سحب ترتيب التمييزات
+    if (this._tagSortDragging) return;
+    // نفس العنصر: المثيل ما زال صالحاً — لا داعي للدمار وإعادة الإنشاء
+    if (this.tagSortInstance && this.tagSortInstance.el === el) return;
     if (this.tagSortInstance) {
       this.tagSortInstance.destroy();
       this.tagSortInstance = null;
     }
     this.tagSortInstance = Sortable.create(el, {
-      animation: 160,
+      animation: 120,
       handle: '.tag-drag-handle',
       ghostClass: 'opacity-50',
+      scroll: true,
+      scrollSensitivity: 80,
+      scrollSpeed: 14,
+      onStart: () => {
+        this._tagSortDragging = true;
+      },
       onEnd: () => {
+        this._tagSortDragging = false;
         this.updateTagOrder();
       },
     });
@@ -4543,7 +4653,8 @@ const appMethods = {
       const existing = Array.isArray(this.settings.tagOrder) ? this.settings.tagOrder : [];
       const remaining = existing.filter((tag) => !orderedTags.includes(tag));
       this.settings.tagOrder = [...orderedTags, ...remaining];
-      this.saveSettings();
+      // حفظ مؤجّل: ترتيب التمييزات بالسحب لا يحتاج كتابة فورية ثقيلة
+      this.saveSettingsDeferred();
     }
   },
 
@@ -5179,14 +5290,19 @@ const appMethods = {
 
   // ========== Daily Summary ==========
   getDailySummary() {
-    const total = this.parcels.length;
-    const delivered = this.parcels.filter(
-      (p) => p.status === "تم التسليم",
-    ).length;
+    // تمرير واحد لعدّ كل الحالات: كانت عدة filter فوق الطرود لكل حالة
+    // (الدالة تُستدعى أكثر من مرة في القالب عند كل إعادة رسم).
+    const parcels = this.parcels || [];
+    const total = parcels.length;
+    const counts = Object.create(null);
+    for (let i = 0; i < total; i++) {
+      const status = parcels[i].status;
+      if (status) counts[status] = (counts[status] || 0) + 1;
+    }
+
+    const delivered = counts["تم التسليم"] || 0;
     const remaining = total - delivered;
-    const cancelled = this.parcels.filter(
-      (p) => p.status === "إلغاء الطلبية",
-    ).length;
+    const cancelled = counts["إلغاء الطلبية"] || 0;
     const percentage = total > 0 ? Math.round((delivered / total) * 100) : 0;
 
     const coreColors = {
@@ -5207,7 +5323,7 @@ const appMethods = {
       orderedStatuses.forEach((s) => {
         if (!s || !s.name || seen.has(s.name)) return;
         seen.add(s.name);
-        const count = this.parcels.filter((p) => p.status === s.name).length;
+        const count = counts[s.name] || 0;
         if (count > 0) {
           let color = coreColors[s.name];
           if (!color) {
@@ -5218,18 +5334,13 @@ const appMethods = {
         }
       });
       // حالات موجودة في البيانات لكنها غير معرفة (احتياط): تُلحق في النهاية
-      const knownCounts = {};
-      this.parcels.forEach((p) => {
-        if (p.status && !seen.has(p.status)) {
-          knownCounts[p.status] = (knownCounts[p.status] || 0) + 1;
-        }
-      });
-      Object.keys(knownCounts).forEach((status) => {
+      Object.keys(counts).forEach((status) => {
+        if (seen.has(status)) return;
         segments.push({
           status,
           color: coreColors[status] || "#9ca3af",
-          count: knownCounts[status],
-          pct: (knownCounts[status] / total) * 100,
+          count: counts[status],
+          pct: (counts[status] / total) * 100,
         });
       });
     }

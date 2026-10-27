@@ -156,6 +156,10 @@ showYalidineMenu: false,
     ],
     sortableInstance: null,
     tagSortInstance: null,
+    // أعلام سحب إعادة الترتيب (تُقرأ من handleScroll و initSortable لمنع
+    // أي إعادة رسم أو إعادة تهيئة أثناء السحب)
+    _sortDragging: false,
+    _tagSortDragging: false,
     smartTagSortingPaused: false,
     _smartTagSortingTimer: null,
     touchStartX: 0,
