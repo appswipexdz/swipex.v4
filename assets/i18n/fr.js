@@ -798,6 +798,17 @@ window.i18n_fr = {
     "settings.section_password": "Sécurité",
     "settings.section_language": "Langue",
 
+    "settings.group_account": "Compte",
+    "settings.group_preferences": "Préférences",
+    "settings.group_workflow": "Flux des colis",
+    "settings.group_communication": "Communication",
+    "settings.group_data_app": "Données et application",
+    "settings.data_sub_import": "Importer",
+    "settings.data_sub_export": "Exporter",
+    "settings.data_sub_backup": "Sauvegarde des réglages",
+    "settings.data_sub_maintenance": "Maintenance",
+    "settings.data_sub_danger": "Zone de danger",
+
     "settings.theme_mode": "Mode d'affichage",
     "settings.theme_light": "Clair",
     "settings.theme_dark": "Sombre",

@@ -789,6 +789,17 @@ window.i18n_ar = {
     "settings.section_password": "الأمان",
     "settings.section_language": "اللغة",
 
+    "settings.group_account": "الحساب",
+    "settings.group_preferences": "التفضيلات",
+    "settings.group_workflow": "سير عمل الطرود",
+    "settings.group_communication": "التواصل",
+    "settings.group_data_app": "البيانات والتطبيق",
+    "settings.data_sub_import": "استيراد",
+    "settings.data_sub_export": "تصدير",
+    "settings.data_sub_backup": "نسخ احتياطي للإعدادات",
+    "settings.data_sub_maintenance": "الصيانة",
+    "settings.data_sub_danger": "منطقة الخطر",
+
     "settings.theme_mode": "وضع المظهر",
     "settings.theme_light": "نهاري",
     "settings.theme_dark": "ليلي",

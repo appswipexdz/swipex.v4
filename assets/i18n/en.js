@@ -798,6 +798,17 @@ window.i18n_en = {
     "settings.section_password": "Security",
     "settings.section_language": "Language",
 
+    "settings.group_account": "Account",
+    "settings.group_preferences": "Preferences",
+    "settings.group_workflow": "Parcel workflow",
+    "settings.group_communication": "Communication",
+    "settings.group_data_app": "Data & app",
+    "settings.data_sub_import": "Import",
+    "settings.data_sub_export": "Export",
+    "settings.data_sub_backup": "Settings backup",
+    "settings.data_sub_maintenance": "Maintenance",
+    "settings.data_sub_danger": "Danger zone",
+
     "settings.theme_mode": "Theme mode",
     "settings.theme_light": "Light",
     "settings.theme_dark": "Dark",
