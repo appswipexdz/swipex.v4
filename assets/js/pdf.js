@@ -46,54 +46,64 @@ const pdfFunctions = {
             };
 
             // ================================================================
-            // دالة مساعدة: استخراج المبلغ بالإحداثيات الثابتة
+            // دالة مساعدة: قراءة المبلغ من نص سطر الوصف/Recouvrement
             //
-            // من تحليل ملفات Yalidine/Guepex الحقيقية تبيّن:
-            //   - عمود Recouvrement في الأرباع اليسرى دائماً عند x ≈ 221
-            //   - عمود Recouvrement في الأرباع اليمنى دائماً عند x ≈ 516
+            // سبب الخلل القديم (تم التحقق منه بتشغيل pdf.js فعلياً):
+            //   خلية الوصف والمبلغ تُكتب في PDF كـ "عنصر نص" واحد يبدأ من x=25.5
+            //   (بداية عمود الوصف) وليس من x=221 (بداية عمود المبلغ). مثلاً:
+            //     "Barre fixe ... de résistance 7800 DA"      (x=25.5, w=226.7)
+            //     "DA 4600 لا يمكن إرجاع الطرد ... الدفع."      (x=25.5, w=226.7, rtl)
+            //   فلا يوجد أي عنصر عند x≈221 ← الفلتر x >= recX-15 كان يُسقط العنصر
+            //   كله ← النتيجة 0 دائماً. لذلك نقرأ المبلغ من النص نفسه لا من x.
             //
-            // المشكلة: أحياناً يكون رقم من المحتوى (مثل "26") في نفس السطر
-            // عند x قريب من x المبلغ (مثل "6950 DA" عند x=221 و"26" عند x=207)
-            //
-            // الحل: عند وجود أكثر من item في نفس السطر داخل نطاق العمود،
-            // نأخذ الـ item الأكبر x (الأيمن) لأن المبلغ دائماً أيمن من رقم المحتوى
+            // يدعم الصيغتين:  "... 7800 DA"  (LTR)   و   "DA 4600 ..."  (RTL/bidi)
+            // يُرجع { value, rest } حيث rest = النص بعد حذف المبلغ (لاستعماله كوصف)
             // ================================================================
-            const extractAmountByCoords = (items, recY, isRightQuad) => {
-                // x الثابت لعمود Recouvrement حسب الربع
-                const recX = isRightQuad ? 516 : 221;
-                const colTolerance = 15;
+            const parseAmountFromText = (rawText) => {
+                if (!rawText) return null;
+                // إزالة محارف اتجاه النص (bidi) وتوحيد المسافات
+                const text = rawText
+                    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+                    .replace(/\u00A0/g, " ");
 
-                // جمع كل items في نطاق العمود وأسفل Recouvrement مباشرة
-                const candidates = items.filter(it =>
-                    it.y < recY &&
-                    it.y > recY - 80 &&
-                    it.x >= recX - colTolerance
-                );
+                // طرد متعدد القطع: لا يوجد مبلغ في هذه القطعة
+                if (/voir\s*pi[èe]ce/i.test(text)) return null;
 
-                if (candidates.length === 0) return null;
+                // الصيغ بالترتيب: (1) "رقم DA" في النهاية  (2) "DA رقم" في البداية
+                // (3) آخر "رقم DA" أو "DA رقم" في أي مكان
+                const patterns = [
+                    /(\d+)\s*DA\s*$/i,
+                    /^\s*DA\s*(\d+)(?=\s|$)/i,
+                    /(\d+)\s*DA\b(?!.*\d+\s*DA\b)/i,
+                    /\bDA\s*(\d+)(?=\s|$)/i
+                ];
+                for (const re of patterns) {
+                    const m = text.match(re);
+                    if (m) {
+                        const rest = (text.slice(0, m.index) + " " + text.slice(m.index + m[0].length))
+                            .replace(/\s{2,}/g, " ")
+                            .trim();
+                        return { value: m[1], rest };
+                    }
+                }
+                return null;
+            };
 
-                // السطر الأقرب لـ Recouvrement من حيث y
-                const closestY = candidates.reduce((a, b) =>
-                    Math.abs(a.y - recY) < Math.abs(b.y - recY) ? a : b
-                ).y;
+            // ================================================================
+            // دالة مساعدة: إيجاد المبلغ في الصف الواقع مباشرة تحت عنوان Recouvrement
+            // لا تعتمد على x إطلاقاً — فقط على y (الصف) ونمط النص "رقم DA".
+            // ================================================================
+            const extractAmountByCoords = (items, recY) => {
+                // عناصر الصف التالي لعنوان الجدول (بين 3 و 30 وحدة تحت العنوان)
+                const rowItems = items
+                    .filter(it => it.y < recY - 3 && it.y > recY - 30)
+                    .sort((a, b) => b.y - a.y); // الأقرب للعنوان أولاً
 
-                // كل items في نفس السطر (y قريب من closestY)
-                const sameLine = candidates.filter(it => Math.abs(it.y - closestY) < 3);
-
-                // نأخذ الأيمن (أكبر x) — هو المبلغ دائماً
-                // نستثني العناصر الخالية من أرقام (مثل "OUVERTURE AUTORISÉE")
-                const target = sameLine
-                    .filter(it => /\d/.test(it.s))
-                    .sort((a, b) => b.x - a.x)[0];
-                if (!target) return null;
-
-                // إن كان السطر يشير إلى قطعة أخرى (مثل "Voir pièce 1") فلا نعتبره مبلغاً
-                const lineText = sameLine.map(it => it.s).join(" ");
-                if (/voir\s*pi[èe]ce/i.test(lineText)) return null;
-
-                // استخراج الرقم من النص (يتعامل مع "6950 DA" و "DA 4000" و "6950")
-                const m = target.s.match(/\d[\d\s]*/);
-                return m ? m[0].replace(/\s/g, "") : null;
+                for (const it of rowItems) {
+                    const res = parseAmountFromText(it.s);
+                    if (res) return res.value;
+                }
+                return null;
             };
 
             // ================================================================
@@ -342,16 +352,21 @@ const pdfFunctions = {
                             contentParts.push(lt);
                         }
 
-                        // تنظيف الوصف: إزالة المبالغ المضمّنة
+                        // تنظيف الوصف: إزالة المبلغ المضمّن فقط (بدون المساس بأرقام الوصف)
                         let rawContent = contentParts.join(" ");
-                        rawContent = rawContent.replace(/\bDA\s*\d[\d\s]*/gi, "").trim();
-                        rawContent = rawContent.replace(/\d[\d\s]*\s*DA\b/gi, "").trim();
+                        const parsedRow = parseAmountFromText(rawContent);
+                        if (parsedRow) {
+                            rawContent = parsedRow.rest;
+                        } else {
+                            rawContent = rawContent.replace(/\bDA\b/gi, "").trim();
+                        }
                         parcel.content = rawContent;
 
                         // ── استخراج المبلغ بالإحداثيات الثابتة ──
                         // recY = y الخاص بسطر Recouvrement في lines المدمجة
-                        const recLineY = lines[recIdx].y;
-                        const coordAmount = extractAmountByCoords(items, recLineY, isRightQuad);
+                        const recItem = items.find(it => /Recouvrement/i.test(it.s));
+                        const recLineY = recItem ? recItem.y : lines[recIdx].y;
+                        const coordAmount = extractAmountByCoords(items, recLineY);
                         if (coordAmount !== null) {
                             parcel.amount = coordAmount;
                         }
@@ -361,6 +376,8 @@ const pdfFunctions = {
                             for (let j = recIdx + 1; j < Math.min(recIdx + 4, lines.length); j++) {
                                 const lt = lines[j].text.trim();
                                 if (/voir\s*pi[èe]ce/i.test(lt)) continue;
+                                const viaParse = parseAmountFromText(lt);
+                                if (viaParse) { parcel.amount = viaParse.value; break; }
                                 const strictMatch = lt.match(/^(DA\s*)?([\d\s]{1,})(\s*DA)?$/i);
                                 if (strictMatch) {
                                     const val = (strictMatch[2] || "").replace(/\s/g, "");
