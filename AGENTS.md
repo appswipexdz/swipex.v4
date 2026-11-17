@@ -10,5 +10,8 @@
 2. **`service-worker.js`**: ارفع قيمة `CACHE_NAME` (مثال: `swipex-v4-shell-29` → `-30`) مع كل إصدار جديد
    حتى يسحب المستخدمون الأصول المحدّثة. (ملف `sw.js` صار غلافاً متوافقاً فقط ويستدعي
    `service-worker.js` عبر `importScripts`؛ لا تُعدّل المنطق فيه.)
+3. **`npm run build:css`**: عند إضافة أو تعديل أي فئة Tailwind في ملفات HTML أو JavaScript،
+   أعد بناء `assets/css/tailwind.min.css` (المبني مسبقاً بدل توليده داخل المتصفح)،
+   وأضف الملف الجديد إلى قائمة `ASSETS_TO_CACHE` في `service-worker.js` إن ظهر.
 
 راجع قسم «نشر تحديثات التطبيق» في `README.md` (سطر 218) لمزيد من التفاصيل.

@@ -1,0 +1,4 @@
+/* مدخلات بناء Tailwind — تُبني إلى tailwind.min.css عبر: npm run build:css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,3 +1,9 @@
+// تحديد مسار عامل PDF: يُنفَّذ هنا بعد تحميل pdf.min.js (بترتيب defer)
+// وقبل أي استدعاء — كان سابقاً سكربتاً داخلياً في ترويسة index/archive/settings.
+if (typeof pdfjsLib !== "undefined") {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdf.worker.min.js";
+}
+
 const pdfFunctions = {
     async handlePdfUpload(event) {
         const file = event.target.files[0];

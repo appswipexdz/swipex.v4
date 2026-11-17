@@ -1,0 +1,14 @@
+{
+  "name": "swipex-v4",
+  "private": true,
+  "version": "4.5.6",
+  "description": "SwiPex Pro - build tools (Tailwind CSS)",
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.min.css --minify",
+    "watch:css": "tailwindcss -i ./assets/css/tailwind.input.css -o ./assets/css/tailwind.min.css --watch"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^3.4.17"
+  }
+}

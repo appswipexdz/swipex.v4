@@ -24,18 +24,13 @@
     <script src="assets/js/boot-prefs.js"></script>
 
     <!-- Local Libraries (Offline Support) -->
-    <script src="assets/libs/vue.global.min.js"></script>
-    <script src="assets/libs/tailwindcss.js"></script>
-    <script>
-        tailwind.config = { darkMode: "class" };
-    </script>
-    <script src="assets/libs/xlsx.full.min.js"></script>
-    <script src="assets/libs/Sortable.min.js"></script>
-    <script src="assets/libs/quagga.min.js"></script>
-    <script src="assets/libs/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdf.worker.min.js";
-    </script>
+    <script src="assets/libs/vue.global.min.js" defer></script>
+    <!-- Tailwind مبني مسبقاً (npm run build:css) بدل توليده داخل المتصفح -->
+    <link rel="stylesheet" href="assets/css/tailwind.min.css" />
+    <script src="assets/libs/xlsx.full.min.js" defer></script>
+    <script src="assets/libs/Sortable.min.js" defer></script>
+    <script src="assets/libs/quagga.min.js" defer></script>
+    <script src="assets/libs/pdf.min.js" defer></script>
     <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
     <link href="assets/libs/cairo-font.css" rel="stylesheet" />
     <link rel="stylesheet" href="./assets/libs/leaflet/leaflet.css" />
@@ -321,26 +316,26 @@
     </div>
 
     <!-- Custom Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="assets/js/firebase-init.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
+    <script src="assets/js/firebase-init.js" defer></script>
     <!-- i18n: dictionaries + registry (must load before state.js / methods.js) -->
-    <script src="assets/i18n/ar.js"></script>
-    <script src="assets/i18n/fr.js"></script>
-    <script src="assets/i18n/en.js"></script>
-    <script src="assets/i18n/index.js"></script>
-    <script src="assets/js/state.js"></script>
-    <script src="assets/js/firestoreSync.js"></script>
-    <script src="assets/js/taskStore.js"></script>
-    <script src="./assets/libs/leaflet/leaflet.js"></script>
-    <script src="assets/js/scanner.js"></script>
-    <script src="assets/js/pdf.js"></script>
-    <script src="assets/js/importExcel.js"></script>
-    <script src="assets/js/methods.js"></script>
-    <script src="assets/js/shell.js"></script>
-    <script src="assets/js/tasks.js"></script>
-    <script src="assets/js/app.js"></script>
+    <script src="assets/i18n/ar.js" defer></script>
+    <script src="assets/i18n/fr.js" defer></script>
+    <script src="assets/i18n/en.js" defer></script>
+    <script src="assets/i18n/index.js" defer></script>
+    <script src="assets/js/state.js" defer></script>
+    <script src="assets/js/firestoreSync.js" defer></script>
+    <script src="assets/js/taskStore.js" defer></script>
+    <script src="./assets/libs/leaflet/leaflet.js" defer></script>
+    <script src="assets/js/scanner.js" defer></script>
+    <script src="assets/js/pdf.js" defer></script>
+    <script src="assets/js/importExcel.js" defer></script>
+    <script src="assets/js/methods.js" defer></script>
+    <script src="assets/js/shell.js" defer></script>
+    <script src="assets/js/tasks.js" defer></script>
+    <script src="assets/js/app.js" defer></script>
 
     <script>
         if ("serviceWorker" in navigator) {

@@ -1,17 +1,12 @@
-const CACHE_NAME = 'swipex-v4-shell-36';
+const CACHE_NAME = 'swipex-v4-shell-39';
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
 // Workers، وحارس الرجوع يجب أن يكون رابطاً مباشراً لا إعادة توجيه.
 const OFFLINE_FALLBACK = new URL('./', self.location.href).href;
 const ASSETS_TO_CACHE = [
-  './',
-  // './index.html' محذوفة عمداً: يُعاد توجيهها من Cloudflare إلى './' أصلاً (نفس المحتوى)،
-  // وتخزينها بامتدادها يُنتج رداً "مُعاد توجيهه" لا يصلح للرد على طلبات التصفّح لاحقاً
-  './tasks',
-  './archive',
-  './settings',
-  './login',
+  // ملاحظة: الصفحات ليست هنا — تُخزَّن عبر PAGES_TO_CACHE أدناه
+  // (تُجلب برابطها .html ثم تُخزَّن بالمفتاح دون امتداد، وهو ما يحتاجه التنقل)
   './manifest.json',
   './app-version.json',
   './assets/css/style.css',
@@ -27,6 +22,11 @@ const ASSETS_TO_CACHE = [
   './assets/js/scanner.js',
   './assets/js/importExcel.js',
   './assets/js/pdf.js',
+  // i18n: حيوية للعرض — غيابها يعني ظهور المفاتيح الخام بدل الترجمة
+  './assets/i18n/ar.js',
+  './assets/i18n/fr.js',
+  './assets/i18n/en.js',
+  './assets/i18n/index.js',
   './assets/icons/icon-192.png',
   './assets/icons/logo.png',
   './assets/icons/icon.png',
@@ -34,7 +34,7 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-maskable-512.png',
   './assets/icons/icon-maskable-192.png',
   './assets/libs/vue.global.min.js',
-  './assets/libs/tailwindcss.js',
+  './assets/css/tailwind.min.css',
   './assets/libs/xlsx.full.min.js',
   './assets/libs/Sortable.min.js',
   './assets/libs/quagga.min.js',
@@ -61,6 +61,17 @@ const ASSETS_TO_CACHE = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
 ];
 
+// الصفحات: تُجلب عبر رابطها بامتداد .html (يعمل على أي خادم، بعكس الروابط
+// دون امتداد التي قد تُفشل أثناء التثبيت على Apache)، ثم تُخزَّن بالمفتاح
+// دون امتداد — وهو المفتاح الذي يطالبه جارّ التنقل وحارس الرجوع دون اتصال.
+const PAGES_TO_CACHE = [
+  { key: './', src: './index.html' },
+  { key: './tasks', src: './tasks.html' },
+  { key: './archive', src: './archive.html' },
+  { key: './settings', src: './settings.html' },
+  { key: './login', src: './login.html' },
+];
+
 // تخزين متسامح مع الأخطاء: كل ملف على حدة، ففشل واحد لا يُسقط البقية
 async function cacheAllAssets() {
   const cache = await caches.open(CACHE_NAME);
@@ -68,10 +79,22 @@ async function cacheAllAssets() {
     ASSETS_TO_CACHE.map((url) => cache.add(new Request(url, { cache: 'reload' })))
   );
   const failed = ASSETS_TO_CACHE.filter((_, i) => results[i].status === 'rejected');
-  if (failed.length) {
-    console.warn(`[SW] تعذّر تخزين ${failed.length}/${ASSETS_TO_CACHE.length}:`, failed);
+
+  const pageResults = await Promise.allSettled(
+    PAGES_TO_CACHE.map(async ({ key, src }) => {
+      const response = await fetch(new Request(src, { cache: 'reload' }));
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      await cache.put(new Request(key), response);
+    })
+  );
+  const failedPages = PAGES_TO_CACHE.filter((_, i) => pageResults[i].status === 'rejected').map((p) => p.src);
+
+  const allFailed = failed.concat(failedPages);
+  const total = ASSETS_TO_CACHE.length + PAGES_TO_CACHE.length;
+  if (allFailed.length) {
+    console.warn(`[SW] تعذّر تخزين ${allFailed.length}/${total}:`, allFailed);
   } else {
-    console.log(`[SW] تم تخزين ${ASSETS_TO_CACHE.length} ملفاً بنجاح`);
+    console.log(`[SW] تم تخزين ${total} موقعاً بنجاح`);
   }
   return cache;
 }

@@ -156,7 +156,9 @@ SwiPex v4.0/
 ├── 📄 README.md               # هذا الملف
 └── 📂 assets/
     ├── 📂 css/
-    │   └── style.css          # الأنماط المخصصة والـ Glassmorphism
+    │   ├── tailwind.min.css     # أنماط Tailwind المبنية مسبقاً (npm run build:css)
+    │   ├── tailwind.input.css   # مدخلات البناء (@tailwind base/components/utilities)
+    │   └── style.css            # الأنماط المخصصة والـ Glassmorphism
     │
     ├── 📂 js/                 # الشفرة المصدرية (معمارية Modular)
     │   ├── app.js             # نقطة التشغيل - Vue Instance Mount
@@ -170,7 +172,6 @@ SwiPex v4.0/
     │
     ├── 📂 libs/               # المكتبات الخارجية (مستضافة محلياً)
     │   ├── vue.global.min.js
-    │   ├── tailwindcss.js
     │   ├── xlsx.full.min.js
     │   ├── pdf.min.js
     │   ├── pdf.worker.min.js
@@ -192,6 +193,10 @@ SwiPex v4.0/
 
 ### محلياً (Development)
 ```bash
+# بناء أنماط Tailwind — أعد تشغيله بعد كل تغيير في فئات HTML/JS
+npm install        # مرة واحدة
+npm run build:css  # يُنتج assets/css/tailwind.min.css
+
 # باستخدام serve (موصى به)
 npx serve .
 

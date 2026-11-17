@@ -1,15 +1,15 @@
 {
-  "version": "4.5.5",
-  "releasedAt": "2026-11-16",
+  "version": "4.5.8",
+  "releasedAt": "2026-11-17",
   "notes": {
     "ar": [
-      "إصلاح: قراءة قيمة الطرد (Recouvrement) من ملفات PDF"
+      "نقل زر الإشعارات إلى أعلى اليسار في الهيدر، وتعويضه بزر الأرشيف في الشريط السفلي."
     ],
     "en": [
-      "Fix: reading the parcel value (Recouvrement) from PDF files."
+      "Notifications button moved to the top-left of the header; the archive button replaces it in the bottom bar."
     ],
     "fr": [
-      "Correction : lecture de la valeur du colis (Recouvrement) depuis les fichiers PDF."
+      "Le bouton des notifications est déplacé en haut à gauche ; le bouton archives le remplace en barre inférieure."
     ]
   }
 }

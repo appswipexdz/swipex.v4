@@ -65,7 +65,7 @@
         { key: "tasks", icon: "fa-list-check", labelKey: "nav.tasks", href: "tasks.html", badge: "tasks" },
         { key: "home", icon: "fa-home", labelKey: "nav.home", href: "index.html" },
         { key: "yalidine", icon: "fa-shipping-fast", labelKey: "nav.yalidine", action: "yalidine" },
-        { key: "notifications", icon: "fa-bell", labelKey: "nav.notifications", action: "notifications", badge: "notifications" },
+        { key: "archive", icon: "fa-archive", labelKey: "nav.archive", href: "archive.html" },
     ];
 
     // ---------- روابط ياليدين (نفسها الحالية، بلا تغيير) ----------
@@ -206,6 +206,14 @@
                 <span class="hidden sm:inline">{{ t('sync.offline') }}</span>
             </div>
         </div>
+
+        <!-- زر الإشعارات (أقصى يسار الهيدر) -->
+        <button type="button" class="header-action" style="position: relative"
+            :title="t('nav.notifications')" @click="toggleNotifications()">
+            <i class="fas fa-bell"></i>
+            <span v-if="unreadNotifications > 0" class="nav-badge"
+                style="background:#ef4444">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span>
+        </button>
     </div>
 </div>
 `;
@@ -233,9 +241,20 @@
             isOnline() {
                 return this.$root.isOnline;
             },
+            unreadNotifications() {
+                const list = this.$root.notifications || [];
+                return list.filter((n) => !n.read).length;
+            },
         },
         methods: {
             ...I18N_METHODS,
+            toggleNotifications() {
+                const r = this.$root;
+                r.showNotificationsPanel = !r.showNotificationsPanel;
+                r.showFabMenu = false;
+                r.showYalidineMenu = false;
+                r.showTopMenu = false;
+            },
             goBack() {
                 const target = this.backHref || "index.html";
                 if (this.page === target.replace(/\.html$/, "")) return;
@@ -338,7 +357,7 @@
 
             <!-- الرئيسية (أيقونة كبيرة داخل قوس يرتفع فوق البار) -->
             <div v-else-if="item.key === 'home'" class="nav-slot nav-slot-home">
-                <a class="bottom-nav-item bottom-nav-item-home" :class="{ active: page === 'home' && !showNotificationsPanel }" :href="item.href"
+                <a class="bottom-nav-item bottom-nav-item-home" :class="{ active: page === 'home' }" :href="item.href"
                     @click.prevent="go(item.href)">
                     <span class="nav-home-arc">
                         <i class="fas" :class="item.icon"></i>
@@ -364,15 +383,13 @@
                 </div>
             </div>
 
-            <!-- الإشعارات -->
-            <div v-else-if="item.key === 'notifications'" class="nav-slot">
-                <button type="button" class="bottom-nav-item" :class="{ active: showNotificationsPanel }"
-                    style="position: relative" @click="toggleNotifications()">
+            <!-- الأرشيف (يفتح صفحة الأرشيف مباشرة) -->
+            <div v-else-if="item.key === 'archive'" class="nav-slot">
+                <a class="bottom-nav-item" :class="{ active: page === 'archive' }" :href="item.href"
+                    @click.prevent="go(item.href)">
                     <i class="fas" :class="item.icon"></i>
                     <span class="nav-label">{{ t(item.labelKey) }}</span>
-                    <span v-if="unread > 0" class="nav-badge"
-                        style="background:#ef4444">{{ unread > 99 ? '99+' : unread }}</span>
-                </button>
+                </a>
             </div>
         </template>
     </div>
