@@ -2648,6 +2648,15 @@ const appMethods = {
   // ========== Drag Handle (زر السحب) ==========
   // الأدوار: ضغطة واحدة = توسيع/طيّ البطاقة · ضغط مستمر = سحب وإعادة ترتيب
   //          · في وضع التحديد يعرض مكانه مربع اختيار الطرد
+  // أيقونة زر السحب: ≡ مطوية · ⇅ أثناء الضغط المستمر (جاهزية السحب) · ↑ عند التوسيع
+  // تُستدعى كدالة لا كمعرّف مباشر في القالب: المعرّفات التي تبدأ بشرطة سفلية (_x)
+  // لا يُحلّها نطاق with(_ctx) في مُركِّب Vue (محجوزة لمساعدات المُركّك)
+  // فتُرمي ReferenceError وتُسقط عرض الصفحة بالكامل.
+  getDragHandleIcon(parcel) {
+    if (parcel && parcel.expanded) return "fa-angles-up";
+    return this._dragHandleArmed ? "fa-up-down" : "fa-grip-lines";
+  },
+
   handleDragHandlePressStart(event) {
     if (!event || (typeof event.button === "number" && event.button !== 0)) return;
     this.cleanupDragHandlePress();

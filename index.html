@@ -424,7 +424,7 @@
                                                 @pointerdown="handleDragHandlePressStart($event)"
                                                 @click.stop="handleDragHandleClick(parcel, $event)">
                                                 <i class="fas text-[11px] transition-transform"
-                                                    :class="parcel.expanded ? 'fa-angles-up' : (_dragHandleArmed ? 'fa-up-down' : 'fa-grip-lines')"></i>
+                                                    :class="getDragHandleIcon(parcel)"></i>
                                             </div>
                                         </div>
 

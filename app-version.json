@@ -1,15 +1,18 @@
 {
-  "version": "4.5.9",
+  "version": "4.5.10",
   "releasedAt": "2026-11-18",
   "notes": {
     "ar": [
-      "زر السحب صار مدخل توسيع/طيّ البطاقة وحده (يتحول إلى سهم ↑)، وإيقاف التوسيع عند الضغط على أي مكان في البطاقة."
+      "زر السحب صار مدخل توسيع/طيّ البطاقة وحده (يتحول إلى سهم ↑)، وإيقاف التوسيع عند الضغط على أي مكان في البطاقة.",
+      "إصلاح: تحميل الصفحة الرئيسية مع ظهور الطرود."
     ],
     "en": [
-      "The drag handle is now the only control to expand/collapse a card (it turns into an ↑ arrow); tapping the card no longer expands it."
+      "The drag handle is now the only control to expand/collapse a card (it turns into an ↑ arrow); tapping the card no longer expands it.",
+      "Fix: home page failing to load when parcels are displayed."
     ],
     "fr": [
-      "La poignée de glissement est désormais le seul contrôle pour déplier/replier une carte (elle devient une flèche ↑) ; appuyer sur la carte ne la développe plus."
+      "La poignée de glissement est désormais le seul contrôle pour déplier/replier une carte (elle devient une flèche ↑) ; appuyer sur la carte ne la développe plus.",
+      "Correction : la page d'accueil ne se chargeait pas lors de l'affichage des colis."
     ]
   }
 }
