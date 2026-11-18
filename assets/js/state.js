@@ -27,6 +27,13 @@ const appState = {
     selectionPressTimer: null,
     selectionPressParcelId: null,
     selectionLongPressTriggered: false,
+    // ضغط زر السحب في البطاقة: يميّز ضغطة التوسيع السريعة عن السحب المستمر
+    _dragHandleSuppressClick: false,
+    _dragHandleMoved: false,
+    _dragHandleLongPress: false,
+    _dragHandleArmed: false,
+    _dragHandlePressTimer: null,
+    _dragHandlePressCleanup: null,
     showSelectionActions: false,
     drawerOpen: false,
     drawerDataExpanded: false,

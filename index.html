@@ -419,8 +419,12 @@
                                                 </svg>
                                             </label>
                                             <div v-else
-                                                class="handle w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move">
-                                                <i class="fas fa-grip-lines text-[11px]"></i>
+                                                class="handle w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move"
+                                                :title="parcel.expanded ? t('parcel.collapse_handle_hint') : t('parcel.expand_handle_hint')"
+                                                @pointerdown="handleDragHandlePressStart($event)"
+                                                @click.stop="handleDragHandleClick(parcel, $event)">
+                                                <i class="fas text-[11px] transition-transform"
+                                                    :class="parcel.expanded ? 'fa-angles-up' : (_dragHandleArmed ? 'fa-up-down' : 'fa-grip-lines')"></i>
                                             </div>
                                         </div>
 

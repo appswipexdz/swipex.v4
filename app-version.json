@@ -1,15 +1,15 @@
 {
-  "version": "4.5.8",
-  "releasedAt": "2026-11-17",
+  "version": "4.5.9",
+  "releasedAt": "2026-11-18",
   "notes": {
     "ar": [
-      "نقل زر الإشعارات إلى أعلى اليسار في الهيدر، وتعويضه بزر الأرشيف في الشريط السفلي."
+      "زر السحب صار مدخل توسيع/طيّ البطاقة وحده (يتحول إلى سهم ↑)، وإيقاف التوسيع عند الضغط على أي مكان في البطاقة."
     ],
     "en": [
-      "Notifications button moved to the top-left of the header; the archive button replaces it in the bottom bar."
+      "The drag handle is now the only control to expand/collapse a card (it turns into an ↑ arrow); tapping the card no longer expands it."
     ],
     "fr": [
-      "Le bouton des notifications est déplacé en haut à gauche ; le bouton archives le remplace en barre inférieure."
+      "La poignée de glissement est désormais le seul contrôle pour déplier/replier une carte (elle devient une flèche ↑) ; appuyer sur la carte ne la développe plus."
     ]
   }
 }

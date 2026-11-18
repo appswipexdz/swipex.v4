@@ -2642,6 +2642,66 @@ const appMethods = {
       if (event) event.stopPropagation();
       return;
     }
+    // لا توسعة عند الضغط على البطاقة: التوسيع صار من زر السحب فقط (handleDragHandleClick)
+  },
+
+  // ========== Drag Handle (زر السحب) ==========
+  // الأدوار: ضغطة واحدة = توسيع/طيّ البطاقة · ضغط مستمر = سحب وإعادة ترتيب
+  //          · في وضع التحديد يعرض مكانه مربع اختيار الطرد
+  handleDragHandlePressStart(event) {
+    if (!event || (typeof event.button === "number" && event.button !== 0)) return;
+    this.cleanupDragHandlePress();
+    this._dragHandleSuppressClick = false;
+    this._dragHandleMoved = false;
+    this._dragHandleLongPress = false;
+    this._dragHandleArmed = false;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const onMove = (ev) => {
+      if (Math.abs(ev.clientX - startX) > 10 || Math.abs(ev.clientY - startY) > 10) {
+        this._dragHandleMoved = true;
+      }
+    };
+    const onUp = () => {
+      // انتهى الضغط: أخفِ جاهزية السحب لكن اترك النتيجة (نيّة السحب) لنقرة الرفع
+      this._dragHandleArmed = false;
+      this.cleanupDragHandlePress();
+    };
+    this._dragHandlePressTimer = setTimeout(() => {
+      this._dragHandlePressTimer = null;
+      // ضغط مستمر = نيّة سحب، فلا يُعتبر ضغطة توسيع عند الرفع
+      this._dragHandleLongPress = true;
+      this._dragHandleArmed = true;
+    }, 400);
+    this._dragHandlePressCleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp, { passive: true });
+    window.addEventListener("pointercancel", onUp, { passive: true });
+  },
+
+  cleanupDragHandlePress() {
+    if (this._dragHandlePressTimer) {
+      clearTimeout(this._dragHandlePressTimer);
+      this._dragHandlePressTimer = null;
+    }
+    if (typeof this._dragHandlePressCleanup === "function") this._dragHandlePressCleanup();
+    this._dragHandlePressCleanup = null;
+  },
+
+  handleDragHandleClick(parcel, event) {
+    this.cleanupDragHandlePress();
+    // سبق سحب الفعل (Sortable) أو تحريك كبير أو ضغط مستمر → ليست ضغطة للتوسيع
+    const wasDrag = this._dragHandleSuppressClick || this._dragHandleMoved || this._dragHandleLongPress;
+    this._dragHandleSuppressClick = false;
+    this._dragHandleMoved = false;
+    this._dragHandleLongPress = false;
+    this._dragHandleArmed = false;
+    if (wasDrag) return;
+    if (event) event.stopPropagation();
     this.toggleExpand(parcel.id);
   },
 
@@ -2964,9 +3024,13 @@ const appMethods = {
       // فلا تُسبّب إعادة رسم عند تغيّرها)
       onStart: () => {
         this._sortDragging = true;
+        // سحب حقيقي من زر السحب → أي نقرة لاحقة ليست ضغطة توسيع
+        this._dragHandleSuppressClick = true;
+        this._dragHandleArmed = false;
       },
       onEnd: (evt) => {
         this._sortDragging = false;
+        this._dragHandleArmed = false;
         // أثناء المزامنة الأولية تتغيّر القوائم من الخلفية؛ تجنّب إعادة الترتيب
         // اعتماداً على فهارس قد تصبح خاطئة (المستخدم يستطيع السحب بعد اكتمالها).
         if (this.initialSyncProgress) return;
