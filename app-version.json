@@ -1,18 +1,18 @@
 {
-  "version": "4.5.10",
-  "releasedAt": "2026-11-18",
+  "version": "4.5.11",
+  "releasedAt": "2026-11-21",
   "notes": {
     "ar": [
-      "زر السحب صار مدخل توسيع/طيّ البطاقة وحده (يتحول إلى سهم ↑)، وإيقاف التوسيع عند الضغط على أي مكان في البطاقة.",
-      "إصلاح: تحميل الصفحة الرئيسية مع ظهور الطرود."
+      "إضافة خيار «تقييد توسيع البطاقة» من الإعدادات.",
+      "توحيد حالة المزامنة والاتصال في مؤشر واحد ضمن الهيدر."
     ],
     "en": [
-      "The drag handle is now the only control to expand/collapse a card (it turns into an ↑ arrow); tapping the card no longer expands it.",
-      "Fix: home page failing to load when parcels are displayed."
+      "Added an optional \"Restrict Card Expansion\" setting.",
+      "Unified sync and connection status into a single header indicator."
     ],
     "fr": [
-      "La poignée de glissement est désormais le seul contrôle pour déplier/replier une carte (elle devient une flèche ↑) ; appuyer sur la carte ne la développe plus.",
-      "Correction : la page d'accueil ne se chargeait pas lors de l'affichage des colis."
+      "Ajout de l’option « Limiter le déploiement des cartes ».",
+      "Regroupement des statuts de synchronisation et de connexion dans un seul indicateur d’en-tête."
     ]
   }
 }

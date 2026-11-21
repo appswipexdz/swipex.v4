@@ -173,38 +173,12 @@
     <!-- يسار: اللوغو + حالة المزامنة/الاتصال -->
     <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <img v-if="!showLogo" src="assets/icons/logo.png" alt="SwiPex" class="h-7 rounded-lg hidden sm:block" />
-        <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-            <div v-if="syncStatus === 'syncing'" class="flex items-center gap-1.5 text-xs font-bold text-blue-300">
-                <i class="fas fa-circle-notch animate-spin text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.syncing') }}</span>
-            </div>
-            <div v-else-if="syncStatus === 'synced'" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
-                <i class="fas fa-check-circle text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.saved') }}</span>
-            </div>
-            <div v-else-if="syncStatus === 'error'" class="flex items-center gap-1.5 text-xs font-bold text-red-300">
-                <i class="fas fa-exclamation-circle text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.error') }}</span>
-            </div>
-            <div v-else-if="syncStatus === 'offline'" class="flex items-center gap-1.5 text-xs font-bold text-gray-300">
-                <i class="fas fa-pause-circle text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.stopped') }}</span>
-            </div>
-            <div v-else class="flex items-center gap-1.5 text-xs font-bold text-gray-300">
-                <i class="fas fa-pause-circle text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.idle') }}</span>
-            </div>
-
-            <div class="h-3 w-px bg-white/20"></div>
-
-            <div v-if="isOnline" class="flex items-center gap-1.5 text-xs font-bold text-green-300">
-                <i class="fas fa-wifi text-sm"></i>
-                <span class="hidden sm:inline">{{ t('sync.online') }}</span>
-            </div>
-            <div v-else class="flex items-center gap-1.5 text-xs font-bold text-gray-400">
-                <i class="fas fa-wifi text-sm relative"><span class="absolute left-[-2px] top-1/2 w-[18px] h-[2px] bg-gray-500 -rotate-45 origin-center"></span></i>
-                <span class="hidden sm:inline">{{ t('sync.offline') }}</span>
-            </div>
+        <!-- حالة المزامنة/الاتصال: زر واحد ثابت (غير قابل للضغط) بالأيقونة + شارة الاتصال الصغيرة فوقها -->
+        <div class="header-status" role="status" :aria-label="statusTooltip" :title="statusTooltip">
+            <i class="fas" :class="[syncInfo.icon, { 'animate-spin': syncInfo.spin }]" :style="{ color: syncInfo.color }"></i>
+            <span class="nav-badge" :style="{ background: isOnline ? '#22c55e' : '#9ca3af' }">
+                <i class="fas fa-wifi"></i>
+            </span>
         </div>
 
         <!-- زر الإشعارات (أقصى يسار الهيدر) -->
@@ -240,6 +214,18 @@
             },
             isOnline() {
                 return this.$root.isOnline;
+            },
+            // أيقونة حالة المزامنة: الأيقونة + لونها + نص التلميح
+            syncInfo() {
+                const s = this.syncStatus;
+                if (s === "syncing") return { icon: "fa-circle-notch", spin: true, key: "sync.syncing", color: "#93c5fd" };
+                if (s === "synced") return { icon: "fa-check-circle", spin: false, key: "sync.saved", color: "#86efac" };
+                if (s === "error") return { icon: "fa-exclamation-circle", spin: false, key: "sync.error", color: "#fca5a5" };
+                if (s === "offline") return { icon: "fa-pause-circle", spin: false, key: "sync.stopped", color: "#d1d5db" };
+                return { icon: "fa-pause-circle", spin: false, key: "sync.idle", color: "#d1d5db" };
+            },
+            statusTooltip() {
+                return this.t(this.syncInfo.key) + " • " + this.t(this.isOnline ? "sync.online" : "sync.offline");
             },
             unreadNotifications() {
                 const list = this.$root.notifications || [];

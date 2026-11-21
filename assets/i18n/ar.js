@@ -334,8 +334,8 @@ window.i18n_ar = {
 
     "guide.card.title": "بطاقة الطرد",
     "guide.card.sub": "العرض والتفاعل",
-    "guide.card.expand": "اضغط مرة واحدة على زر السحب (≡)",
-    "guide.card.expand_body": "لتوسيعها وعرض كل التفاصيل (المحتوى، المرسل، الأزرار) — ويتحول الزر إلى سهم ↑ لطيّها.",
+    "guide.card.expand": "اضغط على البطاقة",
+    "guide.card.expand_body": "لتوسيعها وعرض كل التفاصيل (المحتوى، المرسل، الأزرار) — أو على زر السحب (≡) الذي يتحول إلى سهم ↑ لطيّها.",
     "guide.card.copy_label": "اضغط على رقم التتبع",
     "guide.card.copy_body": "أو رمز PIN لنسخه مع صوت تأكيد.",
     "guide.card.swipe_right_label": "← سحب لليمين:",
@@ -343,7 +343,7 @@ window.i18n_ar = {
     "guide.card.swipe_left_label": "→ سحب لليسار:",
     "guide.card.swipe_left_body": "فتح صفحة الطرد في ياليدين.",
     "guide.card.handle_label": "≡ زر السحب:",
-    "guide.card.handle_body": "ضغطة واحدة تتوسيع/تطوي البطاقة، والضغط المستمر يسحب الطرد لإعادة ترتيبه، وفي وضع التحديد يصبح مربع اختيار.",
+    "guide.card.handle_body": "ضغطة واحدة تتوسيع/تطوي البطاقة، والضغط المستمر يسحب الطرد لإعادة ترتيبه، وفي وضع التحديد يصبح مربع اختيار — ويمكن تقييد التوسيع على هذا الزر فقط من الإعدادات.",
     "guide.card.badge_label": "شارة حمراء:",
     "guide.card.badge_body": "تنبيه بوجود أرقام هاتف مكررة. اضغط عليها لتصفية الطرود بنفس الرقم.",
 
@@ -482,7 +482,7 @@ window.i18n_ar = {
     "guide.shortcuts.swipe_left_desc": "فتح ياليدين",
     "guide.shortcuts.tap_tracking": "نقر رقم التتبع",
     "guide.shortcuts.tap_tracking_desc": "نسخ للحافظة",
-    "guide.shortcuts.tap_card": "نقر زر السحب (≡)",
+    "guide.shortcuts.tap_card": "نقر البطاقة",
     "guide.shortcuts.tap_card_desc": "توسيع/طي البطاقة",
     "guide.shortcuts.mic": "🎤 ميكروفون",
     "guide.shortcuts.mic_desc": "إدراج ملاحظة صوتية",
@@ -797,6 +797,8 @@ window.i18n_ar = {
     "settings.theme_auto": "تلقائي",
     "settings.duplicates_title": "تنبيه الأرقام المكررة",
     "settings.duplicates_desc": "إظهار شارة حمراء على البطاقة عندما يتكرر رقم الهاتف.",
+    "settings.expand_handle_only_title": "تحديد توسيع البطاقة",
+    "settings.expand_handle_only_desc": "فعّلها ليتوسّع الطرد بالضغط على زر السحب (≡) فقط، وإلا يتوسّع بالضغط على أي مكان في البطاقة.",
 
     "settings.language_label": "لغة الواجهة",
     "settings.language_hint": "تُطبَّق اللغة على نصوص الواجهة فقط (أزرار، عناوين، رسائل النظام). الحالات المخصَّصة والتمييزات وكل بياناتك النصية (البلديات، الملاحظات، أسماء الزبائن) تبقى كما كتبتها أنت ولا تُترجَم تلقائياً.",

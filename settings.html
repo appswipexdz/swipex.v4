@@ -372,6 +372,33 @@
                     </div>
                 </div>
 
+                <!-- تحديد توسيع البطاقة (اختيارية) -->
+                <div class="glass-panel p-4 rounded-2xl">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                                <i class="fas fa-expand-arrows-alt text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">
+                                    {{ t('settings.expand_handle_only_title') }}
+                                </h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ t('settings.expand_handle_only_desc') }}
+                                </p>
+                            </div>
+                        </div>
+                        <label class="relative inline-block w-14 h-8" dir="ltr">
+                            <input type="checkbox" v-model="settings.expandHandleOnly" @change="saveSettings"
+                                class="sr-only peer" />
+                            <div
+                                class="w-14 h-8 bg-gray-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-md peer-checked:bg-blue-600">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- أرقام مفضلة -->
                 <div class="glass-panel rounded-2xl overflow-hidden">
                     <div @click="settingsExpanded.favoritePhones = !settingsExpanded.favoritePhones"

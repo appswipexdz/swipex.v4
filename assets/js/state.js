@@ -93,6 +93,8 @@ showYalidineMenu: false,
         tagMetadata: {},
         smartTagSortingEnabled: false,
         cardTrackingEnabled: true,
+        // ميزة اختيارية: التوسيع من زر السحب فقط (معطّلة افتراضياً)
+        expandHandleOnly: false,
         tagOrder: [],
         customStatuses: [],
         statusGroups: [],

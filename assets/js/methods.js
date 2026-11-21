@@ -2642,7 +2642,10 @@ const appMethods = {
       if (event) event.stopPropagation();
       return;
     }
-    // لا توسعة عند الضغط على البطاقة: التوسيع صار من زر السحب فقط (handleDragHandleClick)
+    // ميزة «تحديد توسيع البطاقة» (اختيارية ومعطّلة افتراضياً): عند تفعيلها
+    // يبقى التوسيع محصوراً بزر السحب، وإلا يتوسّع الطرد بالضغط عليه مثلما كان
+    if (this.settings.expandHandleOnly) return;
+    this.toggleExpand(parcel.id);
   },
 
   // ========== Drag Handle (زر السحب) ==========

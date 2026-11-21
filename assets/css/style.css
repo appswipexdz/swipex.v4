@@ -1688,6 +1688,41 @@ select {
     transform: scale(0.92);
 }
 
+/* حالة المزامنة/الاتصال في الهيدر: زر ثابت غير قابل للضغط (مؤشر حالة فقط) */
+.header-status {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 15px;
+}
+
+/* شارة الاتصال الصغيرة فوق أيقونة الحالة — بنفس موضع شارة الإشعارات */
+.header-status .nav-badge {
+    top: -5px;
+    right: -5px;
+    left: auto;
+    margin-left: 0;
+    min-width: 15px;
+    height: 15px;
+    padding: 0;
+}
+
+/* أيقونة واي فاي داخل الشارة الصغيرة */
+.header-status .nav-badge i {
+    font-size: 8px;
+}
+
 /* --- Bottom Navigation: 5 عناصر متساوية بدون centre gap --- */
 .bottom-nav .bottom-nav-inner {
     justify-content: space-between;

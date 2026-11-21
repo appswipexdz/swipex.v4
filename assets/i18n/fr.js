@@ -331,8 +331,8 @@ window.i18n_fr = {
 
     "guide.card.title": "Fiche colis",
     "guide.card.sub": "Affichage et interactions",
-    "guide.card.expand": "Appuyez une fois sur la poignée (≡)",
-    "guide.card.expand_body": "pour développer la carte et voir tous les détails (contenu, expéditeur, boutons) — le bouton devient une flèche ↑ pour la replier.",
+    "guide.card.expand": "Appuyez sur la carte",
+    "guide.card.expand_body": "pour la développer et voir tous les détails (contenu, expéditeur, boutons) — ou appuyez sur la poignée (≡) qui devient une flèche ↑ pour la replier.",
     "guide.card.copy_label": "Appuyez sur le code de suivi",
     "guide.card.copy_body": "ou sur l'icône PIN pour le copier avec un son de confirmation.",
     "guide.card.swipe_right_label": "← Glisser vers la droite :",
@@ -340,7 +340,7 @@ window.i18n_fr = {
     "guide.card.swipe_left_label": "→ Glisser vers la gauche :",
     "guide.card.swipe_left_body": "ouvrir la page du colis sur Yalidine.",
     "guide.card.handle_label": "≡ Poignée de glissement :",
-    "guide.card.handle_body": "un appui déplie/replie la carte, un appui maintenu glisse le colis pour le réordonner, et elle devient une case à cocher en mode sélection.",
+    "guide.card.handle_body": "un appui déplie/replie la carte, un appui maintenu glisse le colis pour le réordonner, et elle devient une case à cocher en mode sélection — le dépliage peut être limité à ce bouton uniquement depuis les réglages.",
     "guide.card.badge_label": "Badge rouge :",
     "guide.card.badge_body": "signale des numéros de téléphone en double. Appuyez pour filtrer les colis portant ce numéro.",
 
@@ -491,7 +491,7 @@ window.i18n_fr = {
     "guide.shortcuts.swipe_left_desc": "ouvrir Yalidine",
     "guide.shortcuts.tap_tracking": "Appuyer sur le code",
     "guide.shortcuts.tap_tracking_desc": "copier dans le presse-papiers",
-    "guide.shortcuts.tap_card": "Appuyer sur la poignée (≡)",
+    "guide.shortcuts.tap_card": "Appuyer sur la carte",
     "guide.shortcuts.tap_card_desc": "développer / replier",
     "guide.shortcuts.mic": "🎤 Micro",
     "guide.shortcuts.mic_desc": "insérer une note vocale",
@@ -806,6 +806,8 @@ window.i18n_fr = {
     "settings.theme_auto": "Automatique",
     "settings.duplicates_title": "Alerte des numéros en double",
     "settings.duplicates_desc": "Afficher un badge rouge sur la carte lorsqu'un numéro de téléphone est répété.",
+    "settings.expand_handle_only_title": "Limiter le dépliage de la carte",
+    "settings.expand_handle_only_desc": "À activer pour ne déplier la carte qu'en appuyant sur la poignée (≡) ; sinon, appuyer n'importe où sur la carte la développe.",
 
     "settings.tags_enable": "Activer le système d'étiquettes",
     "settings.tags_smart_sort": "Tri intelligent des étiquettes",

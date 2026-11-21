@@ -331,8 +331,8 @@ window.i18n_en = {
 
     "guide.card.title": "Parcel card",
     "guide.card.sub": "Display and interactions",
-    "guide.card.expand": "Tap the drag handle (≡) once",
-    "guide.card.expand_body": "to expand the card and see all details (content, sender, buttons) — the button turns into an ↑ arrow to collapse it.",
+    "guide.card.expand": "Tap the card",
+    "guide.card.expand_body": "to expand it and see all details (content, sender, buttons) — or tap the drag handle (≡), which turns into an ↑ arrow to collapse it.",
     "guide.card.copy_label": "Tap the tracking number",
     "guide.card.copy_body": "or the PIN icon to copy it with a confirmation sound.",
     "guide.card.swipe_right_label": "← Swipe right:",
@@ -340,7 +340,7 @@ window.i18n_en = {
     "guide.card.swipe_left_label": "→ Swipe left:",
     "guide.card.swipe_left_body": "open the parcel page on Yalidine.",
     "guide.card.handle_label": "≡ Drag handle:",
-    "guide.card.handle_body": "one tap expands/collapses the card, press and hold drags the parcel to reorder it, and it becomes a checkbox in selection mode.",
+    "guide.card.handle_body": "one tap expands/collapses the card, press and hold drags the parcel to reorder it, and it becomes a checkbox in selection mode — expansion can be restricted to this button only from settings.",
     "guide.card.badge_label": "Red badge:",
     "guide.card.badge_body": "warns about duplicate phone numbers. Tap it to filter parcels with the same number.",
 
@@ -491,7 +491,7 @@ window.i18n_en = {
     "guide.shortcuts.swipe_left_desc": "open Yalidine",
     "guide.shortcuts.tap_tracking": "Tap tracking number",
     "guide.shortcuts.tap_tracking_desc": "copy to clipboard",
-    "guide.shortcuts.tap_card": "Tap the drag handle (≡)",
+    "guide.shortcuts.tap_card": "Tap card",
     "guide.shortcuts.tap_card_desc": "expand / collapse",
     "guide.shortcuts.mic": "🎤 Microphone",
     "guide.shortcuts.mic_desc": "insert a voice note",
@@ -806,6 +806,8 @@ window.i18n_en = {
     "settings.theme_auto": "Automatic",
     "settings.duplicates_title": "Duplicate number alert",
     "settings.duplicates_desc": "Show a red badge on a card when a phone number repeats.",
+    "settings.expand_handle_only_title": "Restrict card expansion",
+    "settings.expand_handle_only_desc": "Turn it on to expand a card only by tapping the drag handle (≡); otherwise tapping anywhere on the card expands it.",
 
     "settings.tags_enable": "Enable tag system",
     "settings.tags_smart_sort": "Smart tag sorting",
