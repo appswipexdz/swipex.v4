@@ -1,0 +1,5 @@
+# Clean routes: serve the existing HTML files for direct loads and refreshes.
+/tasks       /tasks.html      200
+/archive     /archive.html    200
+/settings    /settings.html   200
+/login       /login.html      200
