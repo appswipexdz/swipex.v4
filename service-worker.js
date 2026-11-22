@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swipex-v4-shell-43';
+const CACHE_NAME = 'swipex-v4-shell-44';
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
@@ -82,8 +82,16 @@ async function cacheAllAssets() {
 
   const pageResults = await Promise.allSettled(
     PAGES_TO_CACHE.map(async ({ key, src }) => {
-      const response = await fetch(new Request(src, { cache: 'reload' }));
+      let response = await fetch(new Request(src, { cache: 'reload' }));
       if (!response.ok) throw new Error('HTTP ' + response.status);
+      // على Cloudflare Workers يُعاد توجيه './tasks.html' إلى './tasks'. الرد الناتج
+      // يحمل العلم redirected=true، والمتصفح يُفشل التنقل إذا قُدِّم كما هو
+      // (ERR_FAILED: «لا يمكن الوصول إلى الموقع الإلكتروني هذا»). نجلب الرابط
+      // النهائي مباشرةً لنخزّن رداً نظيفاً — وهو ما يحتاجه التنقل لاحقاً.
+      if (response.redirected && response.url) {
+        const clean = await fetch(new Request(response.url, { cache: 'reload' }));
+        if (clean.ok && !clean.redirected) response = clean;
+      }
       await cache.put(new Request(key), response);
     })
   );
@@ -152,6 +160,26 @@ function isAppShell(url) {
   );
 }
 
+// ردّ مُعاد توجيهه يُفشل طلب تصفّح في المتصفح (ERR_FAILED أو حلقة إعادة التوجيه).
+// نجلب الرابط النهائي مباشرةً لنقدّم رداً نظيفاً، ونُصلح الكاش في الطريق حتى
+// لا يتكرّر الأمر في كل تحديث للصفحة. بلا شبكة نكتفي بالرد المتاح.
+async function guardNavigation(request, response) {
+  if (request.mode !== 'navigate' || !response || !response.redirected || !response.url) {
+    return response;
+  }
+  try {
+    const clean = await fetch(new Request(response.url, { cache: 'reload' }));
+    if (clean.ok && !clean.redirected) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(clean.url, clean.clone()).catch(() => {});
+      return clean;
+    }
+  } catch (e) {
+    // بلا اتصال: الرد الحالي يبقى مؤقتاً ويُستبدل تلقائياً عند عودة الشبكة.
+  }
+  return response;
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -202,7 +230,7 @@ self.addEventListener('fetch', (event) => {
             return new Response('', { status: 504, statusText: 'Offline' });
           });
         })
-      )
+      ).then((response) => guardNavigation(event.request, response))
     );
     return;
   }
@@ -222,7 +250,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       });
-    })
+    }).then((response) => guardNavigation(event.request, response))
   );
 });
 

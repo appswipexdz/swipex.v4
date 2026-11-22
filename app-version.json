@@ -1,18 +1,18 @@
 {
-  "version": "4.5.11",
-  "releasedAt": "2026-11-21",
+  "version": "4.5.12",
+  "releasedAt": "2026-11-22",
   "notes": {
     "ar": [
-      "إضافة خيار «تقييد توسيع البطاقة» من الإعدادات.",
-      "توحيد حالة المزامنة والاتصال في مؤشر واحد ضمن الهيدر."
+      "إصلاح فتح صفحة المهام والأرشيف عند التحديث.",
+      "إزالة ملف إعادة التوجيه الذي يسبّب حلقة."
     ],
     "en": [
-      "Added an optional \"Restrict Card Expansion\" setting.",
-      "Unified sync and connection status into a single header indicator."
+      "Fixed opening the Tasks and Archive pages on refresh.",
+      "Removed the redirect file that caused a loop."
     ],
     "fr": [
-      "Ajout de l’option « Limiter le déploiement des cartes ».",
-      "Regroupement des statuts de synchronisation et de connexion dans un seul indicateur d’en-tête."
+      "Correction de l’ouverture des pages Tâches et Archives à l’actualisation.",
+      "Suppression du fichier de redirection qui créait une boucle."
     ]
   }
 }
