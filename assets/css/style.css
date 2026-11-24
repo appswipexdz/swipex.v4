@@ -154,6 +154,8 @@ body.dark-mode::after {
 
 .drawer.active { right: 0; }
 
+/* الانتقال يُتحكَّم به مباشرة عبر style في methods.js أثناء السحب:
+   'none' أثناء السحب، ومنحنى ارتدادي عند الرفع — فلا انتظار لإعادة رسم. */
 .card-content {
     position: relative;
     z-index: 10;
@@ -173,22 +175,15 @@ body.dark-mode::after {
     color: #e5e7eb;
 }
 
-.card-content.snapping {
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.card-content.swiping {
-    transition: none;
-    will-change: transform;
-}
-
 .swipe-background {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    display: flex;
+    /* مخفاة افتراضياً: تكشفها JavaScript فقط أثناء السحب (بلا v-show
+       تفاعلي، فلا تُعاد بناء القائمة عند تغيّر الاتجاه) */
+    display: none;
     align-items: center;
     z-index: 1;
     pointer-events: none;
@@ -196,6 +191,22 @@ body.dark-mode::after {
     border-radius: 1rem;
 }
 
+/* نسبة الإنجاز نحو العتبة: يضبطها السحب على العنصر الأب كمتغيّر --swipe-p
+   فتكبر أيقونة الهدف تدريجياً ويزداد شفافيتها قبل رفع الإصبع */
+.swipe-background > * {
+    transform: scale(calc(0.86 + 0.14 * var(--swipe-p, 0)));
+    opacity: calc(0.55 + 0.45 * var(--swipe-p, 0));
+    transition: transform 0.12s ease-out, opacity 0.12s ease-out;
+}
+
+/* تجاوز العتبة: أيقونة الهدف في موضعها الكامل — إشارة أن الإجراء مقبول */
+.swipe-armed .swipe-background > * {
+    transform: scale(1.14);
+    opacity: 1;
+}
+
+/* لون الحافة يتبع العملية لا الموضعها: أزرق = اتصال · أحمر = ياليدين.
+   الاتجاه يبقى مربوطاً بالحافة المكشوفة (أخف عند الحافة المكشوفة). */
 .swipe-background-right {
     background: linear-gradient(90deg, #be2222 0%, #ef4444 100%);
     justify-content: flex-start;
@@ -204,6 +215,15 @@ body.dark-mode::after {
 .swipe-background-left {
     background: linear-gradient(270deg, #2b66b9 0%, #3b82f6 100%);
     justify-content: flex-start;
+}
+
+/* الوضع المعكوس (لليدين): الحافتان تقلبان لوناً وعملاً مع اتجاه السحب */
+.swipe-swapped .swipe-background-left {
+    background: linear-gradient(270deg, #be2222 0%, #ef4444 100%);
+}
+
+.swipe-swapped .swipe-background-right {
+    background: linear-gradient(90deg, #2b66b9 0%, #3b82f6 100%);
 }
 
 /* حافة السحب فيزيائية ولا تتبع اتجاه الصفحة: البطاقة تنزلق يميناً فتكشف
@@ -219,6 +239,45 @@ body.dark-mode::after {
 .swipe-background-right > * {
     margin-right: 25px;
     margin-left: auto;
+}
+
+/* أي محتوى إجراء يظهر في كل حافة: طبيعي = يسار اتصال · يمين ياليدين.
+   الأخفاء أولاً (يرجّح على فئة flex الخاصة بالقالب)، ثم يعكس swipe-swapped. */
+.swipe-background-left .swipe-content-yalidine,
+.swipe-background-right .swipe-content-call {
+    display: none;
+}
+
+.swipe-swapped .swipe-background-left .swipe-content-call {
+    display: none;
+}
+
+.swipe-swapped .swipe-background-left .swipe-content-yalidine {
+    display: flex;
+}
+
+.swipe-swapped .swipe-background-right .swipe-content-call {
+    display: flex;
+}
+
+.swipe-swapped .swipe-background-right .swipe-content-yalidine {
+    display: none;
+}
+
+/* شريحة «الرقم الثاني»: تظهر مؤقتاً بعد السحب للاتصال عند وجود رقمين */
+.second-phone-chip {
+    animation: secondPhoneChipIn 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes secondPhoneChipIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 14px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
 }
 
 .status-modal {

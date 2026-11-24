@@ -399,6 +399,132 @@
                     </div>
                 </div>
 
+                <!-- إعدادات السحب من البطاقة (اتصال · ياليدين) — قابل للطي -->
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div @click="settingsExpanded.swipe = !settingsExpanded.swipe"
+                        class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                                <i class="fas fa-hand-pointer text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">
+                                    {{ t('settings.swipe_title') }}
+                                </h3>
+                                <div class="flex items-center gap-2 flex-wrap text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="fas fa-arrows-alt-h text-emerald-500"></i>
+                                        {{ settings.swipeHandedness === 'swapped' ?
+                                        t('settings.swipe_handedness_swapped') : t('settings.swipe_handedness_normal') }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="fas fa-tachometer-alt text-emerald-500"></i>
+                                        {{ settings.swipeSensitivity === 'low' ? t('settings.swipe_sensitivity_low') :
+                                        settings.swipeSensitivity === 'high' ? t('settings.swipe_sensitivity_high') :
+                                        t('settings.swipe_sensitivity_medium') }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="fas fa-phone-alt text-emerald-500"></i>
+                                        {{ settings.swipeCallMode === 'picker' ?
+                                        t('settings.swipe_call_mode_picker') : t('settings.swipe_call_mode_chip') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300"
+                            :class="{ 'rotate-180': settingsExpanded.swipe }"></i>
+                    </div>
+
+                    <div v-show="settingsExpanded.swipe" class="px-4 pb-4 space-y-4">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ t('settings.swipe_desc') }}
+                    </p>
+
+                    <!-- جهة السحب: طبيعية / معكوسة (لليدين) -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fas fa-arrows-alt-h text-emerald-500 text-sm"></i>
+                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                {{ t('settings.swipe_handedness_label') }}
+                            </span>
+                        </div>
+                        <div class="flex bg-gray-200 dark:bg-gray-700 rounded-xl p-1">
+                            <button @click="setSwipeOption('swipeHandedness', 'normal')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeHandedness === 'normal', 'text-gray-500': settings.swipeHandedness !== 'normal'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2">
+                                <i class="fas fa-hand-pointer"></i>
+                                {{ t('settings.swipe_handedness_normal') }}
+                            </button>
+                            <button @click="setSwipeOption('swipeHandedness', 'swapped')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeHandedness === 'swapped', 'text-gray-500': settings.swipeHandedness !== 'swapped'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2">
+                                <i class="fas fa-exchange-alt"></i>
+                                {{ t('settings.swipe_handedness_swapped') }}
+                            </button>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                            {{ t('settings.swipe_handedness_hint') }}
+                        </p>
+                    </div>
+
+                    <!-- حساسية السحب (عتبة التنفيذ) -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fas fa-tachometer-alt text-emerald-500 text-sm"></i>
+                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                {{ t('settings.swipe_sensitivity_label') }}
+                            </span>
+                        </div>
+                        <div class="flex bg-gray-200 dark:bg-gray-700 rounded-xl p-1">
+                            <button @click="setSwipeOption('swipeSensitivity', 'low')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeSensitivity === 'low', 'text-gray-500': settings.swipeSensitivity !== 'low'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition">
+                                {{ t('settings.swipe_sensitivity_low') }}
+                            </button>
+                            <button @click="setSwipeOption('swipeSensitivity', 'medium')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeSensitivity === 'medium', 'text-gray-500': settings.swipeSensitivity !== 'medium'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition">
+                                {{ t('settings.swipe_sensitivity_medium') }}
+                            </button>
+                            <button @click="setSwipeOption('swipeSensitivity', 'high')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeSensitivity === 'high', 'text-gray-500': settings.swipeSensitivity !== 'high'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition">
+                                {{ t('settings.swipe_sensitivity_high') }}
+                            </button>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                            {{ t('settings.swipe_sensitivity_hint') }}
+                        </p>
+                    </div>
+
+                    <!-- وضع الرقمين عند السحب للاتصال -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fas fa-phone-alt text-emerald-500 text-sm"></i>
+                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                {{ t('settings.swipe_call_mode_label') }}
+                            </span>
+                        </div>
+                        <div class="flex bg-gray-200 dark:bg-gray-700 rounded-xl p-1">
+                            <button @click="setSwipeOption('swipeCallMode', 'chip')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeCallMode === 'chip', 'text-gray-500': settings.swipeCallMode !== 'chip'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition">
+                                {{ t('settings.swipe_call_mode_chip') }}
+                            </button>
+                            <button @click="setSwipeOption('swipeCallMode', 'picker')"
+                                :class="{'bg-white shadow text-gray-800': settings.swipeCallMode === 'picker', 'text-gray-500': settings.swipeCallMode !== 'picker'}"
+                                class="flex-1 py-2.5 text-sm font-bold rounded-lg transition">
+                                {{ t('settings.swipe_call_mode_picker') }}
+                            </button>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                            {{ t('settings.swipe_call_mode_hint') }}
+                        </p>
+                    </div>
+                    </div>
+                </div>
+
                 <!-- أرقام مفضلة -->
                 <div class="glass-panel rounded-2xl overflow-hidden">
                     <div @click="settingsExpanded.favoritePhones = !settingsExpanded.favoritePhones"

@@ -3,6 +3,38 @@
 // جميع دوال التطبيق الرئيسية
 // ============================================
 
+// ============================================
+// محرّك سحب البطاقة (اتصال · ياليدين)
+// --------------------------------------------
+// كائن عادي غير تفاعلي: لا يمرّ عبر Vue، فلا تُعاد بناء قائمة الطرود
+// (مئات البطاقات × مئات الروابط) في كل حدث touchmove. كل ما يُكتب أثناء
+// السحب يذهب مباشرة إلى DOM داخل requestAnimationFrame — إطار واحد كحدّ
+// أقصى لكل إطار عرض. الحالة التفاعلية تُستدعى مرّتين فقط: عند البدء وعند
+// الانتهاء.
+// ============================================
+const SWIPE = {
+  id: null, // معرّف الطرد قيد السحب
+  touchId: null, // معرّف الإصبع (لتجاهل الأصابع الإضافية)
+  el: null, // عنصر .card-content
+  host: null, // العنصر الأب (يحمل الأهداف الخلفية ومتغيّر التقدّم)
+  bgCall: null, // الحافة اليسرى (تُكشف عند السحب يميناً — محتواها يتبع جهة السحب)
+  bgYalidine: null, // الحافة اليمنى (تُكشف عند السحب يساراً — محتواها يتبع جهة السحب)
+  startX: 0,
+  startY: 0,
+  w: 0, // عرض البطاقة عند بدء السحب (يُقرأ مرّة واحدة لا كل إطار)
+  dx: 0, // الإزاحة المطبَّقة بعد الممانعة المطاطية
+  rawDx: 0, // الإزاحة الخام القادمة من الإصبع
+  lastP: -1, // آخر نسبة إنجاز كُتبت (لتجاهل التكرار)
+  axis: null, // 'x' | 'y' | null — قفل المحور بعد أول حركة واضحة
+  armed: false, // تجاوز العتبة (نبضة + تكبير أيقونة الهدف)
+  raf: 0, // معرّف إطار الرسم المجدول
+  lastX: 0,
+  lastT: 0,
+  velocity: 0, // سرعة الإصبع بالبكسل/مللي ثانية (للكشف عن السحب السريع)
+  suppressClickUntil: 0, // منع النقرة المتبقيّة بعد تنفيذ إجراء السحب
+  secondPhoneTimer: 0, // مؤقّت إخفاء شريحة الرقم الثاني
+};
+
 const appMethods = {
   // ========== UI & Toasts ==========
   showToast(message, type = 'info', duration = 3000) {
@@ -2628,6 +2660,15 @@ const appMethods = {
   },
 
   handleParcelCardClick(parcel, event) {
+    // نقرة متبقيّة بعد سحب منفَّذ (اتصال/ياليدين): لا تفتح ولا تطوي البطاقة
+    if (Date.now() < SWIPE.suppressClickUntil) {
+      SWIPE.suppressClickUntil = 0;
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
     if (this.selectionLongPressTriggered && this.selectionPressParcelId === parcel.id) {
       this.selectionLongPressTriggered = false;
       this.selectionPressParcelId = null;
@@ -2798,74 +2839,324 @@ const appMethods = {
     this.exitParcelSelection();
   },
 
+  // ---------- إعدادات السحب ----------
+  swipeThresholdPx() {
+    const s = this.settings && this.settings.swipeSensitivity;
+    if (s === "low") return 96;
+    if (s === "high") return 64;
+    return 80;
+  },
+
+  swipeActions() {
+    // 'swapped' يعكس الجهتين: يسار = اتصال · يمين = ياليدين
+    const swapped = this.settings && this.settings.swipeHandedness === "swapped";
+    return swapped
+      ? { right: "yalidine", left: "call" }
+      : { right: "call", left: "yalidine" };
+  },
+
+  // إعدادات السحب من الإعدادات (يُستدعى من صفحة الإعدادات أيضاً)
+  setSwipeOption(key, value) {
+    const allowed = ["swipeHandedness", "swipeSensitivity", "swipeCallMode"];
+    if (!this.settings || allowed.indexOf(key) === -1) return;
+    if (this.settings[key] === value) return;
+    this.settings[key] = value;
+    this.saveSettings();
+  },
+
+  // نصوص الدليل تتبع جهة السحب المختارة حتى لا يتناقض الشرح مع الإعداد
+  guideCardSwipeRightBody() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.card.swipe_left_body")
+      : this.t("guide.card.swipe_right_body");
+  },
+
+  guideCardSwipeLeftBody() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.card.swipe_right_body")
+      : this.t("guide.card.swipe_left_body");
+  },
+
+  guideShortcutRightDesc() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.shortcuts.swipe_left_desc")
+      : this.t("guide.shortcuts.swipe_right_desc");
+  },
+
+  guideShortcutLeftDesc() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.shortcuts.swipe_right_desc")
+      : this.t("guide.shortcuts.swipe_left_desc");
+  },
+
+  guideYalidineSwipeLabel() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.yalidine.swipe_label_right")
+      : this.t("guide.yalidine.swipe_label");
+  },
+
+  guideCommCallBody() {
+    return this.settings.swipeHandedness === "swapped"
+      ? this.t("guide.comm.call_body_swapped")
+      : this.t("guide.comm.call_body");
+  },
+
+  // ---------- بدء السحب ----------
   touchStart(e, parcel) {
     if (this.selectionMode || parcel.expanded) return;
-    this.touchStartX = e.touches[0].clientX;
-    this.touchStartY = e.touches[0].clientY;
-    this.activeSwipeId = parcel.id;
-    this.currentTouchX = 0;
-    this.isDragging = true;
-  },
-
-  touchMove(e) {
-    if (!this.isDragging || this.activeSwipeId === null) return;
-    const touchX = e.touches[0].clientX;
-    const touchY = e.touches[0].clientY;
-    const diffX = touchX - this.touchStartX;
-    const diffY = touchY - this.touchStartY;
-    if (Math.abs(diffX) > 12 || Math.abs(diffY) > 12) this.cancelParcelSelectionPress();
-    if (Math.abs(diffY) > Math.abs(diffX)) {
-      this.isDragging = false;
-      this.currentTouchX = 0;
-      return;
+    if (SWIPE.id !== null) return; // سحب قائم بالفعل أو إصبع إضافي
+    const t = e.touches[0];
+    const el = e.currentTarget;
+    if (!t || !el) return;
+    SWIPE.id = parcel.id;
+    SWIPE.touchId = t.identifier;
+    SWIPE.el = el;
+    SWIPE.host = el.parentElement;
+    SWIPE.bgCall = SWIPE.host ? SWIPE.host.querySelector(".swipe-background-left") : null;
+    SWIPE.bgYalidine = SWIPE.host ? SWIPE.host.querySelector(".swipe-background-right") : null;
+    // قلب محتوى وألوان الحافتين عند الوضع المعكوس (تُزول مع resetSwipe)
+    if (SWIPE.host) {
+      SWIPE.host.classList.toggle(
+        "swipe-swapped",
+        !!(this.settings && this.settings.swipeHandedness === "swapped")
+      );
     }
-    if (e.cancelable) e.preventDefault();
-    this.currentTouchX = diffX;
+    SWIPE.startX = t.clientX;
+    SWIPE.startY = t.clientY;
+    SWIPE.w = el.offsetWidth || 320;
+    SWIPE.rawDx = 0;
+    SWIPE.dx = 0;
+    SWIPE.lastP = -1;
+    SWIPE.axis = null;
+    SWIPE.armed = false;
+    SWIPE.raf = 0;
+    SWIPE.lastX = t.clientX;
+    SWIPE.lastT = e.timeStamp || performance.now();
+    SWIPE.velocity = 0;
+    // تهيئة الطبقة والانتقال مسبقاً — بلا انتظار إعادة رسم من Vue
+    el.style.transition = "none";
+    el.style.willChange = "transform";
   },
 
+  swipeActiveTouch(e) {
+    const list = e.touches;
+    if (!list || !list.length) return null;
+    if (SWIPE.touchId == null) return list[0];
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].identifier === SWIPE.touchId) return list[i];
+    }
+    return null;
+  },
+
+  // ---------- حركة السحب ----------
+  touchMove(e) {
+    if (SWIPE.id === null || !SWIPE.el) return;
+    const touch = this.swipeActiveTouch(e);
+    if (!touch) return;
+
+    const diffX = touch.clientX - SWIPE.startX;
+    const diffY = touch.clientY - SWIPE.startY;
+
+    // قفل المحور: أول حركة واضحة (>6px) تحدّد الاتجاه
+    if (SWIPE.axis === null) {
+      if (Math.abs(diffX) < 6 && Math.abs(diffY) < 6) return;
+      // أي حركة تُلغى ضغطة التحديد المطوّل المصاحبة للسحب
+      this.cancelParcelSelectionPress();
+      if (Math.abs(diffY) > Math.abs(diffX)) {
+        // تمرير عمودي عادي: نُنهي السحب فوراً دون أي حركة رجوع
+        this.resetSwipe(false);
+        return;
+      }
+      SWIPE.axis = "x";
+    }
+    if (SWIPE.axis !== "x") return;
+    if (e.cancelable) e.preventDefault();
+
+    // سرعة الإصبع — تُستعمل عند الرفع للكشف عن السحب السريع القصير
+    const now = e.timeStamp || performance.now();
+    const dt = now - SWIPE.lastT;
+    if (dt > 0) {
+      const instant = (touch.clientX - SWIPE.lastX) / dt;
+      SWIPE.velocity = SWIPE.velocity * 0.7 + instant * 0.3;
+      SWIPE.lastX = touch.clientX;
+      SWIPE.lastT = now;
+    }
+
+    SWIPE.rawDx = diffX;
+    if (!SWIPE.raf) SWIPE.raf = requestAnimationFrame(() => this.applySwipeFrame());
+  },
+
+  // كتابة إطار واحد: ممانعة مطاطية · كشف الهدف · نسبة الإنجاز · نبضة العتبة
+  applySwipeFrame() {
+    SWIPE.raf = 0;
+    const el = SWIPE.el;
+    if (!el) return;
+
+    // ممانعة مطاطية: ما تجاوز عرض البطاقة يتحرّك بـ 35% من سرعته
+    const w = SWIPE.w || el.offsetWidth || 320;
+    let dx = SWIPE.rawDx;
+    const abs = Math.abs(dx);
+    if (abs > w) dx = (dx < 0 ? -1 : 1) * (w + (abs - w) * 0.35);
+    SWIPE.dx = dx;
+    el.style.transform = `translate3d(${dx}px,0,0)`;
+
+    // كشف الهدف المكشوف: زرقاء=اتصال عند السحب يميناً · حمراء=ياليدين يساراً
+    if (SWIPE.bgCall) SWIPE.bgCall.style.display = dx > 6 ? "flex" : "none";
+    if (SWIPE.bgYalidine) SWIPE.bgYalidine.style.display = dx < -6 ? "flex" : "none";
+
+    // نسبة الإنجاز نحو العتبة (تكبير تدريجي لأيقونة الهدف)
+    const th = this.swipeThresholdPx();
+    const p = Math.min(1, abs / th);
+    if (SWIPE.host && Math.abs(p - SWIPE.lastP) >= 0.02) {
+      SWIPE.lastP = p;
+      SWIPE.host.style.setProperty("--swipe-p", p.toFixed(3));
+    }
+
+    // عبور العتبة: نبضة واحدة + تمييز بصري لاعب أن الإجراء مقبول
+    const armed = abs >= th;
+    if (armed !== SWIPE.armed) {
+      SWIPE.armed = armed;
+      if (SWIPE.host) SWIPE.host.classList.toggle("swipe-armed", armed);
+      if (armed && typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+          navigator.vibrate(10);
+        } catch (err) {
+          /* الجهاز لا يدعم الاهتزاز */
+        }
+      }
+    }
+  },
+
+  // ---------- انتهاء السحب ----------
   touchEnd(e, parcel) {
     if (this.selectionMode) {
-      this.isDragging = false;
-      this.currentTouchX = 0;
-      this.activeSwipeId = null;
+      this.resetSwipe(false);
       return;
     }
-    if (!this.isDragging || this.activeSwipeId !== parcel.id) return;
-    this.isDragging = false;
-    if (this.currentTouchX > this.SWIPE_THRESHOLD) {
-      // إذا كان هناك أكثر من رقم، نظهر modal الاختيار
-      if (parcel.phone2) {
-        this.phonePickerParcel = parcel;
-        this.showPhonePickerModal = true;
-      } else {
-        this.callPhone(parcel.phone);
-      }
-    } else if (this.currentTouchX < -this.SWIPE_THRESHOLD) {
-      this.openYalidine(parcel.tracking, parcel);
+    if (SWIPE.id === null || String(SWIPE.id) !== String(parcel.id)) return;
+
+    const dx = SWIPE.dx;
+    const th = this.swipeThresholdPx();
+    const sameSign = dx !== 0 && (SWIPE.velocity === 0 || (SWIPE.velocity > 0) === (dx > 0));
+    // التنفيذ عند تجاوز العتبة، أو بسحب سريع قصير (flick) — وهو ما يجعل
+    // الإحساس سريعاً عند العمل المتتابع
+    const flick = Math.abs(dx) >= 24 && Math.abs(SWIPE.velocity) >= 0.5 && sameSign;
+    const commit = Math.abs(dx) >= th || flick;
+    const dir = commit ? (dx > 0 ? "right" : "left") : null;
+
+    this.resetSwipe(Math.abs(dx) > 0.5);
+    if (!dir) return;
+
+    // النقرة المتبقيّة بعد السحب لا تفتح ولا تطوي البطاقة
+    SWIPE.suppressClickUntil = Date.now() + 600;
+
+    const action = this.swipeActions()[dir];
+    if (action === "call") this.swipeCallAction(parcel);
+    else if (action === "yalidine") this.openYalidine(parcel.tracking, parcel);
+  },
+
+  // مقاطعة المتصفح للإيماءة (مكالمة واردة، فتح الإشعارات، تدخّل تمرير)
+  touchCancel() {
+    if (SWIPE.id === null) return;
+    this.resetSwipe(Math.abs(SWIPE.dx) > 0.5);
+  },
+
+  onCardPointerCancel() {
+    this.cancelParcelSelectionPress();
+    if (SWIPE.id !== null) this.resetSwipe(Math.abs(SWIPE.dx) > 0.5);
+  },
+
+  // إعادة البطاقة إلى مكانها وتصفير كل آليات السحب
+  resetSwipe(animate) {
+    if (SWIPE.raf) {
+      cancelAnimationFrame(SWIPE.raf);
+      SWIPE.raf = 0;
     }
-    this.currentTouchX = 0;
-    this.activeSwipeId = null;
+    const el = SWIPE.el;
+    const host = SWIPE.host;
+    if (el) {
+      if (animate) {
+        el.style.transition = "transform .3s cubic-bezier(.175,.885,.32,1.275)";
+        el.style.transform = "translate3d(0,0,0)";
+        const node = el;
+        setTimeout(() => {
+          // لا نلمس العنصر إن بدأ سحب جديد عليه خلال فترة الحركة
+          if (SWIPE.el !== node) {
+            node.style.transition = "";
+            node.style.transform = "";
+          }
+        }, 340);
+      } else {
+        el.style.transition = "";
+        el.style.transform = "";
+      }
+      el.style.willChange = "";
+    }
+    if (host) {
+      host.classList.remove("swipe-armed");
+      host.classList.remove("swipe-swapped");
+      host.style.setProperty("--swipe-p", "0");
+    }
+    if (SWIPE.bgCall) SWIPE.bgCall.style.display = "none";
+    if (SWIPE.bgYalidine) SWIPE.bgYalidine.style.display = "none";
+
+    SWIPE.id = null;
+    SWIPE.touchId = null;
+    SWIPE.el = null;
+    SWIPE.host = null;
+    SWIPE.bgCall = null;
+    SWIPE.bgYalidine = null;
+    SWIPE.dx = 0;
+    SWIPE.rawDx = 0;
+    SWIPE.w = 0;
+    SWIPE.lastP = -1;
+    SWIPE.axis = null;
+    SWIPE.armed = false;
+    SWIPE.velocity = 0;
+  },
+
+  // إجراء السحب حين كان الهدف «اتصال»
+  swipeCallAction(parcel) {
+    if (!parcel || !parcel.phone) return;
+    // 'picker' = نافذة الاختيار عند وجود رقمين (السلوك القديم)
+    if (this.settings.swipeCallMode === "picker" && parcel.phone2) {
+      this.phonePickerParcel = parcel;
+      this.showPhonePickerModal = true;
+      return;
+    }
+    // 'chip' = اتصال فوري بالرقم الأول + شريحة صغيرة للرقم الثاني
+    this.callPhone(parcel.phone);
+    if (parcel.phone2) this.showSecondPhoneChip(parcel);
+  },
+
+  showSecondPhoneChip(parcel) {
+    if (SWIPE.secondPhoneTimer) clearTimeout(SWIPE.secondPhoneTimer);
+    this.swipeSecondPhone = { phone: parcel.phone2 };
+    SWIPE.secondPhoneTimer = setTimeout(() => {
+      SWIPE.secondPhoneTimer = 0;
+      this.swipeSecondPhone = null;
+    }, 8000);
+  },
+
+  callSecondPhone() {
+    if (!this.swipeSecondPhone) return;
+    const phone = this.swipeSecondPhone.phone;
+    this.dismissSecondPhoneChip();
+    this.callPhone(phone);
+  },
+
+  dismissSecondPhoneChip() {
+    if (SWIPE.secondPhoneTimer) {
+      clearTimeout(SWIPE.secondPhoneTimer);
+      SWIPE.secondPhoneTimer = 0;
+    }
+    this.swipeSecondPhone = null;
   },
 
   selectPhoneAndCall(phone) {
     this.callPhone(phone);
     this.showPhonePickerModal = false;
     this.phonePickerParcel = null;
-  },
-
-  getTransformStyle(parcel) {
-    if (this.activeSwipeId === parcel.id && this.currentTouchX !== 0) {
-      return { transform: `translateX(${this.currentTouchX}px)` };
-    }
-    return { transform: "translateX(0)" };
-  },
-
-  getSwipeDirection(parcel) {
-    if (this.activeSwipeId === parcel.id && this.isDragging) {
-      if (this.currentTouchX > 10) return "right";
-      if (this.currentTouchX < -10) return "left";
-    }
-    return null;
   },
 
   // ========== Filters ==========
@@ -3077,13 +3368,27 @@ const appMethods = {
   },
 
   // ========== Status Methods ==========
+  // خريطة حالات مُبنى مرّة واحدة: بدل .find() لكل بطاقة في كل إعادة رسم
+  // (تُعاد بناؤها تلقائياً عند تغيّر قائمة allStatuses نفسها أو طولها)
+  statusAttrMap() {
+    const list = this.allStatuses || [];
+    if (this._stMapSrc !== list || this._stMapLen !== list.length) {
+      this._stMapSrc = list;
+      this._stMapLen = list.length;
+      const map = new Map();
+      for (let i = 0; i < list.length; i++) map.set(list[i].name, list[i]);
+      this._stMap = map;
+    }
+    return this._stMap;
+  },
+
   getStatusColor(status) {
-    const s = this.allStatuses.find((x) => x.name === status);
+    const s = this.statusAttrMap().get(status);
     return s ? s.color : "border-gray-300";
   },
 
   getStatusDotColor(status) {
-    const s = this.allStatuses.find((x) => x.name === status);
+    const s = this.statusAttrMap().get(status);
     return s ? s.dot : "bg-gray-300";
   },
 

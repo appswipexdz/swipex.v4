@@ -95,6 +95,15 @@ showYalidineMenu: false,
         cardTrackingEnabled: true,
         // ميزة اختيارية: التوسيع من زر السحب فقط (معطّلة افتراضياً)
         expandHandleOnly: false,
+        // ===== إعدادات سحب البطاقة (اتصال / ياليدين) =====
+        // جهة السحب: 'normal' يمين=اتصال · 'swapped' يسار=اتصال (لمن يستخدم
+        // باليد اليسرى أو يريد عكس الجهتين)
+        swipeHandedness: 'normal',
+        // حساسية السحب (عتبة التنفيذ بالبكسل): 'low' 96 · 'medium' 80 · 'high' 64
+        swipeSensitivity: 'medium',
+        // وضع الرقمين: 'chip' اتصال فوري بالرقم الأول + شريحة الرقم الثاني
+        // · 'picker' نافذة الاختيار (السلوك القديم)
+        swipeCallMode: 'chip',
         tagOrder: [],
         customStatuses: [],
         statusGroups: [],
@@ -171,12 +180,11 @@ showYalidineMenu: false,
     _tagSortDragging: false,
     smartTagSortingPaused: false,
     _smartTagSortingTimer: null,
-    touchStartX: 0,
-    touchStartY: 0,
-    currentTouchX: 0,
-    activeSwipeId: null,
-    isDragging: false,
-    SWIPE_THRESHOLD: 80,
+    // ملاحظة: إزاحة السحب (الاتصال/ياليدين) خرجت من هنا عمداً — تُخزَّن في
+    // كائن عادي غير تفاعلي داخل methods.js وتُكتب مباشرة على DOM، حتى لا
+    // يُعاد بناء قائمة الطرود (مئات البطاقات) في كل حدث touchmove.
+    // شريحة «الرقم الثاني»: تظهر مؤقتاً بعد السحب للاتصال عند وجود رقمين.
+    swipeSecondPhone: null,
     recognition: null,
     activeListeningId: null,
     voiceSearchActive: false,
@@ -221,6 +229,7 @@ showYalidineMenu: false,
         sms: false,
         data: false,
         info: false,
+        swipe: false,
         favoritePhones: false,
         password: false
     },

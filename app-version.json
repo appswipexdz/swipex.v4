@@ -1,18 +1,24 @@
 {
-  "version": "4.5.12",
-  "releasedAt": "2026-11-22",
+  "version": "4.6.1",
+  "releasedAt": "2026-11-24",
   "notes": {
     "ar": [
-      "إصلاح فتح صفحة المهام والأرشيف عند التحديث.",
-      "إزالة ملف إعادة التوجيه الذي يسبّب حلقة."
+      "تسريع سحب البطاقة: حركة سلسة بلا إعادة رسم للقائمة.",
+      "السحب السريع القصير يُنفَّذ فوراً مع ممانعة مطاطية ونبضة عند العتبة.",
+      "جهة السحب وحساسيته ووضع الرقمين أصبحتا في الإعدادات.",
+      "قسم السحب قابل للطي، وخلفيات البطاقة تتبع الاتجاه المعكوس."
     ],
     "en": [
-      "Fixed opening the Tasks and Archive pages on refresh.",
-      "Removed the redirect file that caused a loop."
+      "Faster card swipes: smooth motion with no list re-rendering.",
+      "Short fast swipes fire instantly, with rubber-band resistance and a threshold tick.",
+      "Swipe sides, sensitivity and the two-number mode are now in Settings.",
+      "Collapsible swipe settings; card backgrounds follow the swapped sides."
     ],
     "fr": [
-      "Correction de l’ouverture des pages Tâches et Archives à l’actualisation.",
-      "Suppression du fichier de redirection qui créait une boucle."
+      "Glissés de carte plus rapides : mouvement fluide sans redessiner la liste.",
+      "Les glissés courts et rapides se déclenchent instantanément, avec résistance élastique et vibration au seuil.",
+      "Côtés, sensibilité et mode deux numéros disponibles dans les réglages.",
+      "Réglages de glissé repliables ; les arrières de carte suivent le sens inversé."
     ]
   }
 }
