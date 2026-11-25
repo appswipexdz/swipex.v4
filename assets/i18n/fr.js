@@ -174,6 +174,8 @@ window.i18n_fr = {
 
     // ============ Choix du téléphone ============
     "phonepicker.title": "Choisir le numéro",
+    "quick_phone.title": "Ajouter un second numéro",
+    "quick_phone.saved": "Second numéro ajouté",
     "phonepicker.first": "Premier numéro",
     "phonepicker.second": "Deuxième numéro",
 

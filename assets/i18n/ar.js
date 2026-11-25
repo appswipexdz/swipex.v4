@@ -179,6 +179,8 @@ window.i18n_ar = {
     "phonepicker.title": "اختر رقم الهاتف",
     "phonepicker.first": "الرقم الأول",
     "phonepicker.second": "الرقم الثاني",
+    "quick_phone.title": "إضافة رقم ثاني",
+    "quick_phone.saved": "تمت إضافة الرقم الثاني",
 
     // ============ نافذة اختيار الموقع ============
     "locationpicker.title": "اختيار موقع الطرد",

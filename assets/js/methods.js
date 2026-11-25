@@ -3673,6 +3673,53 @@ const appMethods = {
     });
   },
 
+  // ========== Quick Add Second Phone ==========
+  // فتح نافذة سريعة لإضافة رقم ثاني من البطاقة مباشرة
+  openQuickPhone2(parcel) {
+    if (!parcel) return;
+    this.quickPhone2Parcel = parcel;
+    this.quickPhone2Value = "";
+    this.showQuickPhone2Modal = true;
+    this.$nextTick(() => {
+      const input = this.$refs.quickPhone2Input;
+      if (input && typeof input.focus === "function") input.focus();
+    });
+  },
+
+  closeQuickPhone2() {
+    this.showQuickPhone2Modal = false;
+    this.quickPhone2Parcel = null;
+    this.quickPhone2Value = "";
+  },
+
+  // تنظيف الرقم داخل النافذة السريعة (نفس منطق نافذة التعديل)
+  cleanQuickPhone2() {
+    const cleaned = this.cleanPhoneNumberString(this.quickPhone2Value || "");
+    if (cleaned) {
+      this.quickPhone2Value = cleaned;
+      this.showToast(this.t("msg.phone_cleaned"), "success");
+    } else {
+      this.showToast(this.t("msg.phone_format_failed"), "error");
+    }
+  },
+
+  // حفظ الرقم الثاني في الطرد مباشرة (بدون فتح نافذة التعديل الكاملة)
+  saveQuickPhone2() {
+    const parcel = this.quickPhone2Parcel;
+    if (!parcel) return;
+    const value = (this.quickPhone2Value || "").trim();
+    if (!value) {
+      this.closeQuickPhone2();
+      return;
+    }
+    parcel.phone2 = value;
+    this.markParcelDirty(parcel);
+    this.saveData();
+    this.detectDuplicates();
+    this.showToast(this.t("quick_phone.saved"), "success");
+    this.closeQuickPhone2();
+  },
+
   // ========== Edit Parcel Methods ==========
   openEditModal(parcel) {
     this.smartTagSortingPaused = true;

@@ -513,6 +513,12 @@
                                                 <div
                                                     class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate flex items-center gap-2">
                                                     <span>{{ parcel.phone }}</span>
+                                                    <button v-if="parcel.phone && !parcel.phone2"
+                                                        @click.stop="openQuickPhone2(parcel)"
+                                                        :title="t('quick_phone.title')"
+                                                        class="flex-shrink-0 w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 transition flex items-center justify-center text-[10px] leading-none">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
                                                     <span v-if="parcel.phone2" class="text-gray-400">| {{ parcel.phone2
                                                         }}</span>
                                                 </div>
@@ -1079,6 +1085,52 @@
                             </div>
                         </div>
                         <i class="fas fa-chevron-left text-gray-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Add Second Phone Modal -->
+        <div v-if="showQuickPhone2Modal && quickPhone2Parcel"
+            class="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            @click="closeQuickPhone2()">
+            <div class="modal-glass rounded-2xl w-full max-w-sm p-5" @click.stop>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-plus text-blue-500"></i>
+                        {{ t('quick_phone.title') }}
+                    </h3>
+                    <button @click="closeQuickPhone2()"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
+                    <i class="fas fa-user ml-1"></i>
+                    {{ quickPhone2Parcel.receiver }}
+                    <span v-if="quickPhone2Parcel.phone" class="font-mono">| {{ quickPhone2Parcel.phone }}</span>
+                </p>
+                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                    {{ t('edit_modal.phone_second') }}
+                </label>
+                <div class="flex items-center gap-2 mb-5">
+                    <input ref="quickPhone2Input" v-model="quickPhone2Value" type="tel"
+                        :placeholder="t('edit_modal.phone_second_placeholder')" :title="t('edit_modal.phone_placeholder')"
+                        class="flex-1 p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                        @keyup.enter="saveQuickPhone2()" />
+                    <button @click.prevent="cleanQuickPhone2()" type="button" :title="t('edit_modal.clean_phone')"
+                        class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition">
+                        <i class="fas fa-quidditch text-gray-700 dark:text-gray-200"></i>
+                    </button>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button @click="closeQuickPhone2()"
+                        class="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition">
+                        {{ t('common.cancel') }}
+                    </button>
+                    <button @click="saveQuickPhone2()"
+                        class="px-5 py-2.5 rounded-xl bg-blue-600 text-white shadow-lg hover:bg-blue-700 font-bold transition">
+                        {{ t('edit_modal.save') }}
                     </button>
                 </div>
             </div>
