@@ -2920,6 +2920,9 @@ const appMethods = {
         "swipe-swapped",
         !!(this.settings && this.settings.swipeHandedness === "swapped")
       );
+      // قصّ حدود الرسم أثناء السحب: يمنع مدّ تحويل البطاقة منطقة رسم
+      // المستند كل إطار في الصفحات العربية (تُزول في resetSwipe)
+      SWIPE.host.classList.add("swipe-drag");
     }
     SWIPE.startX = t.clientX;
     SWIPE.startY = t.clientY;
@@ -3096,6 +3099,17 @@ const appMethods = {
       host.classList.remove("swipe-armed");
       host.classList.remove("swipe-swapped");
       host.style.setProperty("--swipe-p", "0");
+      // القصّ يبقى حتى نهاية ارتداد البطاقة: التحريك يعيد تحويلها فيعود
+      // مدّ منطقة الرسم كل إطار. نؤجل الإزالة، ونبقيها إن بدأ سحب جديد
+      // على اللفّة نفسها خلال فترة الارتداد
+      if (animate) {
+        const slot = host;
+        setTimeout(() => {
+          if (SWIPE.host !== slot) slot.classList.remove("swipe-drag");
+        }, 340);
+      } else {
+        host.classList.remove("swipe-drag");
+      }
     }
     if (SWIPE.bgCall) SWIPE.bgCall.style.display = "none";
     if (SWIPE.bgYalidine) SWIPE.bgYalidine.style.display = "none";
