@@ -44,6 +44,9 @@
         if (v === STATUS.PENDING || v === STATUS.COMPLETED || v === STATUS.DELETED) {
             return v;
         }
+        if (["delete", "deleted", "removed", "trash", "trashed"].includes(v)) {
+            return STATUS.DELETED;
+        }
         // ترحيل من الشكل القديم: completed بدون status
         return completedFlag === true ? STATUS.COMPLETED : STATUS.PENDING;
     }
@@ -63,7 +66,9 @@
         const title = hasTitle ? src.title.trim() : legacyText;
         const description = hasTitle ? str(src.description).trim() : "";
 
-        const status = normalizeStatus(src.status, src.completed === true);
+        const status = src.deleted === true || src.deletedAt || src.isDeleted === true
+            ? STATUS.DELETED
+            : normalizeStatus(src.status, src.completed === true);
         const createdAt = str(src.createdAt) || nowIso();
 
         return {

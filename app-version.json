@@ -1,15 +1,15 @@
 {
-  "version": "4.6.10",
+  "version": "4.6.11",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "اختيار عنوان المهمة من عناوين مخصصة وإزالة الوصف والأولوية"
+      "إظهار المهام المحذوفة في سلة المهام واسترجاعها"
     ],
     "en": [
-      "Choose task titles from custom titles and remove description and priority"
+      "Show deleted tasks in the trash and allow restoring them"
     ],
     "fr": [
-      "Choisir le titre parmi les titres personnalisés sans description ni priorité"
+      "Afficher les tâches supprimées dans la corbeille et permettre leur restauration"
     ]
   }
 }
