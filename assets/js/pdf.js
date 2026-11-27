@@ -1,11 +1,20 @@
 // تحديد مسار عامل PDF: يُنفَّذ هنا بعد تحميل pdf.min.js (بترتيب defer)
 // وقبل أي استدعاء — كان سابقاً سكربتاً داخلياً في ترويسة index/archive/settings.
-if (typeof pdfjsLib !== "undefined") {
+async function ensurePdfLoaded() {
+  if (typeof pdfjsLib !== "undefined") return;
+  await window.loadHeavyLib('pdf');
+  if (typeof pdfjsLib !== "undefined") {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdf.worker.min.js";
+  }
 }
 
 const pdfFunctions = {
     async handlePdfUpload(event) {
+        await ensurePdfLoaded();
+        if (!pdfjsLib) {
+            alert("مكتبة PDF غير متوفرة");
+            return;
+        }
         const file = event.target.files[0];
         if (!file || file.type !== "application/pdf") {
             alert("الرجاء اختيار ملف PDF");

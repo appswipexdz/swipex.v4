@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swipex-v4-shell-48';
+const CACHE_NAME = 'swipex-v4-shell-49';
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 // رابط مطلق حتى يعمل حارس الرجوع لصفحة التطبيق دون اتصال.
 // './' وليس './index.html': الأخير يُعاد توجيهه (307) إلى '/' على Cloudflare
@@ -35,10 +35,6 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-maskable-192.png',
   './assets/libs/vue.global.min.js',
   './assets/css/tailwind.min.css',
-  './assets/libs/xlsx.full.min.js',
-  './assets/libs/Sortable.min.js',
-  './assets/libs/quagga.min.js',
-  './assets/libs/pdf.min.js',
   './assets/libs/pdf.worker.min.js',
   './assets/libs/fontawesome.min.css',
   './assets/libs/cairo-font.css',

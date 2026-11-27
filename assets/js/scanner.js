@@ -29,7 +29,8 @@ const scannerFunctions = {
         this.scannedCodeCount = 0;
     },
 
-    initScanner() {
+    async initScanner() {
+        await window.loadHeavyLib('quagga');
         if (!window.Quagga) {
             alert("مكتبة المسح الضوئي غير متوفرة");
             this.closeScanner();

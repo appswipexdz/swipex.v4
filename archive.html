@@ -27,10 +27,12 @@
     <script src="assets/libs/vue.global.min.js" defer></script>
     <!-- Tailwind مبني مسبقاً (npm run build:css) بدل توليده داخل المتصفح -->
     <link rel="stylesheet" href="assets/css/tailwind.min.css" />
-    <script src="assets/libs/xlsx.full.min.js" defer></script>
-    <script src="assets/libs/Sortable.min.js" defer></script>
-    <script src="assets/libs/quagga.min.js" defer></script>
-    <script src="assets/libs/pdf.min.js" defer></script>
+    <!-- الموارد الحرجة تُحمَّل مسبقاً لتسريع التنقل الأول بين الصفحات -->
+    <link rel="preload" href="assets/js/app.js" as="script" />
+    <link rel="preload" href="assets/js/shell.js" as="script" />
+    <link rel="preload" href="assets/js/taskStore.js" as="script" />
+    <link rel="preload" href="assets/js/methods.js" as="script" />
+    <!-- المكتبات الثقيلة تُحمَّل كسولاً عند الحاجة فقط (xlsx, Sortable, Quagga, pdf) -->
     <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
     <link href="assets/libs/cairo-font.css" rel="stylesheet" />
     <link rel="stylesheet" href="./assets/libs/leaflet/leaflet.css" />

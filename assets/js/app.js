@@ -14,6 +14,47 @@ const { createApp } = Vue;
 // الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
 const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
+
+// ========================================================================
+// تحميل كسول للمكتبات الثقيلة (xlsx, Sortable, Quagga, pdf)
+// تُجلب مرة واحدة وتُخزّن في window لإعادة الاستخدام دون إعادة تحميل الصفحة.
+// ========================================================================
+const HEAVY_LIB_URLS = {
+  xlsx:      './assets/libs/xlsx.full.min.js',
+  sortable:  './assets/libs/Sortable.min.js',
+  quagga:    './assets/libs/quagga.min.js',
+  pdf:       './assets/libs/pdf.min.js',
+};
+const heavyLibLoadCache = {};
+
+async function loadHeavyLib(lib) {
+  const url = HEAVY_LIB_URLS[lib];
+  if (!url) return console.warn(`[lazy] مكتبة غير معروفة: ${lib}`);
+  if (heavyLibLoadCache[lib]) return heavyLibLoadCache[lib];
+  // إذا كانت المكتبة موجودة بالفعل في النافذة (لأي سبب)، لا نعيد التحميل
+  if ((lib === 'xlsx' && window.XLSX) ||
+      (lib === 'sortable' && window.Sortable) ||
+      (lib === 'quagga' && window.Quagga) ||
+      (lib === 'pdf' && window.pdfjsLib)) {
+    heavyLibLoadCache[lib] = Promise.resolve();
+    return heavyLibLoadCache[lib];
+  }
+  heavyLibLoadCache[lib] = (async () => {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.defer = true;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error(`فشل تحميل المكتبة: ${lib}`));
+      document.head.appendChild(s);
+    });
+    console.log(`[lazy] تم تحميل المكتبة: ${lib}`);
+  })();
+  return heavyLibLoadCache[lib];
+}
+
+// تجهيز دالة عامة على النافذة لاستدعاء التحميل الكسول من أي ملف صفحة
+window.loadHeavyLib = loadHeavyLib;
 let pendingAppUpdateWorker = null;
 let appServiceWorkerRegistration = null;
 

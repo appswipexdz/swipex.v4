@@ -5,6 +5,7 @@ const importExcelFunctions = {
 
         const reader = new FileReader();
         reader.onload = async (e) => {
+            await window.loadHeavyLib('xlsx');
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: "array" });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -65,7 +66,8 @@ const importExcelFunctions = {
         event.target.value = "";
     },
 
-    exportExcel() {
+    async exportExcel() {
+        await window.loadHeavyLib('xlsx');
         const dataToExport = this.parcels.map((p, index) => ({
             // الترتيب
             "الترتيب": index + 1,

@@ -1,18 +1,18 @@
 {
-  "version": "4.6.3",
-  "releasedAt": "2026-11-25",
+  "version": "4.6.4",
+  "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "إضافة سريعة لرقم ثاني للطرد من البطاقة بعلامة + مع تنظيف الرقم.",
-      "إصلاح تثقل السحب لليسار: قصّ حدود الرسم أثناء السحب يمنع إعادة رسم الصفحة كل إطار."
+      "تسريع التنقل بين الصفحات",
+      
     ],
     "en": [
-      "Quickly add a second number from the card with a + button and number cleaning.",
-      "Fix heavy left swipe: clipping paint bounds during swipe stops full-page repaint every frame."
+      "Speed ​​up page navigation",
+      
     ],
     "fr": [
-      "Ajout rapide d'un second numéro depuis la carte via un bouton + avec nettoyage du numéro.",
-      "Correction du glissement à gauche lourd : découpe des limites de peinture pendant le glissement évite le redessin complet de la page à chaque image."
+      "Accélérer la navigation sur les pages",
+      
     ]
   }
 }

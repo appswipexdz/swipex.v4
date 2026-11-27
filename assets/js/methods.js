@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // assets/js/methods.js
 // جميع دوال التطبيق الرئيسية
 // ============================================
@@ -2234,7 +2234,8 @@ const appMethods = {
     this.exportArchive(filteredOnly);
   },
 
-  exportArchive(filteredOnly = false) {
+  async exportArchive(filteredOnly = false) {
+    await window.loadHeavyLib('xlsx');
     const archiveEntries = filteredOnly
       ? Array.from(new Set((this.filteredArchive || []).map(item => item.tracking)))
           .map(tracking => [tracking, this.archive[tracking]])
@@ -2289,7 +2290,8 @@ const appMethods = {
     }
   },
 
-  handleArchiveImport(event) {
+  async handleArchiveImport(event) {
+    await window.loadHeavyLib('xlsx');
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
@@ -3310,7 +3312,8 @@ const appMethods = {
   // إعادة الإنشاء في كل تغيير كانت السبب الرئيسي في البطؤ:
   //  1) تدمير المثيل أثناء السحب يقطع سلوك السحب فجأة (تعليق).
   //  2) destroy + create في كل تغيير للقائمة المفلترة تكلفة غير ضرورية.
-  initSortable() {
+  async initSortable() {
+    await window.loadHeavyLib('sortable');
     const el = document.getElementById("sortable-list");
     if (!el) return;
     // لا تُعاد التهيئة أثناء السحب إطلاقاً
