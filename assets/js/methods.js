@@ -4795,6 +4795,25 @@ const appMethods = {
   },
 
   // ========== Custom Statuses ==========
+  addTaskTitle() {
+    const name = String(this.newTaskTitle || "").trim();
+    if (!name) return;
+    this.settings.taskTitles = Array.isArray(this.settings.taskTitles)
+      ? this.settings.taskTitles
+      : [];
+    if (this.settings.taskTitles.includes(name)) return;
+    this.settings.taskTitles.push(name);
+    this.newTaskTitle = "";
+    this.saveSettings();
+  },
+
+  removeTaskTitle(name) {
+    this.settings.taskTitles = (Array.isArray(this.settings.taskTitles)
+      ? this.settings.taskTitles
+      : []).filter((title) => title !== name);
+    this.saveSettings();
+  },
+
   addCustomStatus() {
     const name = this.newCustomStatus.name.trim();
     if (!name) return;

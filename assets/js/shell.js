@@ -714,30 +714,11 @@
         <div class="p-4 space-y-4 overflow-y-auto">
             <div>
                 <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.title_label') }}</label>
-                <input v-model="draft.title" type="text" :placeholder="t('task_composer.title_placeholder')"
-                    class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.description') }}</label>
-                <textarea v-model="draft.description" rows="2"
-                    :placeholder="t('task_composer.description_placeholder')"
-                    class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{{ t('task_composer.priority') }}</label>
-                <div class="grid grid-cols-4 gap-2">
-                    <button v-for="p in taskPriorities" :key="p.value" type="button"
-                        @click="draft.priority = p.value"
-                        class="py-2 rounded-xl text-xs font-bold border transition-all"
-                        :class="draft.priority === p.value
-                            ? 'bg-blue-600 text-white border-blue-500 shadow-lg'
-                            : 'glass-panel text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300'">
-                        <i class="fas" :class="p.icon + ' ml-1'"></i>
-                        {{ t(p.labelKey) }}
-                    </button>
-                </div>
+                <select v-model="draft.title"
+                    class="w-full p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="" disabled>{{ t('task_composer.title_placeholder') }}</option>
+                    <option v-for="title in taskTitles" :key="title" :value="title">{{ title }}</option>
+                </select>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -895,6 +876,11 @@
                     // labelKey: مفتاح الترجمة — القيمة `label` تبقى العربية (داخلية)
                     labelKey: "task_priority." + p.value,
                 }));
+            },
+            taskTitles() {
+                return Array.isArray(this.$root.settings?.taskTitles)
+                    ? this.$root.settings.taskTitles
+                    : [];
             },
             linkedParcel() {
                 return this.$root.linkedParcel || null;

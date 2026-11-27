@@ -716,6 +716,48 @@
                     </div>
                 </div>
 
+                <!-- عناوين مهام مخصصة -->
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div @click="settingsExpanded.taskTitles = !settingsExpanded.taskTitles"
+                        class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                                <i class="fas fa-list-check text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">{{ t('settings.task_titles') }}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ t('settings.task_titles_count', { count: settings.taskTitles.length }) }}
+                                </p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300"
+                            :class="{ 'rotate-180': settingsExpanded.taskTitles }"></i>
+                    </div>
+                    <div v-show="settingsExpanded.taskTitles" class="px-4 pb-4 space-y-3">
+                        <div class="flex gap-2">
+                            <input v-model="newTaskTitle" @keyup.enter="addTaskTitle"
+                                :placeholder="t('settings.task_titles_placeholder')"
+                                class="flex-1 p-3 rounded-xl glass-input text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                            <button @click="addTaskTitle"
+                                class="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div v-if="settings.taskTitles.length > 0" class="space-y-2">
+                            <div v-for="title in settings.taskTitles" :key="title"
+                                class="flex items-center gap-3 p-2.5 rounded-xl glass-panel">
+                                <i class="fas fa-list-check text-blue-500"></i>
+                                <span class="font-bold text-gray-800 dark:text-white text-sm flex-1">{{ title }}</span>
+                                <button @click="removeTaskTitle(title)" class="text-gray-400 hover:text-red-500 transition">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p v-else class="text-xs text-gray-400 text-center py-2">{{ t('settings.task_titles_empty') }}</p>
+                    </div>
+                </div>
+
                 <!-- حالات مخصصة -->
                 <div class="glass-panel rounded-2xl overflow-hidden">
                     <div @click="settingsExpanded.statuses = !settingsExpanded.statuses"

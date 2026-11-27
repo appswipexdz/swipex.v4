@@ -199,10 +199,6 @@
 
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="task-priority" :class="'task-priority-' + task.priority">
-                                            <i class="fas" :class="priorityMeta(task.priority).icon"></i>
-                                            {{ priorityMeta(task.priority).label }}
-                                        </span>
                                         <span v-if="isOverdue(task)"
                                             class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                                             <i class="fas fa-exclamation-triangle"></i>
@@ -218,12 +214,6 @@
                                         :class="{ 'task-title-done': task.status === 'completed' }">
                                         {{ task.title || t('tasks.untitled') }}
                                     </h3>
-
-                                    <p v-if="task.description"
-                                        class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-                                        :class="{ 'task-title-done': task.status === 'completed' }">
-                                        {{ task.description }}
-                                    </p>
 
                                     <p v-if="task.notes"
                                         class="mt-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg">
@@ -324,10 +314,6 @@
 
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2 flex-wrap">
-                                            <span class="task-priority" :class="'task-priority-' + task.priority">
-                                                <i class="fas" :class="priorityMeta(task.priority).icon"></i>
-                                                {{ priorityMeta(task.priority).label }}
-                                            </span>
                                             <span v-if="isOverdue(task)"
                                                 class="text-[10px] font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                                                 <i class="fas fa-exclamation-triangle"></i>
@@ -343,12 +329,6 @@
                                             :class="{ 'task-title-done': task.status === 'completed' }">
                                             {{ task.title || t('tasks.untitled') }}
                                         </h3>
-
-                                        <p v-if="task.description"
-                                            class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-                                            :class="{ 'task-title-done': task.status === 'completed' }">
-                                            {{ task.description }}
-                                        </p>
 
                                         <p v-if="task.notes"
                                             class="mt-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg">

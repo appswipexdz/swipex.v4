@@ -1,15 +1,15 @@
 {
-  "version": "4.6.9",
+  "version": "4.6.10",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "إعادة بناء المسح باستخدام ماسح الباركود الأصلي السريع"
+      "اختيار عنوان المهمة من عناوين مخصصة وإزالة الوصف والأولوية"
     ],
     "en": [
-      "Rebuild scanning with the fast native barcode detector"
+      "Choose task titles from custom titles and remove description and priority"
     ],
     "fr": [
-      "Reconstruire le scan avec le détecteur natif rapide"
+      "Choisir le titre parmi les titres personnalisés sans description ni priorité"
     ]
   }
 }
