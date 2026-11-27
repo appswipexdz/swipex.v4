@@ -1,15 +1,15 @@
 {
-  "version": "4.6.11",
+  "version": "4.6.12",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "إظهار المهام المحذوفة في سلة المهام واسترجاعها"
+      "تسريع التنقل السلس بين جميع صفحات التطبيق"
     ],
     "en": [
-      "Show deleted tasks in the trash and allow restoring them"
+      "Speed up smooth navigation between all app pages"
     ],
     "fr": [
-      "Afficher les tâches supprimées dans la corbeille et permettre leur restauration"
+      "Accélérer la navigation fluide entre toutes les pages"
     ]
   }
 }

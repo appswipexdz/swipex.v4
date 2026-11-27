@@ -14,6 +14,55 @@ const { createApp } = Vue;
 // الصفحات التي يمكن التنقل إليها داخل التطبيق (بدون إعادة تحميل)
 const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.html'];
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
+const PAGE_HTML_CACHE = new Map();
+const PAGE_RENDER_CACHE = new Map();
+
+function prepareRoutablePage(file) {
+    if (PAGE_HTML_CACHE.has(file)) return Promise.resolve(PAGE_HTML_CACHE.get(file));
+    const request = fetch(file, { credentials: 'same-origin', cache: 'default' })
+        .then((response) => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+        })
+        .then((html) => {
+            PAGE_HTML_CACHE.set(file, html);
+            return html;
+        });
+    PAGE_HTML_CACHE.set(file, request);
+    return request;
+}
+
+function compileRoutablePage(file, html) {
+    if (PAGE_RENDER_CACHE.has(file)) return PAGE_RENDER_CACHE.get(file);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const host = doc.getElementById('app');
+    if (!host) throw new Error('لا يوجد #app في ' + file);
+    const pageMarkup = '<div class="swipex-page-root" style="display: contents" :key="pageKey">'
+        + host.innerHTML + '</div>';
+    const pageRender = Vue.compile(pageMarkup);
+    if (typeof pageRender !== 'function') throw new Error('فشل ترجمة قالب ' + file);
+    const page = (doc.body && doc.body.dataset && doc.body.dataset.page)
+        || file.replace(/\.html$/, '');
+    const prepared = { pageRender, page, title: doc.title || '' };
+    PAGE_RENDER_CACHE.set(file, prepared);
+    return prepared;
+}
+
+function preloadRoutablePages(app) {
+    const current = app.__currentPageFile || '';
+    const schedule = window.requestIdleCallback
+        ? (callback) => window.requestIdleCallback(callback, { timeout: 1200 })
+        : (callback) => window.setTimeout(callback, 400);
+    schedule(() => {
+        ROUTABLE_PAGES.forEach((file) => {
+            if (file !== current) {
+                prepareRoutablePage(file)
+                    .then((html) => compileRoutablePage(file, html))
+                    .catch(() => {});
+            }
+        });
+    });
+}
 
 // ========================================================================
 // تحميل كسول للمكتبات الثقيلة (xlsx, Sortable, pdf)
@@ -579,6 +628,8 @@ const appOptions = {
             this.navigate(window.location.pathname.split('/').pop() + window.location.hash, { push: false });
         });
 
+        preloadRoutablePages(this);
+
         const resetScannerOnLoad = () => {
             this.$nextTick(() => {
                 this.showScanner = false;
@@ -953,32 +1004,17 @@ const appOptions = {
             if (this.__navBusy) return Promise.resolve(false);
             this.__navBusy = true;
 
-            return fetch(file, { credentials: 'same-origin' })
-                .then((res) => {
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    return res.text();
-                })
+            return prepareRoutablePage(file)
                 .then((html) => {
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
-                    const host = doc.getElementById('app');
-                    if (!host) throw new Error('لا يوجد #app في ' + file);
-                    // Vue.compile في نسخة المتصفح تُعيد دالة العرض مباشرة.
-                    // نلفّ محتوى الصفحة بجذر يحمل :key متغيّراً حتى يفكّ Vue الشجرة
-                    // القديمة بالكامل (unmount) ويركّب شجرة جديدة بدل إعادة استخدام
-                    // المكوّنات ذات الـ props الثابتة مثل swipex-header.
-                    const pageMarkup = '<div class="swipex-page-root" style="display: contents" :key="pageKey">'
-                        + host.innerHTML + '</div>';
-                    const pageRender = Vue.compile(pageMarkup);
-                    if (typeof pageRender !== 'function') throw new Error('فشل ترجمة قالب ' + file);
-                    const page = (doc.body && doc.body.dataset && doc.body.dataset.page)
-                        || file.replace(/\.html$/, '');
+                    const prepared = compileRoutablePage(file, html);
+                    const { pageRender, page, title } = prepared;
 
                     this.closePageOverlays();
                     this.__currentPageFile = file;
                     document.body.dataset.page = page;
                     this.appPage = page;
                     this.pageKey = page;
-                    if (doc.title) document.title = doc.title;
+                    if (title) document.title = title;
 
                     if (opts.push !== false && window.history && window.history.pushState) {
                         window.history.pushState({ swipexPage: page }, '', target);

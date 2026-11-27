@@ -8,6 +8,21 @@
     display: none !important;
 }
 
+.swipex-page-root {
+    animation: swipex-page-enter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes swipex-page-enter {
+    from {
+        opacity: 0.72;
+        transform: translateY(3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
