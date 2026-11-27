@@ -37,8 +37,11 @@ const scannerFunctions = {
             return;
         }
 
-        const isValidTrackingCode = (code) => {
-            return /^yal-[A-Za-z0-9]{6}$/i.test(String(code || '').trim());
+        const normalizeScannedCode = (code) => {
+            return String(code || '')
+                .replace(/[\u0000-\u001F\u007F]/g, '')
+                .replace(/\s+/g, '')
+                .trim();
         };
 
         // التأكد من وجود العنصر
@@ -56,24 +59,29 @@ const scannerFunctions = {
                 type: "LiveStream",
                 target: targetElement,
                 constraints: {
-                    width: 640,
-                    height: 480,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    aspectRatio: { ideal: 16 / 9 },
                     facingMode: "environment"
                 }
             },
             decoder: {
                 readers: [
-                    "code_128_reader"
+                    "code_128_reader",
+                    "code_39_reader",
+                    "ean_reader",
+                    "ean_8_reader",
+                    "i2of5_reader"
                 ],
                 multiple: false
             },
             locate: true,
             locator: { 
-                patchSize: "medium",
+                patchSize: "x-small",
                 halfSample: true
             },
             numOfWorkers: 2,
-            frequency: 10
+            frequency: 20
         }, (err) => {
             if (err) {
                 console.error("خطأ في تشغيل الماسح:", err);
@@ -91,14 +99,10 @@ const scannerFunctions = {
             if (this.isProcessingCode) return;
 
             if (result && result.codeResult && result.codeResult.code) {
-                const rawCode = result.codeResult.code.trim();
-                const normalizedCode = rawCode.toLowerCase();
+                const rawCode = normalizeScannedCode(result.codeResult.code);
+                if (!/^[A-Za-z0-9-]+$/.test(rawCode) || rawCode.length < 3) return;
 
-                // قبول فقط تنسيق رقم التتبع: yal- + 6 أحرف/أرقام إنجليزية
-                if (!isValidTrackingCode(rawCode)) {
-                    console.log("🚫 تم تجاهل كود غير مطابق للتنسيق المطلوب:", rawCode);
-                    return;
-                }
+                const normalizedCode = rawCode.toLowerCase();
 
                 // تجنب قراءة الكود نفسه مرتين متتاليتين
                 if (this.lastScannedCode === normalizedCode) return;
@@ -117,19 +121,18 @@ const scannerFunctions = {
                 // إدخال البيانات مباشرة
                 const self = this;
                 const mode = this.scannerMode;
-                const code = normalizedCode;
+                const code = rawCode;
 
                 if (mode === "search") {
-                    this.filters.search = code;
+                    this.filters.search = normalizedCode;
+                    this.directSearch = normalizedCode;
                     this.showFilters = true;
                 } else if (mode === "tracking" || mode === "add") {
                     this.newParcel.tracking = code;
                 }
 
                 // إغلاق الماسح
-                setTimeout(() => {
-                    self.closeScanner();
-                }, 500);
+                self.$nextTick(() => self.closeScanner());
             }
         });
     }

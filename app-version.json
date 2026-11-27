@@ -1,15 +1,15 @@
 {
-  "version": "4.6.6",
+  "version": "4.6.8",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "تلوين الحواف وخلفيات بطاقات الحالات تلقائياً"
+      "تصحيح إدخال رمز الباركود وظهور نتيجة البحث"
     ],
     "en": [
-      "Automatically color status card borders and backgrounds"
+      "Fix barcode input and display the search result"
     ],
     "fr": [
-      "Colorer automatiquement les bordures et fonds des cartes d'état"
+      "Corriger la saisie du code-barres et afficher le résultat"
     ]
   }
 }
