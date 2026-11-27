@@ -32,7 +32,7 @@
     <link rel="preload" href="assets/js/shell.js" as="script" />
     <link rel="preload" href="assets/js/taskStore.js" as="script" />
     <link rel="preload" href="assets/js/methods.js" as="script" />
-    <!-- المكتبات الثقيلة تُحمَّل كسولاً عند الحاجة فقط (xlsx, Sortable, Quagga, pdf) -->
+    <!-- المكتبات الثقيلة تُحمَّل كسولاً عند الحاجة فقط (xlsx, Sortable, pdf) -->
     <link href="assets/libs/fontawesome.min.css" rel="stylesheet" />
     <link href="assets/libs/cairo-font.css" rel="stylesheet" />
     <link rel="stylesheet" href="./assets/libs/leaflet/leaflet.css" />
@@ -1212,6 +1212,8 @@
                     </button>
                 </div>
                 <div id="scanner-viewport" class="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-900 relative">
+                    <video id="scanner-video" autoplay playsinline muted
+                        class="absolute inset-0 w-full h-full object-cover"></video>
                     <div class="absolute inset-0 border-2 border-red-500/50 rounded-2xl pointer-events-none z-10"></div>
                     <div class="absolute left-1/2 -translate-x-1/2 top-0 w-[80%] h-0.5 bg-red-500 z-20 animate-scan">
                     </div>

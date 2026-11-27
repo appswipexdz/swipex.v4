@@ -1,15 +1,15 @@
 {
-  "version": "4.6.8",
+  "version": "4.6.9",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "تصحيح إدخال رمز الباركود وظهور نتيجة البحث"
+      "إعادة بناء المسح باستخدام ماسح الباركود الأصلي السريع"
     ],
     "en": [
-      "Fix barcode input and display the search result"
+      "Rebuild scanning with the fast native barcode detector"
     ],
     "fr": [
-      "Corriger la saisie du code-barres et afficher le résultat"
+      "Reconstruire le scan avec le détecteur natif rapide"
     ]
   }
 }

@@ -5,23 +5,25 @@ const scannerFunctions = {
         this.lastScannedCode = null;
         this.scannedCodeCount = 0;
         this.isProcessingCode = false;
-        
-        // تأخير أكبر لضمان ظهور العنصر
+
         setTimeout(() => {
             this.$nextTick(() => this.initScanner());
-        }, 100);
+        }, 50);
     },
 
     closeScanner() {
-        try {
-            if (window.Quagga) {
-                Quagga.offDetected();
-                Quagga.offProcessed();
-                Quagga.stop();
-            }
-        } catch (e) {
-            console.log("خطأ في إغلاق الماسح:", e);
+        if (this._scannerInterval) {
+            clearInterval(this._scannerInterval);
+            this._scannerInterval = null;
         }
+        if (this._scannerStream) {
+            this._scannerStream.getTracks().forEach((track) => track.stop());
+            this._scannerStream = null;
+        }
+
+        const video = document.querySelector("#scanner-video");
+        if (video) video.srcObject = null;
+
         this.showScanner = false;
         this.scannerMode = null;
         this.lastScannedCode = null;
@@ -30,112 +32,78 @@ const scannerFunctions = {
     },
 
     async initScanner() {
-        await window.loadHeavyLib('quagga');
-        if (!window.Quagga) {
-            alert("مكتبة المسح الضوئي غير متوفرة");
+        if (!("BarcodeDetector" in window)) {
+            alert("المتصفح لا يدعم مسح الباركود. استخدم متصفحًا حديثًا أو أدخل الرمز يدويًا.");
+            this.closeScanner();
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("تعذر الوصول إلى الكاميرا في هذا المتصفح.");
             this.closeScanner();
             return;
         }
 
-        const normalizeScannedCode = (code) => {
-            return String(code || '')
-                .replace(/[\u0000-\u001F\u007F]/g, '')
-                .replace(/\s+/g, '')
-                .trim();
-        };
-
-        // التأكد من وجود العنصر
-        const targetElement = document.querySelector("#scanner-viewport");
-        if (!targetElement) {
-            console.error("عنصر الماسح غير موجود");
-            alert("خطأ في تحميل الماسح");
+        const video = document.querySelector("#scanner-video");
+        if (!video) {
+            alert("تعذر تحميل شاشة الماسح.");
             this.closeScanner();
             return;
         }
 
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: targetElement,
-                constraints: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    aspectRatio: { ideal: 16 / 9 },
-                    facingMode: "environment"
-                }
-            },
-            decoder: {
-                readers: [
-                    "code_128_reader",
-                    "code_39_reader",
-                    "ean_reader",
-                    "ean_8_reader",
-                    "i2of5_reader"
-                ],
-                multiple: false
-            },
-            locate: true,
-            locator: { 
-                patchSize: "x-small",
-                halfSample: true
-            },
-            numOfWorkers: 2,
-            frequency: 20
-        }, (err) => {
-            if (err) {
-                console.error("خطأ في تشغيل الماسح:", err);
-                alert("فشل تشغيل الكاميرا. تأكد من منح الأذونات اللازمة.");
-                this.closeScanner();
-                return;
-            }
-            console.log("✓ الماسح جاهز للعمل");
-            Quagga.start();
-        });
+        try {
+            this._scannerStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
+            video.srcObject = this._scannerStream;
+            await video.play();
 
-        // حدث onDetected - عند كشف باركود صحيح
-        Quagga.onDetected((result) => {
-            // التحقق من أن القراءة لم تكن معالجة بالفعل
-            if (this.isProcessingCode) return;
+            const detector = new BarcodeDetector();
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d", { alpha: false });
 
-            if (result && result.codeResult && result.codeResult.code) {
-                const rawCode = normalizeScannedCode(result.codeResult.code);
-                if (!/^[A-Za-z0-9-]+$/.test(rawCode) || rawCode.length < 3) return;
+            this._scannerInterval = setInterval(async () => {
+                if (this.isProcessingCode || video.readyState < 2) return;
 
-                const normalizedCode = rawCode.toLowerCase();
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // تجنب قراءة الكود نفسه مرتين متتاليتين
-                if (this.lastScannedCode === normalizedCode) return;
-
-                this.lastScannedCode = normalizedCode;
-                this.isProcessingCode = true;
-
-                console.log("✓ تم مسح الكود المطلوب:", rawCode);
-
-                // صوت التنبيه
                 try {
-                    const beep = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE=");
-                    beep.play().catch(() => {});
-                } catch (e) {}
+                    const barcodes = await detector.detect(canvas);
+                    if (!barcodes || !barcodes.length) return;
 
-                // إدخال البيانات مباشرة
-                const self = this;
-                const mode = this.scannerMode;
-                const code = rawCode;
+                    for (const barcode of barcodes) {
+                        const rawCode = String(barcode.rawValue || "").trim();
+                        if (!/^yal-[A-Z0-9]{4,16}$/i.test(rawCode)) continue;
 
-                if (mode === "search") {
-                    this.filters.search = normalizedCode;
-                    this.directSearch = normalizedCode;
-                    this.showFilters = true;
-                } else if (mode === "tracking" || mode === "add") {
-                    this.newParcel.tracking = code;
+                        const normalizedCode = rawCode.toLowerCase();
+                        this.isProcessingCode = true;
+                        this.lastScannedCode = normalizedCode;
+                        this.scannedCodeCount = 1;
+
+                        const mode = this.scannerMode;
+                        if (mode === "search") {
+                            this.filters.search = normalizedCode;
+                            this.directSearch = normalizedCode;
+                            this.showFilters = true;
+                        } else if (mode === "tracking" || mode === "add") {
+                            this.newParcel.tracking = rawCode;
+                        }
+
+                        this.$nextTick(() => this.closeScanner());
+                        return;
+                    }
+                } catch (error) {
+                    // متابعة الإطارات التالية عند تعذر كشف رمز مؤقتاً
                 }
-
-                // إغلاق الماسح
-                self.$nextTick(() => self.closeScanner());
-            }
-        });
+            }, 300);
+        } catch (error) {
+            console.error(error);
+            alert("تعذر الوصول إلى الكاميرا: " + (error && error.message ? error.message : String(error)));
+            this.closeScanner();
+        }
     }
 };
 
-if (typeof window !== 'undefined') window.scannerFunctions = scannerFunctions;
+if (typeof window !== "undefined") window.scannerFunctions = scannerFunctions;

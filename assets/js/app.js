@@ -16,13 +16,12 @@ const ROUTABLE_PAGES = ['index.html', 'tasks.html', 'archive.html', 'settings.ht
 const UPDATE_CONTROL_CACHE = 'swipex-update-control-ready-v1';
 
 // ========================================================================
-// تحميل كسول للمكتبات الثقيلة (xlsx, Sortable, Quagga, pdf)
+// تحميل كسول للمكتبات الثقيلة (xlsx, Sortable, pdf)
 // تُجلب مرة واحدة وتُخزّن في window لإعادة الاستخدام دون إعادة تحميل الصفحة.
 // ========================================================================
 const HEAVY_LIB_URLS = {
   xlsx:      './assets/libs/xlsx.full.min.js',
   sortable:  './assets/libs/Sortable.min.js',
-  quagga:    './assets/libs/quagga.min.js',
   pdf:       './assets/libs/pdf.min.js',
 };
 const heavyLibLoadCache = {};
@@ -34,7 +33,6 @@ async function loadHeavyLib(lib) {
   // إذا كانت المكتبة موجودة بالفعل في النافذة (لأي سبب)، لا نعيد التحميل
   if ((lib === 'xlsx' && window.XLSX) ||
       (lib === 'sortable' && window.Sortable) ||
-      (lib === 'quagga' && window.Quagga) ||
       (lib === 'pdf' && window.pdfjsLib)) {
     heavyLibLoadCache[lib] = Promise.resolve();
     return heavyLibLoadCache[lib];
