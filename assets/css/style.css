@@ -161,8 +161,9 @@ body.dark-mode::after {
     z-index: 10;
     /* بلا backdrop-filter: البطاقة تُعاد بناؤها مع كل تحديث/سحب،
        وتمويه الخلفية behindها مكلف جداً على الجوال */
-    background: rgba(255, 255, 255, 0.94);
+    background: color-mix(in srgb, var(--status-border-color, #d1d5db) 12%, #ffffff) !important;
     border: 1px solid rgba(255, 255, 255, 0.6);
+    border-right: 4px solid var(--status-border-color, #d1d5db) !important;
     transition: transform 0.1s linear;
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
@@ -170,7 +171,7 @@ body.dark-mode::after {
 }
 
 .dark-mode .card-content {
-    background: rgba(30, 41, 59, 0.92);
+    background: color-mix(in srgb, var(--status-border-color, #d1d5db) 22%, #1e293b) !important;
     border-color: rgba(255, 255, 255, 0.08);
     color: #e5e7eb;
 }
@@ -494,34 +495,42 @@ select {
 }
 
 .border-green-500 { 
-    border-right: 4px solid #10b981 !important; 
-    background: rgba(236, 253, 245, 0.6) !important; 
+    border-right: 4px solid var(--status-border-color, #10b981) !important;
+    background: color-mix(in srgb, var(--status-border-color, #10b981) 12%, #ffffff) !important;
 }
 
 .dark-mode .border-green-500 { 
-    background: rgba(6, 78, 59, 0.4) !important; 
+    background: color-mix(in srgb, var(--status-border-color, #10b981) 22%, #1e293b) !important;
 }
 
 .border-red-500 { 
-    border-right: 4px solid #ef4444 !important; 
-    background: rgba(254, 242, 242, 0.6) !important; 
+    border-right: 4px solid var(--status-border-color, #ef4444) !important;
+    background: color-mix(in srgb, var(--status-border-color, #ef4444) 12%, #ffffff) !important;
 }
 
 .dark-mode .border-red-500 { 
-    background: rgba(127, 29, 29, 0.4) !important; 
+    background: color-mix(in srgb, var(--status-border-color, #ef4444) 22%, #1e293b) !important;
 }
 
 .border-yellow-400 { 
-    border-right: 4px solid #fbbf24 !important; 
-    background: rgba(255, 251, 235, 0.6) !important; 
+    border-right: 4px solid var(--status-border-color, #fbbf24) !important;
+    background: color-mix(in srgb, var(--status-border-color, #fbbf24) 12%, #ffffff) !important;
 }
 
 .dark-mode .border-yellow-400 { 
-    background: rgba(120, 53, 15, 0.4) !important; 
+    background: color-mix(in srgb, var(--status-border-color, #fbbf24) 22%, #1e293b) !important;
 }
 
 .border-gray-300 { 
-    border-right: 4px solid #d1d5db !important; 
+    border-right: 4px solid var(--status-border-color, #d1d5db) !important;
+}
+
+.status-card {
+    background: color-mix(in srgb, var(--status-border-color, #d1d5db) 12%, #ffffff) !important;
+}
+
+.dark-mode .status-card {
+    background: color-mix(in srgb, var(--status-border-color, #d1d5db) 22%, #1e293b) !important;
 }
 
 .compact-actions {
@@ -2246,7 +2255,31 @@ select {
 
 [dir="ltr"] .border-r-4 {
     border-right-width: 0 !important;
-    border-left-width: 4px !important;
+    border-left: 4px solid var(--status-border-color, #d1d5db) !important;
+}
+
+[dir="ltr"] .card-content.border-green-500,
+[dir="ltr"] .border-green-500.border-r-4 {
+    border-right-width: 0 !important;
+    border-left: 4px solid var(--status-border-color, #10b981) !important;
+}
+
+[dir="ltr"] .card-content.border-red-500,
+[dir="ltr"] .border-red-500.border-r-4 {
+    border-right-width: 0 !important;
+    border-left: 4px solid var(--status-border-color, #ef4444) !important;
+}
+
+[dir="ltr"] .card-content.border-yellow-400,
+[dir="ltr"] .border-yellow-400.border-r-4 {
+    border-right-width: 0 !important;
+    border-left: 4px solid var(--status-border-color, #fbbf24) !important;
+}
+
+[dir="ltr"] .card-content.border-gray-300,
+[dir="ltr"] .border-gray-300.border-r-4 {
+    border-right-width: 0 !important;
+    border-left: 4px solid var(--status-border-color, #d1d5db) !important;
 }
 
 /* التوسيط المطلق (left-1/2 + -translate-x-1/2) يبقى كما هو في الاتجاهين. */

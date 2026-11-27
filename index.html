@@ -410,6 +410,7 @@
                                      حتى لا تُعاد بناء القائمة في كل إطار من السحب -->
                                 <div class="card-content border-r-4"
                                     :class="[getStatusColor(parcel.status)]"
+                                    :style="{ '--status-border-color': getStatusBorderColor(parcel.status) }"
                                     @touchstart="touchStart($event, parcel)" @touchmove="touchMove($event)"
                                     @touchend="touchEnd($event, parcel)" @touchcancel="touchCancel()"
                                     @pointerdown="startParcelSelectionPress(parcel, $event)"

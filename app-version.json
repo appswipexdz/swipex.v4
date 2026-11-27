@@ -1,15 +1,15 @@
 {
-  "version": "4.6.4",
+  "version": "4.6.6",
   "releasedAt": "2026-11-27",
   "notes": {
     "ar": [
-      "تسريع التنقل بين الصفحات" 
+      "تلوين الحواف وخلفيات بطاقات الحالات تلقائياً"
     ],
     "en": [
-      "Speed ​​up page navigation"
+      "Automatically color status card borders and backgrounds"
     ],
     "fr": [
-      "Accélérer la navigation sur les pages"
+      "Colorer automatiquement les bordures et fonds des cartes d'état"
     ]
   }
 }

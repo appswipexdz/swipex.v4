@@ -3404,6 +3404,41 @@ const appMethods = {
     return s ? s.color : "border-gray-300";
   },
 
+  getStatusBorderColor(status) {
+    const s = this.statusAttrMap().get(status);
+    if (s && s.hex) return s.hex;
+    if (s && s.isCustom) {
+      const custom = (this.settings.customStatuses || []).find((item) => item.name === status);
+      if (custom && custom.hex) return custom.hex;
+    }
+
+    const borderColorHex = {
+      "border-gray-300": "#d1d5db",
+      "border-gray-400": "#9ca3af",
+      "border-orange-400": "#fb923c",
+      "border-yellow-400": "#fbbf24",
+      "border-blue-400": "#60a5fa",
+      "border-green-500": "#10b981",
+      "border-red-500": "#ef4444",
+      "border-violet-500": "#8b5cf6",
+      "border-pink-500": "#ec4899",
+      "border-cyan-500": "#06b6d4"
+    };
+    if (s && borderColorHex[s.color]) return borderColorHex[s.color];
+
+    const defaultColors = {
+      "دون إجراء": "#d1d5db",
+      "في الإنتظار": "#fb923c",
+      "تم التسليم": "#10b981",
+      "مغلق": "#fbbf24",
+      "لا يرد": "#fbbf24",
+      "رقم خاطئ": "#fbbf24",
+      "مؤجل للغد": "#60a5fa",
+      "إلغاء الطلبية": "#ef4444"
+    };
+    return defaultColors[status] || "#d1d5db";
+  },
+
   getStatusDotColor(status) {
     const s = this.statusAttrMap().get(status);
     return s ? s.dot : "bg-gray-300";

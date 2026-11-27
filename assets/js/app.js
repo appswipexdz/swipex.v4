@@ -344,6 +344,7 @@ const appOptions = {
                 color: s.color,
                 dot: s.dot,
                 icon: s.icon,
+                hex: s.hex,
                 isCustom: true
             }));
             const all = [...this.statusList, ...custom];

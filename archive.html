@@ -188,12 +188,13 @@
                 </div>
 
                 <div v-for="item in filteredArchive.slice(0, archiveVisibleCount)" :key="item.tracking"
-                    class="glass-panel rounded-xl p-4 border-r-4" :class="{
+                    class="glass-panel status-card rounded-xl p-4 border-r-4" :class="{
                     'border-green-500': item.status === 'تم التسليم',
                     'border-red-500': item.status === 'إلغاء الطلبية',
                     'border-yellow-400': item.status === 'لا يرد' || item.status === 'مغلق' || item.status === 'رقم خاطئ',
                     'border-gray-300': !['تم التسليم','إلغاء الطلبية','لا يرد','مغلق','رقم خاطئ'].includes(item.status)
-                }">
+                }"
+                    :style="{ '--status-border-color': getStatusBorderColor(item.status) }">
                     <!-- السطر 1: رقم التتبع (يمين) | زر السجل (يسار) -->
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2 min-w-0">
